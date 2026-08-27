@@ -1,87 +1,79 @@
 /**
- * Cross-node validation for the exported HA step `id:` (node.data.id — a
- * field entirely separate from the node's own graph id). This can't live in
- * validateNodeData's per-node schema check, which never sees sibling nodes.
+ * Contract for the exported HA step `id:` (node.data.id — a field entirely
+ * separate from the node's own graph id): Home Assistant permits multiple
+ * triggers to SHARE an id (it groups them for `condition: trigger` routing),
+ * and a trigger-condition's `id` is a reference to a trigger id, never an
+ * identity. Upstream CAFE blocked saves on any shared `data.id` (#170); that
+ * check rejected unmodified real-world automations and was removed in
+ * Flow 1.0.1. These tests pin the corrected behavior.
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useFlowStore } from '../flow-store';
 
-const DUPLICATE_ID_MESSAGE = 'errors:validation.node.duplicateId';
-
-function hasDuplicateIdError(errors: { message: string }[] | undefined): boolean {
-  return errors?.some((e) => e.message === DUPLICATE_ID_MESSAGE) ?? false;
-}
-
-describe('Node ID duplicate validation', () => {
+describe('Node ID validation (HA semantics)', () => {
   beforeEach(() => {
     useFlowStore.getState().reset();
   });
 
-  it('flags two nodes sharing the same data.id after validateAllNodes', () => {
+  it('allows two triggers sharing the same data.id (HA trigger grouping)', () => {
     const { addNode, validateAllNodes } = useFlowStore.getState();
     addNode({
       id: 'n1',
       type: 'trigger',
       position: { x: 0, y: 0 },
-      data: { trigger: 'state', id: 'dup' },
+      data: { trigger: 'state', entity_id: 'binary_sensor.a', id: 'shared' },
     });
     addNode({
       id: 'n2',
       type: 'trigger',
       position: { x: 0, y: 0 },
-      data: { trigger: 'state', id: 'dup' },
+      data: { trigger: 'state', entity_id: 'binary_sensor.b', id: 'shared' },
     });
 
     validateAllNodes();
 
     const state = useFlowStore.getState();
-    expect(hasDuplicateIdError(state.nodeErrors.get('n1'))).toBe(true);
-    expect(hasDuplicateIdError(state.nodeErrors.get('n2'))).toBe(true);
+    expect(state.nodeErrors.get('n1')).toBeUndefined();
+    expect(state.nodeErrors.get('n2')).toBeUndefined();
   });
 
-  it('clears the duplicate error on both nodes once one is renamed to a unique id', () => {
-    const { addNode, updateNodeData, validateAllNodes } = useFlowStore.getState();
-    addNode({
-      id: 'n1',
-      type: 'trigger',
-      position: { x: 0, y: 0 },
-      data: { trigger: 'state', id: 'dup' },
-    });
-    addNode({
-      id: 'n2',
-      type: 'trigger',
-      position: { x: 0, y: 0 },
-      data: { trigger: 'state', id: 'dup' },
-    });
-    validateAllNodes();
-    expect(hasDuplicateIdError(useFlowStore.getState().nodeErrors.get('n1'))).toBe(true);
-
-    // updateNodeData itself re-runs validateAllNodes whenever `id` changes —
-    // no explicit validateAllNodes() call needed here.
-    updateNodeData('n2', { id: 'unique' });
-
-    const state = useFlowStore.getState();
-    expect(hasDuplicateIdError(state.nodeErrors.get('n1'))).toBe(false);
-    expect(hasDuplicateIdError(state.nodeErrors.get('n2'))).toBe(false);
-  });
-
-  it('does not flag a lone custom id or nodes with no id at all', () => {
+  it('allows a trigger-condition to reference a trigger id without a clash', () => {
     const { addNode, validateAllNodes } = useFlowStore.getState();
     addNode({
       id: 'n1',
       type: 'trigger',
       position: { x: 0, y: 0 },
-      data: { trigger: 'state', id: 'solo' },
+      data: { trigger: 'sun', event: 'sunset', id: 'sunset' },
     });
-    addNode({ id: 'n2', type: 'trigger', position: { x: 0, y: 0 }, data: { trigger: 'state' } });
-    addNode({ id: 'n3', type: 'trigger', position: { x: 0, y: 0 }, data: { trigger: 'state' } });
+    addNode({
+      id: 'n2',
+      type: 'condition',
+      position: { x: 0, y: 0 },
+      data: { condition: 'trigger', id: 'sunset' },
+    });
 
     validateAllNodes();
 
     const state = useFlowStore.getState();
-    expect(hasDuplicateIdError(state.nodeErrors.get('n1'))).toBe(false);
-    expect(hasDuplicateIdError(state.nodeErrors.get('n2'))).toBe(false);
-    expect(hasDuplicateIdError(state.nodeErrors.get('n3'))).toBe(false);
+    expect(state.nodeErrors.get('n1')).toBeUndefined();
+    expect(state.nodeErrors.get('n2')).toBeUndefined();
+    expect(state.hasValidationErrors()).toBe(false);
+  });
+
+  it('still surfaces per-node schema errors through validateAllNodes', () => {
+    const { addNode, validateAllNodes } = useFlowStore.getState();
+    // A device trigger with no device_id is genuinely invalid per-node.
+    addNode({
+      id: 'n1',
+      type: 'trigger',
+      position: { x: 0, y: 0 },
+      data: { trigger: 'device' },
+    });
+
+    validateAllNodes();
+
+    const state = useFlowStore.getState();
+    expect((state.nodeErrors.get('n1') ?? []).length).toBeGreaterThan(0);
   });
 });

@@ -328,31 +328,13 @@ function normalizeNodeData(type: string, data: Record<string, unknown>): Record<
   return data;
 }
 
-/**
- * Finds nodes that share the same non-empty `data.id` (the exported HA step
- * `id:` — a separate field from the node's own graph id, see `updateNodeData`).
- * Two steps with the same id would either fail to load in HA or make
- * `trigger.id`/`choose:` routing ambiguous, and this can't be caught by
- * `validateNodeData`'s per-node schema check, which never sees the rest of the
- * graph.
- */
-function findDuplicateIdErrors(nodes: Node<FlowNodeData>[]): Map<string, NodeValidationError> {
-  const idToNodeIds = new Map<string, string[]>();
-  for (const node of nodes) {
-    const id = node.data.id;
-    if (typeof id !== 'string' || id.trim() === '') continue;
-    idToNodeIds.set(id, [...(idToNodeIds.get(id) ?? []), node.id]);
-  }
-
-  const errors = new Map<string, NodeValidationError>();
-  for (const [, nodeIds] of idToNodeIds) {
-    if (nodeIds.length < 2) continue;
-    for (const nodeId of nodeIds) {
-      errors.set(nodeId, { path: ['id'], message: 'errors:validation.node.duplicateId' });
-    }
-  }
-  return errors;
-}
+// NOTE: Upstream CAFE (#170) treated any two nodes sharing `data.id` as a
+// save-blocking error. That contradicts Home Assistant's own semantics:
+// multiple triggers may legitimately share an id (it groups them), and a
+// `condition: trigger` step's `id` is a REFERENCE to a trigger id, not an
+// identity — HA's native editor generates exactly that pattern for branch
+// routing. The check blocked saving unmodified real-world automations, so it
+// was removed (Flow 1.0.1). Step ids carry no uniqueness requirement in HA.
 
 /**
  * Computes a trace step's live-trace status in isolation. When a node is
@@ -1256,10 +1238,6 @@ export const useFlowStore = create<FlowState>()(
             }
           }
 
-          const duplicateIdErrors = findDuplicateIdErrors(state.nodes);
-          for (const [nodeId, error] of duplicateIdErrors) {
-            newErrors.set(nodeId, [...(newErrors.get(nodeId) ?? []), error]);
-          }
 
           set({ nodeErrors: newErrors });
         },
