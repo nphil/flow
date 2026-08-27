@@ -77,11 +77,11 @@ export function IdList({ values, onChange, placeholder = 'Add ID...', className 
           {values.map((id) => (
             <span
               key={id}
-              className="inline-flex items-center rounded border bg-muted px-2 py-0.5 font-mono text-muted-foreground text-xs"
+              className="inline-flex items-center rounded border border-flow-border bg-flow-elevated px-2 py-0.5 font-mono text-flow-text-muted text-xs"
             >
               {id}
               <XIcon
-                className="ml-1 h-3 w-3 cursor-pointer hover:text-destructive"
+                className="ml-1 h-3 w-3 cursor-pointer hover:text-flow-danger"
                 onClick={() => handleRemove(id)}
               />
             </span>

@@ -248,7 +248,7 @@ export function DynamicFieldRenderer({
         return (
           <div className="flex items-center space-x-2">
             <Switch checked={booleanValue} onCheckedChange={onChange} />
-            <span className="text-muted-foreground text-sm">
+            <span className="text-flow-text-muted text-sm">
               {booleanValue ? t('dynamicField.enabled') : t('dynamicField.disabled')}
             </span>
           </div>
@@ -304,7 +304,7 @@ export function DynamicFieldRenderer({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full justify-between font-normal">
-                  <span className={values.length === 0 ? 'text-muted-foreground' : ''}>
+                  <span className={values.length === 0 ? 'text-flow-text-muted' : ''}>
                     {getDisplayText()}
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
@@ -528,13 +528,13 @@ export function DynamicFieldRenderer({
 
   return (
     <div className="space-y-2">
-      <Label className="font-medium text-muted-foreground text-xs">
+      <Label className="font-medium text-flow-text-muted text-xs">
         {label}
-        {required && <span className="ml-1 text-destructive">{t('labels.requiredAsterisk')}</span>}
+        {required && <span className="ml-1 text-flow-danger">{t('labels.requiredAsterisk')}</span>}
       </Label>
       {renderField()}
       <FieldError message={error} />
-      {description && <p className="text-muted-foreground text-xs">{description}</p>}
+      {description && <p className="text-flow-text-muted text-xs">{description}</p>}
     </div>
   );
 }
