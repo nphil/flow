@@ -1,57 +1,52 @@
 > [!WARNING]
-> The project is still in beta. While it is designed to be non-destructive, please make sure to backup your automations before editing them with C.A.F.E.!
+> The project is still in beta. While it is designed to be non-destructive, please make sure to backup your automations before editing them with Flow!
 
 > [!TIP]
 > Looking for a Role Based Access Control system for HA? [ha-rbac](https://github.com/fezvrasta/ha-rbac) is now available!
 
-# ☕ C.A.F.E.
+<p>
+  <img src="assets/logo.svg" alt="Flow logo" width="64" height="64" />
+</p>
 
-### **C**omplex **A**utomation **F**low **E**ditor
+# Flow
 
-**The "Third Way" for Home Assistant: Visual Logic with 0% Overhead.**
+**A visual, Node-RED-style flow editor for Home Assistant, with 0% runtime overhead.**
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Stars](https://img.shields.io/github/stars/FezVrasta/cafe-hass?style=flat&color=gold)](https://github.com/FezVrasta/cafe-hass)
+[![Stars](https://img.shields.io/github/stars/nphil/haflow?style=flat&color=gold)](https://github.com/nphil/haflow)
 
-**C.A.F.E.** is a visual flow editor that brings Node-RED-style power to Home Assistant **without the external engine**. It transpiles your visual diagrams into 100% compliant, native Home Assistant logic stored directly in the core system.
-
----
-
-## 📺 Featured In
-
-> "THIS Home Assistant Automation Integration Is Absolutely INCREDIBLE!"
-> — **Byte of Geek** [![Watch the review](https://img.shields.io/badge/YouTube-Watch%20Review-red?logo=youtube)](https://www.youtube.com/watch?v=9PVBo0CtHz0)
-
-> "10 Home Assistant add-ons to make it WAY Better!"
-> — **Smart Home Solver** [![Watch the review](https://img.shields.io/badge/YouTube-Watch%20Review-red?logo=youtube)](https://youtu.be/l_gizeju8D4?t=127)
+Flow is a visual flow editor that brings Node-RED-style clarity to Home Assistant automations **without a second execution engine**: you build on a canvas, and Flow transpiles the diagram into 100% standard Home Assistant YAML stored directly in HA's own automation config, so the logic that runs is native HA logic, not something Flow has to keep alive itself.
 
 ---
 
-## 🧐 Why C.A.F.E.?
+<!-- Screenshot placeholder: canvas view of an automation open in Flow, light + dark theme side by side. -->
+<!-- Screenshot placeholder: live trace view mid-run, next to the equivalent native Home Assistant trace. -->
 
-For years, Home Assistant users had to choose: the **stability** of native YAML or the **clarity** of Node-RED flows. **C.A.F.E. eliminates the trade-off.**
+---
+
+## 🧐 Why Flow?
+
+For years, Home Assistant users had to choose: the **stability** of native YAML or the **clarity** of Node-RED flows. **Flow eliminates the trade-off.**
 
 - **Native YAML:** No side files, no external databases, and no proprietary formats. Everything is stored in HASS.
 - **Zero Overhead:** No secondary engine or extra Docker containers. Once saved, the logic runs in the HA Core with zero extra resource consumption.
-- **Optimized YAML Generation:** C.A.F.E. produces standard, linear sequences for simple flows and automatically utilizes a robust **State-Machine** pattern for complex logic like loops.
+- **Optimized YAML Generation:** Flow produces standard, linear sequences for simple flows and automatically utilizes a robust **State-Machine** pattern for complex logic like loops.
 - **Live Flow Debugging:** Watch automations execute **on the canvas, as they run**. Nodes light up with per-node status, conditions show why a branch was skipped, and loops show their visit count — plus full integration with the official Home Assistant **Trace View**.
-
-![side by side image of CAFE editor and Home Assistant trace view](./docs/images/side-by-side.png)
 
 ---
 
 ## 🔒 No Vendor Lock-In: Your Automations, Your Way
 
-- **Stop Using C.A.F.E. Anytime:** If you uninstall C.A.F.E., your automations keep working exactly as before. The logic is standard YAML; you only lose the visual layout metadata.
-- **Built-in Editor Compatible:** You can switch between C.A.F.E. and the native HASS automation editor seamlessly. They edit the same source of truth.
-- **Zero Side-Files:** There is no `cafe_data.json`. Visual metadata (node positions, etc.) is stored as a harmless object inside the automation's `variables` block.
+- **Stop Using Flow Anytime:** If you uninstall Flow, your automations keep working exactly as before. The logic is standard YAML; you only lose the visual layout metadata.
+- **Built-in Editor Compatible:** You can switch between Flow and the native HASS automation editor seamlessly. They edit the same source of truth.
+- **Zero Side-Files:** There is no `flow_data.json`. Visual metadata (node positions, etc.) is stored as a harmless object inside the automation's `variables` block.
 
 ---
 
 ## 🛠 Engineering Quality & Architecture
 
-C.A.F.E. is architected with strict engineering principles to ensure your home remains reliable:
+Flow is architected with strict engineering principles to ensure your home remains reliable:
 
 - **Intelligent Transpiler:** The engine analyzes your flow and chooses the optimal target structure. It generates clean, human-readable YAML for standard sequences, and utilizes a **Native State Machine** (repeat/choose dispatcher) only when needed to unlock complex non-linear "jumps" and loops.
 - **Zod Validation:** Every node, edge, and schema is validated via **Zod**. This ensures that malformed UI data never reaches your Home Assistant API.
@@ -66,6 +61,7 @@ C.A.F.E. is architected with strict engineering principles to ensure your home r
 - **Entity Intelligence:** Full autocomplete and state-awareness via the native HASS WebSocket API.
 - **Visual Import:** Load any native automation and see it mapped instantly to nodes.
 - **Live Trace View:** A Node-RED-style live debugger built into the editor. Toggle **Live** in the Debug panel and every run paints itself onto your flow: executed nodes badge green, false conditions badge orange with the reason, errors badge red, unvisited nodes dim out, and delay/wait nodes count down while they hold. A run picker lets you replay any recent execution.
+- **Theming:** Six built-in palettes (Catppuccin, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest), each with a light and dark variant, plus an optional "Home Assistant" mode that blends the editor into your existing HA theme.
 
 ---
 
@@ -78,8 +74,8 @@ C.A.F.E. is architected with strict engineering principles to ensure your home r
    - Go to **HACS** → **Integrations**
    - Click the **⋮** menu → **Custom repositories**
    - Add: `https://github.com/nphil/haflow` as an **Integration**.
-3. **Install & Restart**: Find **C.A.F.E.** in HACS, download it, and restart Home Assistant.
-4. **Enable**: Go to **Settings** → **Devices & Services** → **Add Integration** → Search for **C.A.F.E.**
+3. **Install & Restart**: Find **Flow** in HACS, download it, and restart Home Assistant.
+4. **Enable**: Go to **Settings** → **Devices & Services** → **Add Integration** → Search for **Flow**.
 
 ---
 
@@ -92,38 +88,44 @@ When you call a script and set a `response_variable` (e.g., `weather_data`), tho
 
 ### How do I watch an automation run live?
 
-Open the automation in C.A.F.E., switch the right-hand panel to the **Debug** tab, and click the **Live** (radio tower) button in the *Automation Trace* section. C.A.F.E. subscribes to Home Assistant's trigger events and polls the run's trace, so the canvas updates while the automation is still executing — including long `delay` and `wait_for_trigger` steps, which show a live countdown.
+Open the automation in Flow, switch the right-hand panel to the **Debug** tab, and click the **Live** (radio tower) button in the *Automation Trace* section. Flow subscribes to Home Assistant's trigger events and polls the run's trace, so the canvas updates while the automation is still executing — including long `delay` and `wait_for_trigger` steps, which show a live countdown.
 
 Each node badges its outcome: green (executed), orange (condition was false — hover for the reason), red (error), and a spinner while the step is in flight. Nodes the run never reached are dimmed, so a glance tells you which branch was taken. Loop bodies show `×N` for the number of visits. The **Select Trace Run** picker replays any of the recent runs Home Assistant retains.
 
-### Does C.A.F.E. slow down my Home Assistant instance?
+### Does Flow slow down my Home Assistant instance?
 
-**No.** Unlike Node-RED, C.A.F.E. is not an execution engine; it is a specialized compiler. Once you hit "Save," the resulting logic is pure, native Home Assistant code. It consumes zero CPU or RAM in the background because the logic runs directly within the HA Core automation engine.
+**No.** Unlike Node-RED, Flow is not an execution engine; it is a specialized compiler. Once you hit "Save," the resulting logic is pure, native Home Assistant code. It consumes zero CPU or RAM in the background because the logic runs directly within the HA Core automation engine.
 
 ### Can I still use the built-in Home Assistant automation editor?
 
-**Yes.** C.A.F.E. and the native editor are two different "lenses" for the same data. You can open a C.A.F.E. automation in the native editor to make a quick change, and C.A.F.E. will pick up those changes (and attempt to preserve your layout) the next time you open it.
+**Yes.** Flow and the native editor are two different "lenses" for the same data. You can open a Flow automation in the native editor to make a quick change, and Flow will pick up those changes (and attempt to preserve your layout) the next time you open it.
 
-### What happens if I uninstall C.A.F.E.?
+### What happens if I uninstall Flow?
 
-Your house keeps running. Because C.A.F.E. stores everything as native YAML, your automations are independent of the editor. You will lose the visual layout (the positions of the boxes), but the logic itself remains 100% intact and editable via YAML.
+Your house keeps running. Because Flow stores everything as native YAML, your automations are independent of the editor. You will lose the visual layout (the positions of the boxes), but the logic itself remains 100% intact and editable via YAML.
 
 ### Why does my YAML look different sometimes?
 
-C.A.F.E. uses an **Optimized Compilation** strategy.
+Flow uses an **Optimized Compilation** strategy.
 
 - For **Linear flows**, it generates standard YAML sequences.
 - For **Complex flows** (with loops or jumps), it generates a **Native State Machine**.
-  Both are 100% compliant with Home Assistant; C.A.F.E. simply chooses the best structure for the job.
+  Both are 100% compliant with Home Assistant; Flow simply chooses the best structure for the job.
 
 ### Is this safe to use for "mission-critical" automations?
 
-While C.A.F.E. is in Beta, we recommend keeping backups. However, because it targets the native HA engine, it is inherently more stable than external engines. If the editor has a bug, it might mess up your YAML, but it can't "crash" your automation engine or cause a background memory leak.
+While Flow is in Beta, we recommend keeping backups. However, because it targets the native HA engine, it is inherently more stable than external engines. If the editor has a bug, it might mess up your YAML, but it can't "crash" your automation engine or cause a background memory leak.
 
-### What's the C.A.F.E. alternative to Node-Red's "Function" node?
+### What's the Flow alternative to Node-RED's "Function" node?
 
-You can use Jinja2 templates directly in any text field within C.A.F.E. For more complex logic, the "Set Variables" node allows you to create and manipulate flow-scoped variables dynamically. This combination provides similar flexibility to Node-RED's "Function" node while staying within the native Home Assistant framework.
+You can use Jinja2 templates directly in any text field within Flow. For more complex logic, the "Set Variables" node allows you to create and manipulate flow-scoped variables dynamically. This combination provides similar flexibility to Node-RED's "Function" node while staying within the native Home Assistant framework.
+
+---
+
+## 🌱 Fork Lineage
+
+Flow is a rebrand and UI/UX rebuild of [**C.A.F.E.**](https://github.com/FezVrasta/cafe-hass) by [Federico Zivolo](https://github.com/FezVrasta), released under the MIT License. The transpiler, schema layer, and core Home Assistant integration this project builds on originate there — huge thanks to Federico for the original engine and the "compile to native YAML, run with zero overhead" design that Flow keeps intact. See [LICENSE](./LICENSE) for the original copyright notice, which Flow retains as required by the MIT License.
 
 ## ⚖️ License
 
-MIT License. Created by [Federico Zivolo](https://github.com/FezVrasta).
+MIT License. Original work Copyright (c) 2026 [Federico Zivolo](https://github.com/FezVrasta). See [LICENSE](./LICENSE).
