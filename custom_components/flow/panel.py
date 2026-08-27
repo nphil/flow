@@ -1,4 +1,4 @@
-"""Panel for C.A.F.E."""
+"""Panel for Flow."""
 import os
 import logging
 from pathlib import Path
@@ -16,13 +16,13 @@ PANEL_NAME = f"{DOMAIN}-panel"
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
-    """Register the C.A.F.E. panel."""
+    """Register the Flow panel."""
     # Get the path to the www folder within the component
     www_path = Path(__file__).parent / "www"
     
     # Register static path for the frontend assets
     await hass.http.async_register_static_paths([
-        StaticPathConfig("/cafe-hass", str(www_path), False)
+        StaticPathConfig("/flow-static", str(www_path), False)
     ])
 
     # The panel wrapper has a fixed name (not hashed)
@@ -35,7 +35,7 @@ async def async_register_panel(hass: HomeAssistant) -> None:
     # Add cache-busting parameter to force fresh load
     import time
     cache_bust = int(time.time())
-    module_url = f"/cafe-hass/assets/panel-wrapper.js?v={cache_bust}"
+    module_url = f"/flow-static/assets/panel-wrapper.js?v={cache_bust}"
 
     # First try to unregister any existing panel
     try:
@@ -57,10 +57,10 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         config_panel_domain=DOMAIN,
     )
 
-    _LOGGER.info("C.A.F.E. panel registered successfully with iframe wrapper")
+    _LOGGER.info("Flow panel registered successfully with iframe wrapper")
 
 
 def async_unregister_panel(hass: HomeAssistant) -> None:
-    """Unregister the C.A.F.E. panel."""
+    """Unregister the Flow panel."""
     frontend.async_remove_panel(hass, DOMAIN)
-    _LOGGER.info("C.A.F.E. panel unregistered")
+    _LOGGER.info("Flow panel unregistered")

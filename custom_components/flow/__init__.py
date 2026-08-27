@@ -1,4 +1,4 @@
-"""C.A.F.E. - Visual automation editor for Home Assistant."""
+"""Flow - Visual automation editor for Home Assistant."""
 from __future__ import annotations
 
 import logging
@@ -14,19 +14,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the C.A.F.E. component."""
+    """Set up the Flow component."""
     # This will be called when the integration is loaded
     # But actual setup happens in async_setup_entry
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
-    """Set up C.A.F.E. from a config entry."""
+    """Set up Flow from a config entry."""
 
     # Register the panel (frontend)
     await async_register_panel(hass)
 
-    _LOGGER.info("C.A.F.E. integration set up successfully")
+    _LOGGER.info("Flow integration set up successfully")
 
     return True
 
