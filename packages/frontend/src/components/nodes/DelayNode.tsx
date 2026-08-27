@@ -1,13 +1,12 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
-import { AlertCircle, Ban, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
-import { cn } from '@/lib/utils';
 import type { DelayNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
 import { durationToMs, formatDuration } from './formatDuration';
-import { NodeTraceBadge } from './NodeTraceBadge';
+import { handleKindClass, NodeShell } from './nodeVisuals';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 import { useTraceCountdown } from './useTraceCountdown';
 
@@ -21,11 +20,7 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const isActive = activeNodeId === id;
-  const stepNumber = getExecutionStepNumber(id);
-  const isDisabled = data.enabled === false;
 
-  // Format delay for display (reuse shared util)
   const delayDisplay = formatDuration(data.delay);
 
   // Live countdown: prefer the resolved delay from the trace step result
@@ -37,65 +32,26 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
   const countdown = useTraceCountdown(isCounting, traceView.traceState?.timestamp, countdownTotalMs);
 
   return (
-    <div
-      className={cn(
-        'relative min-w-[140px] rounded-lg border-2 border-purple-400 bg-purple-50 px-4 py-3',
-        'transition-all duration-200',
-        selected && 'ring-2 ring-purple-500 ring-offset-2',
-        isActive && 'node-active ring-4 ring-green-500',
-        isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400',
-        !isActive && traceView.ringClass,
-        traceView.dimmed && 'opacity-40'
-      )}
-      title={traceView.tooltip || undefined}
+    <NodeShell
+      kind="timing"
+      icon={Clock}
+      title={data.alias || 'Delay'}
+      subtitle={delayDisplay}
+      selected={selected}
+      disabled={data.enabled === false}
+      hasErrors={hasErrors}
+      errorMessages={errorMessages}
+      traceView={traceView}
+      isActive={activeNodeId === id}
+      stepNumber={getExecutionStepNumber(id)}
     >
-      {hasErrors && (
-        <div
-          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm"
-          title={errorMessages.join('\n')}
-        >
-          <AlertCircle className="h-3 w-3" />
+      {countdown && (
+        <div className="mt-1 pl-1 font-mono font-semibold text-[11px] text-flow-accent tabular-nums">
+          {t('nodes:trace.remaining', { time: countdown })}
         </div>
       )}
-      {isDisabled && !hasErrors && (
-        <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-500 text-white shadow-sm">
-          <Ban className="h-3 w-3" />
-        </div>
-      )}
-      <NodeTraceBadge view={traceView} />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-3 !h-3 !bg-purple-500 !border-purple-700"
-      />
-
-      <div className="mb-1 flex items-center gap-2">
-        <div className="rounded bg-purple-200 p-1">
-          <Clock className="h-4 w-4 text-purple-700" />
-        </div>
-        <span className="font-semibold text-purple-900 text-sm">{data.alias || 'Delay'}</span>
-        {stepNumber && (
-          <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 font-bold text-white text-xs">
-            {stepNumber}
-          </div>
-        )}
-      </div>
-
-      <div className="text-purple-700 text-xs">
-        <div className="font-mono">{delayDisplay}</div>
-        {countdown && (
-          <div className="font-mono font-semibold text-purple-900 tabular-nums">
-            {t('nodes:trace.remaining', { time: countdown })}
-          </div>
-        )}
-      </div>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !bg-purple-500 !border-purple-700"
-      />
-    </div>
+      <Handle type="target" position={Position.Left} className={handleKindClass('timing')} />
+      <Handle type="source" position={Position.Right} className={handleKindClass('timing')} />
+    </NodeShell>
   );
 });

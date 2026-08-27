@@ -1,5 +1,5 @@
 import type { Connection } from '@xyflow/react';
-import { nodeTypes } from '@/components/panels/NodePalette';
+import { NODE_CATALOG, type NodeCatalogEntry } from '@/components/nodes/catalog';
 
 /**
  * Which end of the dragged (but unfinished) connection the quick-add node
@@ -9,26 +9,24 @@ import { nodeTypes } from '@/components/panels/NodePalette';
  */
 export type QuickAddDirection = 'forward' | 'backward';
 
+/** A `stop` action (see catalog.ts's "Stop" entry) has no source/output handle. */
+function hasSourceHandle(entry: NodeCatalogEntry): boolean {
+  return !(entry.kind === 'action' && typeof entry.defaultData.stop === 'string');
+}
+
 /**
- * Node types offered by the quick-add menu, filtered by which handle the new
- * node needs to satisfy the dragged connection.
- *
- * Return type is derived via `typeof` from the actual `nodeTypes` array (not
- * the wider `NodeTypeConfig` interface) so each item's `labelKey` keeps its
- * specific string-literal type — widening it to plain `string` breaks
- * i18next's typed `t()` calls at the call site (QuickAddMenu.tsx).
+ * Catalog entries offered by the quick-add menu, filtered by which handle the
+ * new node needs to satisfy the dragged connection.
  */
-export function getAvailableQuickAddTypes(
-  direction: QuickAddDirection
-): (typeof nodeTypes)[number][] {
+export function getAvailableQuickAddTypes(direction: QuickAddDirection): NodeCatalogEntry[] {
   if (direction === 'forward') {
     // The new node must accept an incoming connection — triggers have no
     // target/input handle, so they can't complete a forward drag.
-    return nodeTypes.filter((config) => config.type !== 'trigger');
+    return NODE_CATALOG.filter((entry) => entry.kind !== 'trigger');
   }
   // Dragged backward from a target handle: the new node must have a source
-  // handle to feed the dragged-from node. Every simple type has one.
-  return [...nodeTypes];
+  // handle to feed the dragged-from node.
+  return NODE_CATALOG.filter(hasSourceHandle);
 }
 
 /**

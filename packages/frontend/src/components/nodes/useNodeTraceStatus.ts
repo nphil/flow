@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NodeTraceState, NodeTraceStatus } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
+import { formatElapsedMs } from './formatDuration';
 
 /** Corner badge kind derived from a node's trace status. */
 export type NodeTraceBadgeKind = 'ok' | 'fail' | 'error' | 'active';
@@ -18,13 +19,17 @@ export interface NodeTraceStatusView {
   tooltip: string;
   /** True while the shown trace is still running (live view). */
   isRunning: boolean;
+  /** Formatted elapsed time for a finished ('ok') step, e.g. "128ms". */
+  durationLabel: string | null;
+  /** A condition node's evaluated result, when known. */
+  conditionResult: boolean | null;
 }
 
 const RING_CLASSES: Record<NodeTraceStatus, string> = {
-  ok: 'ring-2 ring-green-500',
-  active: 'node-trace-active ring-4 ring-yellow-400',
-  'condition-false': 'ring-2 ring-orange-500',
-  error: 'ring-2 ring-red-500',
+  ok: 'ring-2 ring-flow-ok',
+  active: 'ring-2 ring-flow-accent flow-node-pulse-ring',
+  'condition-false': 'ring-2 ring-flow-warn',
+  error: 'ring-2 ring-flow-danger',
 };
 
 const BADGE_KINDS: Record<NodeTraceStatus, NodeTraceBadgeKind> = {
@@ -68,9 +73,10 @@ function reasonLabel(t: TFunction<['nodes']>, state: NodeTraceState): string | n
 
 /**
  * Single source of trace styling for all canvas node components: ring
- * classes, dimming for unvisited nodes, corner badge kind, and the native
- * title tooltip. Simulation/replay highlighting (activeNodeId) is expected
- * to take precedence — callers apply `ringClass` only while not active.
+ * classes, dimming for unvisited nodes, corner badge kind, duration label,
+ * condition result, and the native title tooltip. Simulation/replay
+ * highlighting (activeNodeId) is a separate, higher-precedence spotlight —
+ * callers apply `ringClass`/`flow-node-pulse-ring` only while not active.
  */
 export function useNodeTraceStatus(nodeId: string): NodeTraceStatusView {
   const { t } = useTranslation(['nodes']);
@@ -87,6 +93,8 @@ export function useNodeTraceStatus(nodeId: string): NodeTraceStatusView {
         badge: null,
         tooltip: '',
         isRunning,
+        durationLabel: null,
+        conditionResult: null,
       };
     }
 
@@ -105,6 +113,11 @@ export function useNodeTraceStatus(nodeId: string): NodeTraceStatusView {
       badge: BADGE_KINDS[traceState.status],
       tooltip: lines.join('\n'),
       isRunning,
+      durationLabel:
+        traceState.status === 'ok' && traceState.durationMs != null
+          ? formatElapsedMs(traceState.durationMs)
+          : null,
+      conditionResult: typeof traceState.result?.result === 'boolean' ? traceState.result.result : null,
     };
   }, [isShowingTrace, traceState, isRunning, t]);
 }

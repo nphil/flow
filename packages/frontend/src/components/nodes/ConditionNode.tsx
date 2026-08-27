@@ -1,12 +1,12 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
-import { t } from 'i18next';
-import { AlertCircle, Ban, GitBranch } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import { memo } from 'react';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { ConditionNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { NodeTraceBadge } from './NodeTraceBadge';
+import { getNodeSummary } from '@/utils/nodeData';
+import { handleKindClass, NodeShell } from './nodeVisuals';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface ConditionNodeProps extends NodeProps {
@@ -22,179 +22,55 @@ export const ConditionNode = memo(function ConditionNode({
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const isActive = activeNodeId === id;
-  const stepNumber = getExecutionStepNumber(id);
-  const isDisabled = data.enabled === false;
-
-  const conditionLabels: Record<string, string> = {
-    state: 'State',
-    numeric_state: 'Numeric',
-    template: 'Template',
-    time: 'Time',
-    zone: 'Zone',
-    sun: 'Sun',
-    and: 'AND',
-    or: 'OR',
-    not: 'NOT',
-    device: 'Device',
-    trigger: 'Trigger',
-  };
+  const { title, subtitle } = getNodeSummary('condition', data);
 
   return (
-    <div
-      className={cn(
-        'group relative min-w-[180px] rounded-lg border-2 border-blue-400 bg-blue-50 px-4 py-3',
-        'transition-all duration-200',
-        selected && 'ring-2 ring-blue-500 ring-offset-2',
-        isActive && 'node-active ring-4 ring-green-500',
-        isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400',
-        !isActive && traceView.ringClass,
-        traceView.dimmed && 'opacity-40'
-      )}
-      title={traceView.tooltip || undefined}
+    <NodeShell
+      kind="condition"
+      icon={GitBranch}
+      title={title}
+      subtitle={subtitle}
+      selected={selected}
+      disabled={data.enabled === false}
+      hasErrors={hasErrors}
+      errorMessages={errorMessages}
+      traceView={traceView}
+      isActive={activeNodeId === id}
+      stepNumber={getExecutionStepNumber(id)}
     >
-      {hasErrors && (
-        <div
-          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm"
-          title={errorMessages.join('\n')}
-        >
-          <AlertCircle className="h-3 w-3" />
+      {/* Evaluated branch, shown only while a trace with a known result is displayed —
+          branch identity itself (which handle is true/false) is labeled on the
+          connected edge's midpoint chip, not here (design doc §5). */}
+      {traceView.conditionResult != null && (
+        <div className="mt-1.5 flex justify-end pl-1">
+          <span
+            className={cn(
+              'rounded-full border px-1.5 py-0.5 font-mono text-[9px]',
+              traceView.conditionResult
+                ? 'border-flow-ok text-flow-ok'
+                : 'border-flow-warn text-flow-warn'
+            )}
+          >
+            {traceView.conditionResult ? 'True' : 'False'}
+          </span>
         </div>
       )}
-      {isDisabled && !hasErrors && (
-        <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-500 text-white shadow-sm">
-          <Ban className="h-3 w-3" />
-        </div>
-      )}
-      <NodeTraceBadge view={traceView} />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-3 !h-3 !bg-blue-500 !border-blue-700"
-      />
 
-      <div className="mb-1 flex items-center gap-2">
-        <div className="rounded bg-blue-200 p-1">
-          <GitBranch className="h-4 w-4 text-blue-700" />
-        </div>
-        <span className="font-semibold text-blue-900 text-sm">
-          {data.alias || conditionLabels[data.condition] || 'Condition'}
-        </span>
-        {stepNumber && (
-          <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
-            {stepNumber}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-0.5 text-blue-700 text-xs">
-        <div className="font-medium">{conditionLabels[data.condition] || data.condition}</div>
-        {data.entity_id && (
-          <div className="truncate opacity-75">
-            {Array.isArray(data.entity_id) ? data.entity_id.join(', ') : data.entity_id}
-          </div>
-        )}
-        {data.state && (
-          <div className="opacity-75">
-            {'= '}
-            {data.state}
-          </div>
-        )}
-        {data.above != null && (
-          <div className="opacity-75">
-            {'> '}
-            {data.above}
-          </div>
-        )}
-        {data.below != null && (
-          <div className="opacity-75">
-            {'< '}
-            {data.below}
-          </div>
-        )}
-        {data.after && (
-          <div className="opacity-75">
-            {'after: '}
-            {data.after}
-          </div>
-        )}
-        {data.before && (
-          <div className="opacity-75">
-            {'before: '}
-            {data.before}
-          </div>
-        )}
-        {data.zone && (
-          <div className="opacity-75">
-            {'zone: '}
-            {data.zone}
-          </div>
-        )}
-        {data.attribute && (
-          <div className="opacity-75">
-            {'attr: '}
-            {data.attribute}
-          </div>
-        )}
-        {data.for && (
-          <div className="opacity-75">
-            {'for: '}
-            {typeof data.for === 'string'
-              ? data.for
-              : `${data.for.hours || 0}h ${data.for.minutes || 0}m ${data.for.seconds || 0}s`}
-          </div>
-        )}
-        {data.template && (
-          <div className="truncate font-mono text-[10px] opacity-75">
-            {data.template.slice(0, 30)}
-            {'...'}
-          </div>
-        )}
-        {data.value_template && (
-          <div className="truncate font-mono text-[10px] opacity-75">
-            {data.value_template.slice(0, 30)}
-            {'...'}
-          </div>
-        )}
-        {typeof data.id === 'string' && (
-          <div className="opacity-75">
-            {'id: '}
-            {data.id}
-          </div>
-        )}
-        {Array.isArray(data.conditions) && data.conditions.length > 0 && (
-          <div className="opacity-75">
-            {t('nodes:conditions.nestedConditions', { count: data.conditions.length })}
-          </div>
-        )}
-
-        {/* Group editor moved to side panel */}
-      </div>
-
-      {/* True/False output handles */}
+      <Handle type="target" position={Position.Left} className={handleKindClass('condition')} />
       <Handle
         type="source"
         position={Position.Right}
         id="true"
-        style={{ top: '30%' }}
-        className="!w-3 !h-3 !bg-green-500 !border-green-700"
+        style={{ top: '35%' }}
+        className={handleKindClass('condition')}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="false"
-        style={{ top: '70%' }}
-        className="!w-3 !h-3 !bg-red-500 !border-red-700"
+        style={{ top: '65%' }}
+        className={handleKindClass('condition')}
       />
-
-      {/* Labels for handles - visible on hover */}
-      <div className="absolute top-[30%] right-[-40px] -translate-y-1/2 transform rounded border border-green-200 bg-white px-1 py-0.5 font-medium text-[10px] text-green-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-        {t('nodes:conditions.yes')}
-      </div>
-      <div className="absolute top-[70%] right-[-36px] -translate-y-1/2 transform rounded border border-red-200 bg-white px-1 py-0.5 font-medium text-[10px] text-red-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-        {t('nodes:conditions.no')}
-      </div>
-    </div>
+    </NodeShell>
   );
 });

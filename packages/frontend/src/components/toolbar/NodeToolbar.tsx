@@ -3,8 +3,6 @@ import type { TFunction } from 'i18next';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
@@ -232,16 +230,14 @@ export function NodeToolbar() {
       const isPaste = action.name === 'paste';
 
       return (
-        <Button
+        <button
           key={action.name}
-          variant="ghost"
-          size="icon"
+          type="button"
           disabled={!isEnabled}
           className={cn(
-            'relative h-8 w-8 shrink-0',
-            'sm:h-9 sm:w-9',
-            action.variant === 'destructive' &&
-              'text-destructive hover:bg-destructive/10 hover:text-destructive'
+            'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-flow-control text-flow-text-secondary transition-colors duration-flow-fast ease-flow-warm sm:h-9 sm:w-9',
+            'hover:bg-flow-elevated hover:text-flow-text disabled:pointer-events-none disabled:opacity-40',
+            action.variant === 'destructive' && 'hover:bg-flow-danger/10 hover:text-flow-danger'
           )}
           title={
             action.shortcut
@@ -252,11 +248,11 @@ export function NodeToolbar() {
         >
           <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           {isPaste && clipboardNodeCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary font-bold text-[9px] text-primary-foreground">
+            <span className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center rounded-full bg-flow-accent font-bold text-[9px] text-flow-on-accent">
               {clipboardNodeCount}
             </span>
           )}
-        </Button>
+        </button>
       );
     });
   };
@@ -268,9 +264,9 @@ export function NodeToolbar() {
     >
       <div
         className={cn(
-          'flex items-center gap-0.5 rounded-lg border bg-background/95 px-1.5 py-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:gap-1 sm:px-2 sm:py-1.5',
-          'fade-in slide-in-from-top-2 animate-in duration-200',
-          'scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-x-auto',
+          'flex items-center gap-0.5 rounded-flow-card border border-flow-border bg-flow-panel px-1.5 py-1 shadow-flow-pop sm:gap-1 sm:px-2 sm:py-1.5',
+          'fade-in slide-in-from-top-2 animate-in duration-flow-med',
+          'scrollbar-thin overflow-x-auto',
           'max-w-full'
         )}
       >
@@ -284,7 +280,7 @@ export function NodeToolbar() {
                 {renderActionGroup(groupActions)}
                 {index < groupOrder.length - 1 &&
                   actionsByGroup[groupOrder[index + 1]]?.length > 0 && (
-                    <Separator orientation="vertical" className="mx-0.5 h-6 sm:mx-1" />
+                    <span className="mx-0.5 h-6 w-px shrink-0 bg-flow-border sm:mx-1" />
                   )}
               </div>
             );

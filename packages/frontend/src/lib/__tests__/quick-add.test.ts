@@ -4,17 +4,32 @@ import { buildQuickAddConnection, getAvailableQuickAddTypes } from '@/lib/quick-
 describe('quick-add helpers', () => {
   describe('getAvailableQuickAddTypes', () => {
     it('excludes Trigger when dragging forward (new node needs a target handle)', () => {
-      const types = getAvailableQuickAddTypes('forward').map((c) => c.type);
-      expect(types).not.toContain('trigger');
-      expect(types).toContain('action');
-      expect(types).toContain('condition');
+      const kinds = getAvailableQuickAddTypes('forward').map((c) => c.kind);
+      expect(kinds).not.toContain('trigger');
+      expect(kinds).toContain('action');
+      expect(kinds).toContain('condition');
     });
 
     it('offers every simple type (including Trigger) when dragging backward', () => {
-      const types = getAvailableQuickAddTypes('backward').map((c) => c.type);
-      expect(types).toContain('trigger');
-      expect(types).toContain('action');
-      expect(types.length).toBeGreaterThan(getAvailableQuickAddTypes('forward').length);
+      const kinds = getAvailableQuickAddTypes('backward').map((c) => c.kind);
+      expect(kinds).toContain('trigger');
+      expect(kinds).toContain('action');
+      // Each direction excludes exactly one catalog entry (forward: Trigger,
+      // backward: Stop) out of the same 7-entry catalog, so counts match —
+      // it's *which* entry that differs, asserted separately below.
+      expect(getAvailableQuickAddTypes('backward').length).toBe(
+        getAvailableQuickAddTypes('forward').length
+      );
+    });
+
+    it('excludes the Stop action when dragging backward (it has no source/output handle)', () => {
+      const backward = getAvailableQuickAddTypes('backward');
+      const stopEntry = backward.find((entry) => entry.label === 'Stop');
+      expect(stopEntry).toBeUndefined();
+
+      // Forward is unaffected — Stop still accepts an incoming connection.
+      const forward = getAvailableQuickAddTypes('forward');
+      expect(forward.some((entry) => entry.label === 'Stop')).toBe(true);
     });
   });
 

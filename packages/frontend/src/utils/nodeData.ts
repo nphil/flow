@@ -102,3 +102,165 @@ export function setNestedNodeData(
     [parentKey]: { ...parentData, [childKey]: value },
   });
 }
+
+/**
+ * Design-system color category for a canvas node (design doc §3). Six of the
+ * seven map 1:1 from the schema `type`; `action` fans out further since HA
+ * flow-control actions (stop / an opaque preserved `repeat`|`parallel` block)
+ * get the rose 'flowctl' kind instead of plain green 'action', and
+ * YamlParser's "can't represent this" placeholder (`service:
+ * 'unknown.unknown'` — see YamlParser.ts's `getNextNodeId('unknown')` call
+ * sites) gets 'unknown'.
+ */
+export type NodeKind = 'trigger' | 'condition' | 'action' | 'timing' | 'data' | 'flowctl' | 'unknown';
+
+export function getNodeKind(type: string | undefined, data: Record<string, unknown>): NodeKind {
+  switch (type) {
+    case 'trigger':
+      return 'trigger';
+    case 'condition':
+      return 'condition';
+    case 'delay':
+    case 'wait':
+      return 'timing';
+    case 'set_variables':
+      return 'data';
+    case 'action':
+      if (data.service === 'unknown.unknown') return 'unknown';
+      if (typeof data.stop === 'string' || data.repeat !== undefined || data.parallel !== undefined) {
+        return 'flowctl';
+      }
+      return 'action';
+    default:
+      return 'unknown';
+  }
+}
+
+export interface NodeSummary {
+  title: string;
+  subtitle: string;
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  state: 'State Change',
+  time: 'Time',
+  time_pattern: 'Time Pattern',
+  event: 'Event',
+  mqtt: 'MQTT',
+  webhook: 'Webhook',
+  sun: 'Sun',
+  zone: 'Zone',
+  numeric_state: 'Numeric State',
+  template: 'Template',
+  homeassistant: 'Home Assistant',
+  device: 'Device',
+  geo_location: 'Geolocation',
+  conversation: 'Conversation',
+  persistent_notification: 'Notification',
+  tag: 'Tag',
+  calendar: 'Calendar',
+};
+
+const CONDITION_LABELS: Record<string, string> = {
+  state: 'State',
+  numeric_state: 'Numeric',
+  template: 'Template',
+  time: 'Time',
+  zone: 'Zone',
+  sun: 'Sun',
+  and: 'AND',
+  or: 'OR',
+  not: 'NOT',
+  device: 'Device',
+  trigger: 'Trigger',
+};
+
+function str(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Single-line entity summary: bare id, or `"N entities"` for arrays. */
+function joinEntityIds(value: unknown): string | null {
+  if (typeof value === 'string' && value) return value;
+  if (Array.isArray(value) && value.length > 0) {
+    return value.length === 1 ? String(value[0]) : `${value.length} entities`;
+  }
+  return null;
+}
+
+function summarizeTrigger(data: Record<string, unknown>): NodeSummary {
+  const triggerType = str(data.trigger) ?? 'state';
+  const label = TRIGGER_LABELS[triggerType] ?? triggerType;
+  const title = str(data.alias) ?? label;
+  const subtitle =
+    joinEntityIds(data.entity_id) ??
+    str(data.event_type) ??
+    str(data.topic) ??
+    str(data.webhook_id) ??
+    str(data.zone) ??
+    str(data.at) ??
+    str(data.device_id) ??
+    label;
+  return { title, subtitle };
+}
+
+function summarizeCondition(data: Record<string, unknown>): NodeSummary {
+  const conditionType = str(data.condition) ?? 'state';
+  const label = CONDITION_LABELS[conditionType] ?? conditionType;
+  const title = str(data.alias) ?? label;
+  const subtitle =
+    joinEntityIds(data.entity_id) ??
+    str(data.value_template) ??
+    str(data.template) ??
+    str(data.zone) ??
+    str(data.after) ??
+    str(data.before) ??
+    (typeof data.above === 'number' ? `> ${data.above}` : null) ??
+    (typeof data.below === 'number' ? `< ${data.below}` : null) ??
+    label;
+  return { title, subtitle };
+}
+
+function summarizeAction(data: Record<string, unknown>): NodeSummary {
+  if (data.service === 'unknown.unknown') {
+    return { title: str(data.alias) ?? 'Unknown Node', subtitle: 'Unrecognized — preserved' };
+  }
+  const isStop = typeof data.stop === 'string';
+  if (isStop) {
+    const title = str(data.alias) ?? (data.error === true ? 'Stop (error)' : 'Stop');
+    return { title, subtitle: (data.stop as string) || 'Halts the automation' };
+  }
+  const service = str(data.service);
+  const event = str(data.event);
+  if (service) {
+    const [domain, name] = service.includes('.') ? service.split('.') : [null, service];
+    const title = str(data.alias) ?? name ?? service;
+    const target = data.target as { entity_id?: unknown } | undefined;
+    const subtitle = joinEntityIds(target?.entity_id) ?? (domain ? `${domain}.${name}` : service);
+    return { title, subtitle };
+  }
+  if (event) {
+    return { title: str(data.alias) ?? event, subtitle: 'Fire event' };
+  }
+  return { title: str(data.alias) ?? 'Action', subtitle: 'Action' };
+}
+
+/**
+ * Derives a canvas node's card title + single-line subtitle (design doc §5:
+ * "mono title + truncated muted subtitle line"). Scoped to trigger/condition/
+ * action — the three types whose subtitle is a genuinely-derived
+ * entity/service/platform value; delay/wait/set_variables' subtitles are
+ * trivial one-liners computed inline where they're used.
+ */
+export function getNodeSummary(type: string | undefined, data: Record<string, unknown>): NodeSummary {
+  switch (type) {
+    case 'trigger':
+      return summarizeTrigger(data);
+    case 'condition':
+      return summarizeCondition(data);
+    case 'action':
+      return summarizeAction(data);
+    default:
+      return { title: str(data.alias) ?? type ?? 'Node', subtitle: '' };
+  }
+}

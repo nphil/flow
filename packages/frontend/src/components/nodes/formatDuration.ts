@@ -44,3 +44,14 @@ export function durationToMs(val: string | DurationObject | undefined): number |
   const [hours, minutes, seconds = 0] = numbers;
   return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000);
 }
+
+/**
+ * Formats a trace step's elapsed wall-clock time for the "ok" status badge
+ * (design doc §7: "ok (green check + ms duration)"). Sub-second durations
+ * read as whole milliseconds; longer ones as seconds (one decimal under 10s).
+ */
+export function formatElapsedMs(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+}

@@ -1,12 +1,11 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
-import { t } from 'i18next';
-import { AlertCircle, Ban, Variable } from 'lucide-react';
+import { Variable } from 'lucide-react';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
-import { cn } from '@/lib/utils';
 import type { SetVariablesNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { NodeTraceBadge } from './NodeTraceBadge';
+import { handleKindClass, NodeShell } from './nodeVisuals';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface SetVariablesNodeProps extends NodeProps {
@@ -18,73 +17,29 @@ export const SetVariablesNode = memo(function SetVariablesNode({
   data,
   selected,
 }: SetVariablesNodeProps) {
+  const { t } = useTranslation(['nodes']);
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const isActive = activeNodeId === id;
-  const stepNumber = getExecutionStepNumber(id);
-  const isDisabled = data.enabled === false;
-
   const variableCount = Object.keys(data.variables || {}).length;
 
   return (
-    <div
-      className={cn(
-        'relative min-w-[160px] rounded-lg border-2 border-cyan-400 bg-cyan-50 px-4 py-3',
-        'transition-all duration-200',
-        selected && 'ring-2 ring-cyan-500 ring-offset-2',
-        isActive && 'node-active ring-4 ring-green-500',
-        isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400',
-        !isActive && traceView.ringClass,
-        traceView.dimmed && 'opacity-40'
-      )}
-      title={traceView.tooltip || undefined}
+    <NodeShell
+      kind="data"
+      icon={Variable}
+      title={data.alias || 'Set Variables'}
+      subtitle={t('nodes:variables.variableCount', { count: variableCount })}
+      selected={selected}
+      disabled={data.enabled === false}
+      hasErrors={hasErrors}
+      errorMessages={errorMessages}
+      traceView={traceView}
+      isActive={activeNodeId === id}
+      stepNumber={getExecutionStepNumber(id)}
     >
-      {hasErrors && (
-        <div
-          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm"
-          title={errorMessages.join('\n')}
-        >
-          <AlertCircle className="h-3 w-3" />
-        </div>
-      )}
-      {isDisabled && !hasErrors && (
-        <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-500 text-white shadow-sm">
-          <Ban className="h-3 w-3" />
-        </div>
-      )}
-      <NodeTraceBadge view={traceView} />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!w-3 !h-3 !bg-cyan-500 !border-cyan-700"
-      />
-
-      <div className="mb-1 flex items-center gap-2">
-        <div className="rounded bg-cyan-200 p-1">
-          <Variable className="h-4 w-4 text-cyan-700" />
-        </div>
-        <span className="font-semibold text-cyan-900 text-sm">{data.alias || 'Set Variables'}</span>
-        {stepNumber && (
-          <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-cyan-600 font-bold text-white text-xs">
-            {stepNumber}
-          </div>
-        )}
-      </div>
-
-      <div className="text-cyan-700 text-xs">
-        <div className="font-medium opacity-75">
-          {t('nodes:variables.variableCount', { count: variableCount })}
-        </div>
-      </div>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !bg-cyan-500 !border-cyan-700"
-      />
-    </div>
+      <Handle type="target" position={Position.Left} className={handleKindClass('data')} />
+      <Handle type="source" position={Position.Right} className={handleKindClass('data')} />
+    </NodeShell>
   );
 });

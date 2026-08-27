@@ -1,18 +1,30 @@
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  type EdgeProps,
-  getSmoothStepPath,
-  useReactFlow,
-} from '@xyflow/react';
+import { BaseEdge, type EdgeProps, EdgeLabelRenderer, getBezierPath, useReactFlow } from '@xyflow/react';
 import { X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { useDarkMode } from '@/hooks/useDarkMode';
+import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 
+export interface DeletableEdgeData {
+  /** Branch alias / true-false chip text, rendered as a mono pill at the path midpoint. */
+  branchLabel?: string;
+  /** Executed in the currently-shown live trace or manual simulation (static accent highlight). */
+  isActive?: boolean;
+  /** `isActive` AND within the animation cap AND motion isn't paused/disabled (design doc §13). */
+  animated?: boolean;
+  /** The single most-recently-executed edge in the run — gets the traveling packet dot. */
+  isMostRecent?: boolean;
+  [key: string]: unknown;
+}
+
 /**
- * Custom edge component that shows a delete button when selected.
- * Uses smoothstep path for consistent styling with default edges.
+ * Default edge (design doc §5): smooth bezier at curvature .35, 1.75px
+ * `--border` at rest, `--accent` on hover/selected (pure CSS, see
+ * index.css's `.react-flow__edge` rules). Executed-path edges get a static
+ * accent highlight (`data.isActive`); when additionally `data.animated`
+ * (design doc §13's cap/pause-aware flag), that highlight also dash-flows,
+ * and the single `data.isMostRecent` edge gets a traveling packet dot — both
+ * pure CSS (stroke-dashoffset / offset-distance), no JS ticking. Branch-
+ * labeled edges (choose alias / condition true-false) get a chip pill at the
+ * midpoint. Shows a delete button on selection, same as before.
  */
 export function DeletableEdge({
   id,
@@ -22,66 +34,23 @@ export function DeletableEdge({
   targetY,
   sourcePosition,
   targetPosition,
-  style,
-  markerEnd,
   selected,
+  data,
 }: EdgeProps) {
-  const { t } = useTranslation(['common']);
   const { setEdges } = useReactFlow();
   const setUnsavedChanges = useFlowStore((state) => state.setUnsavedChanges);
   const canDeleteEdge = useFlowStore((state) => state.canDeleteEdge);
-  const isDarkMode = useDarkMode();
+  const edgeData = data as DeletableEdgeData | undefined;
 
-  // Detect backward edges (target is to the left of source)
-  const isBackwardEdge = targetX < sourceX;
-
-  // Apply vertical offset for backward edges to prevent overlap
-  const verticalOffset = isBackwardEdge ? 100 : 0;
-  const horizontalOffset = isBackwardEdge ? 50 : 0;
-
-  // Initialize edge path and label position variables
-  let edgePath: string;
-  let labelX: number;
-  let labelY: number;
-
-  // Variables for backward edge arrow positioning (defined outside the scope)
-  let startRightX: number = 0;
-  let topY: number = 0;
-  let endLeftX: number = 0;
-
-  // For backward edges, create a detour path that goes around nodes
-  if (isBackwardEdge) {
-    // Create a path that goes: right -> up -> left -> down -> right
-    // This creates a proper detour around the nodes
-    startRightX = sourceX + horizontalOffset;
-    topY = Math.min(sourceY, targetY) - verticalOffset;
-    endLeftX = targetX - horizontalOffset;
-
-    edgePath =
-      `M ${sourceX},${sourceY} ` +
-      `L ${startRightX},${sourceY} ` +
-      `L ${startRightX},${topY} ` +
-      `L ${endLeftX},${topY} ` +
-      `L ${endLeftX},${targetY} ` +
-      `L ${targetX},${targetY}`;
-
-    // Position label at the top of the detour
-    labelX = (startRightX + endLeftX) / 2;
-    labelY = topY;
-  } else {
-    // Use normal smooth step path for forward edges
-    const [path, x, y] = getSmoothStepPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-    edgePath = path;
-    labelX = x;
-    labelY = y;
-  }
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    curvature: 0.35,
+  });
 
   const canDelete = canDeleteEdge(id);
 
@@ -92,52 +61,29 @@ export function DeletableEdge({
     setUnsavedChanges(true);
   };
 
-  // Compute selected style - blue highlight when selected
-  const selectedStyle = selected
-    ? {
-        ...style,
-        stroke: '#3b82f6',
-        strokeWidth: 3,
-      }
-    : (style ?? {});
-
-  // For backward edges, we'll use the same style but add an arrow marker
-  const finalStyle = selectedStyle;
-
-  // Ensure we have a valid stroke color for the arrow
-  const arrowStrokeColor =
-    finalStyle &&
-    typeof finalStyle === 'object' &&
-    'stroke' in finalStyle &&
-    typeof finalStyle.stroke === 'string'
-      ? finalStyle.stroke
-      : isDarkMode
-        ? '#94a3b8'
-        : '#64748b';
-
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={finalStyle} markerEnd={markerEnd} />
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        className={cn(
+          'flow-edge-path',
+          edgeData?.isActive && 'flow-edge-highlighted',
+          edgeData?.animated && 'flow-edge-active'
+        )}
+      />
 
-      {/* Add arrow marker for backward edges in the middle of horizontal segment */}
-      {isBackwardEdge && startRightX !== 0 && (
+      {edgeData?.isMostRecent && (
+        <circle r={3} className="flow-edge-packet" style={{ offsetPath: `path("${edgePath}")` }} />
+      )}
+
+      {edgeData?.branchLabel && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-none absolute"
-            style={{
-              transform: `translate(-50%, -50%) translate(${startRightX + (endLeftX - startRightX) / 2}px, ${topY}px)`,
-            }}
+            className="nodrag nopan pointer-events-none absolute rounded-full border border-flow-border bg-flow-panel px-1.5 py-0.5 font-mono text-[9px] text-flow-text-secondary shadow-flow-card"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <title>{t('shortcuts.arrowLeft')}</title>
-              <polygon points="15,5 6,10 15,15" fill={arrowStrokeColor} />
-            </svg>
+            {edgeData.branchLabel}
           </div>
         </EdgeLabelRenderer>
       )}
@@ -147,12 +93,12 @@ export function DeletableEdge({
           <div
             className="nodrag nopan pointer-events-auto absolute"
             style={{
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px) translate(0, ${edgeData?.branchLabel ? 18 : 0}px)`,
             }}
           >
             <button
               onClick={handleDelete}
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-flow-danger bg-flow-elevated text-flow-danger shadow-flow-card transition-transform duration-flow-fast ease-flow-warm hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-flow-accent"
               title="Delete connection"
               aria-label="Delete connection"
               type="button"

@@ -133,61 +133,183 @@
   }
 }
 
-/* React Flow customizations */
+/* React Flow canvas (design doc §5, §7, §13). */
+.react-flow {
+  background: var(--bg);
+}
+
 .react-flow__node {
   @apply font-sans;
 }
 
+/* Handles: 10px, quiet border at rest, kind-colored ring on hover only.
+   Position offsets are xyflow's own defaults -- only sizing/fill/border are
+   overridden here. Per-kind hover classes assigned via handleKindClass()
+   in components/nodes/nodeVisuals.tsx. */
 .react-flow__handle {
-  @apply size-4 !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out-warm),
+    border-color var(--dur-fast) var(--ease-out-warm);
+}
+.flow-handle-trigger:hover {
+  border-color: var(--node-trigger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-trigger) 35%, transparent);
+}
+.flow-handle-condition:hover {
+  border-color: var(--node-condition);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-condition) 35%, transparent);
+}
+.flow-handle-action:hover {
+  border-color: var(--node-action);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-action) 35%, transparent);
+}
+.flow-handle-timing:hover {
+  border-color: var(--node-timing);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-timing) 35%, transparent);
+}
+.flow-handle-data:hover {
+  border-color: var(--node-data);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-data) 35%, transparent);
+}
+.flow-handle-flowctl:hover {
+  border-color: var(--node-flowctl);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-flowctl) 35%, transparent);
+}
+.flow-handle-unknown:hover {
+  border-color: var(--node-unknown);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-unknown) 35%, transparent);
 }
 
-.react-flow__edge-path {
-  stroke-width: 2;
+/* Controls cluster: bottom-left, restyled chrome. */
+.react-flow__controls {
+  box-shadow: var(--shadow-pop);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.react-flow__controls-button {
+  background: var(--bg-panel);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition:
+    background var(--dur-fast) var(--ease-out-warm),
+    color var(--dur-fast) var(--ease-out-warm);
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+.react-flow__controls-button:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+.react-flow__controls-button:disabled {
+  opacity: 0.4;
 }
 
-.react-flow__edge.animated path {
-  stroke-dasharray: 5;
-  animation: dash 0.5s linear infinite;
+/* MiniMap: panel surface, 12px radius, hidden on mobile (<768px). */
+.react-flow__minimap {
+  background: var(--bg-panel) !important;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
 }
-
-@keyframes dash {
-  to {
-    stroke-dashoffset: -10;
+@media (max-width: 767px) {
+  .react-flow__minimap {
+    display: none;
   }
 }
 
-/* Node active/simulation states */
-.node-active {
-  @apply ring-4 ring-green-500 ring-opacity-75;
-  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Auto-arrange: animate node position changes only while arranging is in
+   flight -- drag interactions otherwise stay 1:1 with the pointer. */
+.flow-arranging .react-flow__node {
+  transition: transform var(--dur-med) var(--ease-out-warm);
 }
 
-@keyframes pulse {
+/* Edges: bezier path styled entirely here so hover/selected/active states
+   never need a per-edge inline color (see components/edges/DeletableEdge.tsx). */
+.react-flow__edge-path,
+.flow-edge-path {
+  stroke: var(--border);
+  stroke-width: 1.75px;
+  transition: stroke var(--dur-fast) var(--ease-out-warm);
+}
+.react-flow__edge:hover .flow-edge-path,
+.react-flow__edge.selected .flow-edge-path {
+  stroke: var(--accent);
+}
+/* Executed-path highlight: static accent, opacity-capped (design doc §13:
+   "opacity ceiling 0.85, no color strobing"). */
+.flow-edge-highlighted {
+  stroke: var(--accent);
+  opacity: 0.85;
+}
+/* Directional dash-flow at 24px/s (6px dash + 4px gap = 10px repeat unit;
+   -24px over 1s = 2.4 cycles/s). Compositor-friendly (stroke-dashoffset
+   only) -- no per-frame JS. Capped at 24 concurrent edges and gated by
+   motion-pause conditions in FlowCanvas.tsx's styledEdges memo. */
+.flow-edge-active {
+  stroke-dasharray: 6 4;
+  animation: flow-edge-dash 1s linear infinite;
+}
+@keyframes flow-edge-dash {
+  to {
+    stroke-dashoffset: -24px;
+  }
+}
+
+/* Packet dot: single traveling dot on the most-recently-executed edge only
+   (FlowCanvas.tsx picks exactly one), via CSS Motion Path -- no JS ticking. */
+.flow-edge-packet {
+  fill: var(--accent);
+  offset-distance: 0%;
+  animation: flow-edge-packet-move 1.4s ease-in-out infinite;
+}
+@keyframes flow-edge-packet-move {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/* Node live-trace status ring (design doc §7): pulsing accent for the
+   currently-running/spotlighted node. Status-colored rings themselves (ok/
+   warn/danger) are static Tailwind ring-flow-* utilities -- see
+   useNodeTraceStatus.ts -- only the "active" pulse needs a keyframe. */
+.flow-node-pulse-ring {
+  animation: flow-node-pulse 1.4s ease-in-out infinite;
+}
+@keyframes flow-node-pulse {
   0%,
   100% {
-    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
   }
   50% {
-    opacity: 0.8;
+    box-shadow: 0 0 0 6px transparent;
   }
 }
 
-/* Live-trace active node: reuse the pulse plus a soft expanding glow.
-   (Separate from .node-active so the yellow ring utilities aren't
-   overridden by its green @apply'd ring color.) */
-.node-trace-active {
-  animation:
-    pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite,
-    trace-ring 1.2s ease-out infinite;
-}
-
-@keyframes trace-ring {
-  0% {
-    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.5);
+@media (prefers-reduced-motion: reduce) {
+  .flow-arranging .react-flow__node {
+    transition: none;
   }
-  100% {
-    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+  .flow-edge-active {
+    animation: none;
+  }
+  .flow-edge-packet {
+    display: none;
+  }
+  .flow-node-pulse-ring {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--accent);
   }
 }
 
