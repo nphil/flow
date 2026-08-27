@@ -3,9 +3,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldError } from '@/components/forms/FieldError';
 import { FormField } from '@/components/forms/FormField';
-import { Combobox } from '@/components/ui/Combobox';
-import { IdList } from '@/components/ui/IdList';
-import { MultiEntitySelector } from '@/components/ui/MultiEntitySelector';
+import { ServicePicker } from '@/components/forms/ServicePicker';
+import { TargetEditor, type TargetIds } from '@/components/forms/TargetEditor';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -19,25 +18,9 @@ import { useHass } from '@/contexts/HassContext';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { HassEntity } from '@/types/hass';
 import { getNodeDataObject, getNodeDataString } from '@/utils/nodeData';
+import { ForEachEditor } from './ForEachEditor';
 import { ResponseVariableField } from './ResponseVariableField';
 import { ServiceDataFields } from './ServiceDataFields';
-
-// Domains where any entity type can be targeted — don't filter
-const MULTI_DOMAIN_SERVICES = new Set(['homeassistant', 'group']);
-
-/**
- * Filter entities for the target selector based on the selected service.
- * For most services (e.g. scene.turn_on), only entities in the same domain
- * are valid targets. For generic services (homeassistant.*), all entities apply.
- */
-function getTargetEntities(serviceName: string, entities: HassEntity[]): HassEntity[] {
-  if (!serviceName || !serviceName.includes('.')) return entities;
-  const domain = serviceName.split('.')[0];
-  if (MULTI_DOMAIN_SERVICES.has(domain)) return entities;
-  const filtered = entities.filter((e) => e.entity_id.startsWith(`${domain}.`));
-  // Fall back to all entities if the domain has no matching entities
-  return filtered.length > 0 ? filtered : entities;
-}
 
 interface ActionFieldsProps {
   node: FlowNode;
@@ -45,9 +28,9 @@ interface ActionFieldsProps {
   entities: HassEntity[];
 }
 
-export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
+export function ActionFields({ node, onChange }: ActionFieldsProps) {
   const { t } = useTranslation(['nodes']);
-  const { getAllServices, getServiceDefinition } = useHass();
+  const { getServiceDefinition } = useHass();
   const { getFieldError } = useNodeErrors(node.id);
   const serviceName = getNodeDataString(node, 'service');
   const eventName = getNodeDataString(node, 'event');
@@ -59,9 +42,23 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
   const currentData = getNodeDataObject(node, 'data', {});
   const responseVariable = getNodeDataString(node, 'response_variable');
   const [showResponseVariable, setShowResponseVariable] = useState(!!responseVariable);
+  const target = getNodeDataObject<TargetIds>(node, 'target', {});
+  const repeatData = getNodeDataObject<{ for_each?: unknown[]; sequence?: unknown[] }>(
+    node,
+    'repeat',
+    {}
+  );
+  const forEachItems = Array.isArray(repeatData.for_each) ? repeatData.for_each : [];
 
-  // Determine action type: stop > event > service
-  const actionType = stopMessage !== undefined ? 'stop' : eventName ? 'event' : 'service';
+  // Determine action type: stop > event > repeat (for_each) > service
+  const actionType =
+    stopMessage !== undefined
+      ? 'stop'
+      : eventName
+        ? 'event'
+        : nodeData.repeat !== undefined
+          ? 'repeat'
+          : 'service';
 
   // Keep toggle in sync if node changes externally
   useEffect(() => {
@@ -70,27 +67,40 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
 
   const handleActionTypeChange = (type: string) => {
     if (type === 'stop') {
-      // Switch to stop: clear service and event fields
+      // Switch to stop: clear service, event, and repeat fields
       onChange('service', undefined);
       onChange('target', undefined);
       onChange('data', undefined);
       onChange('event', undefined);
       onChange('event_data', undefined);
+      onChange('repeat', undefined);
       onChange('stop', '');
       onChange('error', undefined);
     } else if (type === 'event') {
-      // Switch to fire event: clear service and stop fields
+      // Switch to fire event: clear service, stop, and repeat fields
       onChange('service', undefined);
       onChange('target', undefined);
       onChange('data', undefined);
       onChange('stop', undefined);
       onChange('error', undefined);
-    } else {
-      // Switch to service call: clear event and stop fields
+      onChange('repeat', undefined);
+    } else if (type === 'repeat') {
+      // Switch to a for_each loop: clear service, event, and stop fields
+      onChange('service', undefined);
+      onChange('target', undefined);
+      onChange('data', undefined);
       onChange('event', undefined);
       onChange('event_data', undefined);
       onChange('stop', undefined);
       onChange('error', undefined);
+      onChange('repeat', { for_each: [], sequence: [] });
+    } else {
+      // Switch to service call: clear event, stop, and repeat fields
+      onChange('event', undefined);
+      onChange('event_data', undefined);
+      onChange('stop', undefined);
+      onChange('error', undefined);
+      onChange('repeat', undefined);
     }
   };
 
@@ -100,26 +110,12 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
     onChange('data', undefined);
   };
 
-  const handleEntityTargetChange = (value: string[]) => {
-    const currentTarget = getNodeDataObject(node, 'target', {});
-    const newTarget = { ...currentTarget, entity_id: value.length > 0 ? value : undefined };
-    // Clean up empty arrays/undefined values
-    if (!newTarget.entity_id) delete newTarget.entity_id;
-    onChange('target', Object.keys(newTarget).length > 0 ? newTarget : undefined);
+  const handleTargetChange = (newTarget: Record<string, unknown> | undefined) => {
+    onChange('target', newTarget);
   };
 
-  const handleDeviceTargetChange = (value: string[]) => {
-    const currentTarget = getNodeDataObject(node, 'target', {});
-    const newTarget = { ...currentTarget, device_id: value.length > 0 ? value : undefined };
-    if (!newTarget.device_id) delete newTarget.device_id;
-    onChange('target', Object.keys(newTarget).length > 0 ? newTarget : undefined);
-  };
-
-  const handleAreaTargetChange = (value: string[]) => {
-    const currentTarget = getNodeDataObject(node, 'target', {});
-    const newTarget = { ...currentTarget, area_id: value.length > 0 ? value : undefined };
-    if (!newTarget.area_id) delete newTarget.area_id;
-    onChange('target', Object.keys(newTarget).length > 0 ? newTarget : undefined);
+  const handleForEachItemsChange = (items: unknown[]) => {
+    onChange('repeat', { ...repeatData, for_each: items });
   };
 
   const handleDataFieldChange = (fieldName: string, value: unknown) => {
@@ -135,27 +131,6 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
     onChange('response_variable', e.target.value === '' ? undefined : e.target.value);
   };
 
-  // Extract target values (entity_id, device_id, area_id)
-  const target = getNodeDataObject(node, 'target', {}) as {
-    entity_id?: string | string[];
-    device_id?: string | string[];
-    area_id?: string | string[];
-  };
-
-  // Helper to normalize string | string[] to string[]
-  const normalizeToArray = (value: string | string[] | undefined): string[] => {
-    if (!value) return [];
-    return Array.isArray(value) ? value : [value];
-  };
-
-  const targetEntityIdArray = normalizeToArray(target.entity_id);
-  const targetDeviceIdArray = normalizeToArray(target.device_id);
-  const targetAreaIdArray = normalizeToArray(target.area_id);
-
-  // Check if we have any device or area targets (to show those fields)
-  const hasDeviceTargets = targetDeviceIdArray.length > 0;
-  const hasAreaTargets = targetAreaIdArray.length > 0;
-
   return (
     <>
       {/* Action type selector */}
@@ -167,6 +142,7 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
           <SelectContent>
             <SelectItem value="service">{t('nodes:actions.actionTypes.service')}</SelectItem>
             <SelectItem value="event">{t('nodes:actions.actionTypes.event')}</SelectItem>
+            <SelectItem value="repeat">{t('nodes:actions.actionTypes.repeat')}</SelectItem>
             <SelectItem value="stop">{t('nodes:actions.actionTypes.stop')}</SelectItem>
           </SelectContent>
         </Select>
@@ -203,15 +179,13 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
             <FieldError message={getFieldError('event')} />
           </FormField>
         </>
+      ) : actionType === 'repeat' ? (
+        <ForEachEditor nodeId={node.id} items={forEachItems} onChange={handleForEachItemsChange} />
       ) : (
         <>
           {/* Call service fields */}
           <FormField label={t('nodes:actions.actionLabel')} required>
-            <Combobox
-              options={getAllServices().map(({ domain, service }) => ({
-                value: `${domain}.${service}`,
-                label: `${domain}.${service}`,
-              }))}
+            <ServicePicker
               value={serviceName}
               onChange={handleServiceChange}
               placeholder={t('nodes:actions.selectAction')}
@@ -219,45 +193,10 @@ export function ActionFields({ node, onChange, entities }: ActionFieldsProps) {
             <FieldError message={getFieldError('service')} />
           </FormField>
 
-          {/* Target Entities */}
-          {(serviceDefinition?.target || targetEntityIdArray.length > 0) && (
-            <FormField label={t('nodes:actions.targetEntities')}>
-              <MultiEntitySelector
-                value={targetEntityIdArray}
-                onChange={handleEntityTargetChange}
-                entities={getTargetEntities(serviceName, entities)}
-                placeholder={t('nodes:actions.selectTargetEntities')}
-              />
-            </FormField>
-          )}
-
-          {/* Target Devices - show if we have device targets or service supports targets */}
-          {(hasDeviceTargets || serviceDefinition?.target) && (
-            <FormField
-              label={t('nodes:actions.targetDevices')}
-              description={t('nodes:actions.targetDevicesDescription')}
-            >
-              <IdList
-                values={targetDeviceIdArray}
-                onChange={handleDeviceTargetChange}
-                placeholder={t('nodes:actions.addDeviceId')}
-              />
-            </FormField>
-          )}
-
-          {/* Target Areas - show if we have area targets or service supports targets */}
-          {(hasAreaTargets || serviceDefinition?.target) && (
-            <FormField
-              label={t('nodes:actions.targetAreas')}
-              description={t('nodes:actions.targetAreasDescription')}
-            >
-              <IdList
-                values={targetAreaIdArray}
-                onChange={handleAreaTargetChange}
-                placeholder={t('nodes:actions.addAreaId')}
-              />
-            </FormField>
-          )}
+          {/* Target: entities/devices/areas/labels, each a pill row with its own picker */}
+          <FormField label={t('nodes:actions.targetLabel')}>
+            <TargetEditor target={target} onChange={handleTargetChange} />
+          </FormField>
 
           {/* Dynamic service fields */}
           <ServiceDataFields

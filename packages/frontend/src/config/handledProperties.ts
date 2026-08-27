@@ -72,9 +72,11 @@ export const HANDLED_PROPERTIES = {
     'condition',
     'for', // Duration field
     'conditions', // Nested conditions for and/or/not and multi-condition blocks
+    // A3 purpose-specific ("integration") condition fields — see IntegrationConditionFields.
+    'target',
+    'options',
   ],
 
-  // Action properties handled by ActionFields component
   action: [
     'service',
     'data',
@@ -86,6 +88,7 @@ export const HANDLED_PROPERTIES = {
     'entity_id', // Legacy: often shows up instead of target.entity_id
     'action', // Alternative field name for service
     'metadata', // HA metadata field
+    'repeat', // repeat.for_each opaque block — see ForEachEditor
   ],
 
   // Delay properties handled by DelayFields component

@@ -130,10 +130,6 @@
     "formatHMS": "Format: HH:MM:SS",
     "enterValue": "Enter {{name}}..."
   },
-  "deviceSelector": {
-    "enterId": "Enter device ID manually",
-    "noDevices": "No devices found. Enter device ID manually or check your Home Assistant connection."
-  },
   "automationSettings": {
     "title": "Automation Settings",
     "description": "Description",

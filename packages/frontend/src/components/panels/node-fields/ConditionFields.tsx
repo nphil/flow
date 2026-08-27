@@ -14,12 +14,14 @@ import {
   getConditionDefaults,
   getConditionFields,
   isLogicalGroupType,
+  isPurposeSpecificCondition,
 } from '@/config/conditionFields';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { ConditionNodeData } from '@/store/flow-store';
 import type { HassEntity } from '@/types/hass';
 import { getNodeDataString } from '@/utils/nodeData';
 import { DeviceConditionFields } from './DeviceConditionFields';
+import { IntegrationConditionFields } from './IntegrationConditionFields';
 
 interface ConditionFieldsProps {
   node: FlowNode;
@@ -35,7 +37,22 @@ interface ConditionFieldsProps {
 export function ConditionFields({ node, onChange, entities }: ConditionFieldsProps) {
   const { t } = useTranslation(['common', 'nodes']);
   const { getFieldError } = useNodeErrors(node.id);
-  const conditionType = getNodeDataString(node, 'condition', 'state') as ConditionType;
+  const rawConditionType = getNodeDataString(node, 'condition', 'state');
+
+  // A3 purpose-specific ("integration") conditions have a completely different shape (target/
+  // options instead of entity_id/above/below) and no per-type field catalog — they get their
+  // own editor entirely, never the type Select or the legacy per-type dispatch below.
+  if (isPurposeSpecificCondition(rawConditionType)) {
+    return (
+      <IntegrationConditionFields
+        node={node}
+        conditionType={rawConditionType}
+        onChange={onChange}
+      />
+    );
+  }
+
+  const conditionType = rawConditionType as ConditionType;
   const nodeData = node.data as Record<string, unknown>;
   const hasNestedConditions = Array.isArray(nodeData.conditions) && nodeData.conditions.length > 0;
   const isGroupType = isLogicalGroupType(conditionType);
@@ -51,7 +68,7 @@ export function ConditionFields({ node, onChange, entities }: ConditionFieldsPro
   };
 
   const renderConditionFields = () => {
-    // Device conditions use a special component with DeviceSelector
+    // Device conditions use a special component with DevicePicker
     if (conditionType === 'device') {
       return <DeviceConditionFields node={node} onChange={onChange} />;
     }
