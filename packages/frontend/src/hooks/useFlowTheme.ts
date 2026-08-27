@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
 import { useHass } from '../contexts/HassContext';
+import { useMediaQuery } from './useMediaQuery';
 
 /**
  * Flow's six shipped static palettes (packages/frontend/src/theme/tokens.css defines a
@@ -213,10 +214,14 @@ export interface UseFlowThemeResult {
  * tokens.css block, and re-derives whenever `hass.themes` changes.
  */
 export function useFlowTheme(): UseFlowThemeResult {
-  const { hass } = useHass();
+  const { hass, isRemote } = useHass();
   const choice = useSyncExternalStore(subscribe, readStoredChoice, () => DEFAULT_PALETTE);
   const { palette, explicitMode } = useMemo(() => parseStoredChoice(choice), [choice]);
-  const hassDarkMode = hass?.themes?.darkMode ?? false;
+  // Design doc §12: standalone mode has no parent HA theme to read darkMode from (the
+  // synthetic remote `hass` object hardcodes `themes.darkMode: false`) -- fall back to the
+  // OS preference instead so "auto" still actually means something outside the HA iframe.
+  const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
+  const hassDarkMode = isRemote ? systemPrefersDark : (hass?.themes?.darkMode ?? false);
   const mode: ThemeMode = explicitMode ?? (hassDarkMode ? 'dark' : 'light');
 
   // useLayoutEffect (not useEffect): apply before paint so switching themes never flashes

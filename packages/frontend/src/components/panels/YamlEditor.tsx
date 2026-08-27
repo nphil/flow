@@ -1,8 +1,8 @@
-import { FlowTranspiler } from '@flow/transpiler';
+import { transpiler } from '@flow/transpiler';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 
 import { useEffect } from 'react';
-import { useDarkMode } from '@/hooks/useDarkMode';
+import { useFlowTheme } from '@/hooks/useFlowTheme';
 import { useFlowStore } from '@/store/flow-store';
 
 interface YamlEditorProps {
@@ -15,7 +15,7 @@ interface YamlEditorProps {
 export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorProps) {
   const fromFlowGraph = useFlowStore((s) => s.fromFlowGraph);
   const setTracePathMap = useFlowStore((s) => s.setTracePathMap);
-  const isDark = useDarkMode();
+  const { mode } = useFlowTheme();
 
   // Keep editor in sync with external YAML (canvas → YAML)
   useEffect(() => {
@@ -27,7 +27,6 @@ export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorP
     const value = ev.target.value;
     if (onYamlChange) onYamlChange(value);
     try {
-      const transpiler = new FlowTranspiler();
       const importResult = await transpiler.fromYaml(value);
       if (!importResult.success || !importResult.graph) {
         // No direct error display here; let parent handle errors
@@ -47,7 +46,7 @@ export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorP
         language="yaml"
         placeholder="Enter YAML..."
         onChange={handleChange}
-        data-color-mode={isDark ? 'dark' : 'light'}
+        data-color-mode={mode}
         padding={12}
         style={{
           fontFamily:
@@ -61,12 +60,12 @@ export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorP
       />
 
       {errors && errors.length > 0 && (
-        <div className="border-red-200 border-t bg-red-50 px-3 py-2 text-red-600 text-xs">
+        <div className="border-t border-[var(--danger)] bg-flow-panel px-3 py-2 font-mono text-[var(--danger)] text-xs">
           {errors.join('\n')}
         </div>
       )}
       {warnings && warnings.length > 0 && (
-        <div className="border-yellow-200 border-t bg-yellow-50 px-3 py-2 text-xs text-yellow-600">
+        <div className="border-t border-[var(--warn)] bg-flow-panel px-3 py-2 font-mono text-[var(--warn)] text-xs">
           {warnings.join('\n')}
         </div>
       )}
