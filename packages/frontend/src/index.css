@@ -56,80 +56,11 @@
 }
 
 @layer base {
-  /* --accent and --border are prefixed `--shadcn-*` here (only these two -- every other
-     name below is unique) because packages/frontend/src/theme/tokens.css now defines its
-     own bare `--accent`/`--border` (hex, per design doc §2) at higher CSS specificity
-     (`html[data-theme=...]` beats plain `:root`/`.dark`); an unprefixed clash would make
-     `hsl(var(--accent))` below resolve to `hsl(#8839ef)`, which is invalid CSS. This whole
-     HSL block is Wave 3 debt (see tailwind.config.ts) -- do not extend it further. */
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --shadcn-accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --shadcn-border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-
-    /* Node type colors */
-    --trigger: 45 93% 47%;
-    --trigger-foreground: 45 93% 10%;
-    --condition: 217 91% 60%;
-    --condition-foreground: 217 91% 10%;
-    --action: 142 76% 36%;
-    --action-foreground: 142 76% 10%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --shadcn-accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --shadcn-border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-
-    /* Node type colors - dark mode */
-    --trigger: 45 93% 55%;
-    --trigger-foreground: 45 93% 95%;
-    --condition: 217 91% 65%;
-    --condition-foreground: 217 91% 95%;
-    --action: 142 76% 45%;
-    --action-foreground: 142 76% 95%;
-  }
-}
-
-@layer base {
   * {
-    @apply border-border;
+    @apply border-flow-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-flow-bg text-flow-text;
   }
 }
 
@@ -451,4 +382,59 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in srgb, var(--text-muted) 75%, transparent);
   background-clip: content-box;
+}
+
+/* Right-panel responsive field grids (design doc §4 sweep: PropertyPanel/node-fields content
+   must reflow cleanly at any panel width 280-560px, and in the mobile drawer). RightPanel.tsx's
+   tab content wrapper establishes a single inline-size containment context for every tab; deep
+   descendants opt into a column count keyed to THAT width via plain CSS Container Queries
+   Level 1 -- no plugin needed (@tailwindcss/container-queries isn't installed and Tailwind
+   3.4's JIT doesn't emit container-query variants without it) and no ResizeObserver: baseline
+   support (Chrome 105+/Safari 16+/Firefox 110+) is well within the modern-engine floor this
+   app already requires elsewhere. Only ONE ancestor may set container-type for a given strip
+   of markup -- don't redeclare `.flow-panel-container` inside node-fields/forms components. */
+.flow-panel-container {
+  container-type: inline-size;
+}
+
+/* Two-up field row (e.g. numeric_state condition's Above/Below thresholds): one column until
+   the container has comfortable room for both side by side. */
+.flow-field-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+@container (min-width: 300px) {
+  .flow-field-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Four-up field row (duration hours/minutes/seconds/milliseconds): two columns until there's
+   room for all four across. */
+.flow-field-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@container (min-width: 340px) {
+  .flow-field-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Horizontal strips that must scroll instead of overflowing or wrapping once the panel is
+   narrower than their content (design doc §5; Cody §7's hidden-scrollbar tab strip): the
+   right-panel tab bar and the Automations filter-chip row. OS scrollbar hidden; a right-edge
+   fade communicates there's more to scroll to -- applied only while genuinely overflowing
+   (see hooks/useScrollFade.ts), never as a permanent decoration. */
+.flow-scroll-strip {
+  scrollbar-width: none;
+}
+.flow-scroll-strip::-webkit-scrollbar {
+  display: none;
+}
+.flow-scroll-fade {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
 }
