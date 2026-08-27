@@ -186,15 +186,15 @@ export function DeviceTriggerFields({ node, onChange, entities }: DeviceTriggerF
         deviceId &&
         selectedTriggerType && (
           <FormField label="Trigger Type">
-            <div className="truncate rounded-md border bg-muted px-3 py-2 font-mono text-sm">
+            <div className="truncate rounded-flow-control border border-flow-border bg-flow-elevated px-3 py-2 font-mono text-sm">
               {selectedTriggerType}
               {selectedSubtype && (
-                <span className="text-muted-foreground">
+                <span className="text-flow-text-muted">
                   {' \u00B7 '}
                   {selectedSubtype}
                 </span>
               )}
-              {domain && <span className="text-muted-foreground"> {`(${domain})`}</span>}
+              {domain && <span className="text-flow-text-muted"> {`(${domain})`}</span>}
             </div>
           </FormField>
         )
@@ -202,7 +202,7 @@ export function DeviceTriggerFields({ node, onChange, entities }: DeviceTriggerF
 
       {/* Loading state */}
       {loadingTriggers && (
-        <div className="text-muted-foreground text-sm">{t('status.loadingTriggers')}</div>
+        <div className="text-flow-text-muted text-sm">{t('status.loadingTriggers')}</div>
       )}
 
       {/* Dynamic fields from capabilities API */}

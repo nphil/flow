@@ -79,9 +79,9 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-xs">{t('nodes:durationField.string')}</span>
+        <span className="text-flow-text-muted text-xs">{t('nodes:durationField.string')}</span>
         <Switch checked={useString} onCheckedChange={handleToggle} />
-        <span className="text-muted-foreground text-xs">{t('nodes:durationField.object')}</span>
+        <span className="text-flow-text-muted text-xs">{t('nodes:durationField.object')}</span>
       </div>
       {useString ? (
         <Input
@@ -91,11 +91,9 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
           placeholder={t('nodes:durationField.placeholder')}
         />
       ) : (
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Label className="text-muted-foreground text-xs">
-              {t('nodes:durationField.hours')}
-            </Label>
+        <div className="flow-field-grid-4">
+          <div>
+            <Label className="text-flow-text-muted text-xs">{t('nodes:durationField.hours')}</Label>
             <Input
               type="number"
               min={0}
@@ -105,8 +103,8 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
               className="mt-1"
             />
           </div>
-          <div className="flex-1">
-            <Label className="text-muted-foreground text-xs">
+          <div>
+            <Label className="text-flow-text-muted text-xs">
               {t('nodes:durationField.minutes')}
             </Label>
             <Input
@@ -118,8 +116,8 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
               className="mt-1"
             />
           </div>
-          <div className="flex-1">
-            <Label className="text-muted-foreground text-xs">
+          <div>
+            <Label className="text-flow-text-muted text-xs">
               {t('nodes:durationField.seconds')}
             </Label>
             <Input
@@ -131,8 +129,8 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
               className="mt-1"
             />
           </div>
-          <div className="flex-1">
-            <Label className="text-muted-foreground text-xs">
+          <div>
+            <Label className="text-flow-text-muted text-xs">
               {t('nodes:durationField.milliseconds')}
             </Label>
             <Input

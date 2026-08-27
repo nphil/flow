@@ -65,19 +65,22 @@ export function SetVariablesFields({ node, onChange }: SetVariablesFieldsProps) 
     <div className="space-y-4">
       <FieldError message={getFieldError('variables')} />
       {variableEntries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t('nodes:setVariablesFields.empty')}</p>
+        <p className="text-flow-text-muted text-sm">{t('nodes:setVariablesFields.empty')}</p>
       ) : (
         variableEntries.map(([key, value], index) => (
-          <div key={`${key}-${index}`} className="rounded-lg border border-border bg-muted/30 p-3">
+          <div
+            key={`${key}-${index}`}
+            className="rounded-flow-card border border-flow-border bg-flow-elevated p-3"
+          >
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-medium text-muted-foreground text-xs">
+              <span className="font-medium text-flow-text-muted text-xs">
                 {t('nodes:setVariablesFields.variableLabel', { index: index + 1 })}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDeleteVariable(key)}
-                className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="h-6 w-6 p-0 text-flow-danger"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

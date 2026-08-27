@@ -130,9 +130,9 @@ function StateValueCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('flex w-full justify-between', !value && 'text-muted-foreground')}
+          className={cn('flex w-full justify-between', !value && 'text-flow-text-muted')}
         >
-          <span className="truncate">{value || placeholder}</span>
+          <span className="min-w-0 truncate">{value || placeholder}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -146,7 +146,7 @@ function StateValueCombobox({
             {showCustomEntry && (
               <CommandGroup>
                 <CommandItem value={query} onSelect={handleSelect}>
-                  <span className="mr-2 text-muted-foreground text-xs">
+                  <span className="mr-2 text-flow-text-muted text-xs">
                     {t('stateTrigger.useValue')}
                   </span>
                   <span className="font-mono">{query}</span>

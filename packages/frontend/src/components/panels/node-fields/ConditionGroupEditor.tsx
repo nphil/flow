@@ -62,17 +62,37 @@ function ConditionTypeFields({
     return null;
   }
 
+  const renderField = (field: (typeof fields)[number]) => (
+    <DynamicFieldRenderer
+      key={field.name}
+      field={field}
+      value={(cond as Record<string, unknown>)[field.name]}
+      onChange={(value) => onUpdate({ ...cond, [field.name]: value })}
+      entities={entities}
+    />
+  );
+
   return (
     <div className="space-y-2">
-      {fields.map((field) => (
-        <DynamicFieldRenderer
-          key={field.name}
-          field={field}
-          value={(cond as Record<string, unknown>)[field.name]}
-          onChange={(value) => onUpdate({ ...cond, [field.name]: value })}
-          entities={entities}
-        />
-      ))}
+      {fields.map((field, index) => {
+        // Numeric_state's "above"/"below" thresholds pair into a responsive 2-up grid instead
+        // of stacking full-width (design doc responsiveness sweep) -- collapses back to a
+        // single column once the panel is too narrow for both (see .flow-field-grid-2 in
+        // index.css). The trailing field of the pair is skipped here; it renders alongside
+        // its partner below.
+        if (field.name === 'below' && fields[index - 1]?.name === 'above') {
+          return null;
+        }
+        if (field.name === 'above' && fields[index + 1]?.name === 'below') {
+          return (
+            <div key="above-below" className="flow-field-grid-2">
+              {renderField(field)}
+              {renderField(fields[index + 1])}
+            </div>
+          );
+        }
+        return renderField(field);
+      })}
     </div>
   );
 }
@@ -102,11 +122,11 @@ function ConditionCard({
   };
 
   return (
-    <div className={cn('space-y-3 rounded-md border bg-card p-3', depth > 0 && 'bg-muted/30')}>
+    <div className="space-y-3 rounded-flow-card border border-flow-border bg-flow-elevated p-3">
       {/* Header row: type selector and delete button */}
       <div className="flex items-center justify-between gap-2">
         <Select value={cond.condition || 'state'} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-full max-w-[180px]">
+          <SelectTrigger className="w-full min-w-0 max-w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -121,7 +141,7 @@ function ConditionCard({
           size="icon"
           variant="ghost"
           onClick={onRemove}
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+          className="h-8 w-8 shrink-0 text-flow-text-muted hover:text-flow-danger"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -164,9 +184,9 @@ export const ConditionGroupEditor = memo(function ConditionGroupEditor({
   };
 
   return (
-    <div className={cn('space-y-2', depth > 0 && 'border-muted border-l-2 pl-2')}>
+    <div className={cn('space-y-2', depth > 0 && 'border-flow-border border-l-2 pl-2')}>
       {conditions.length === 0 ? (
-        <p className="py-2 text-muted-foreground text-xs italic">
+        <p className="py-2 text-flow-text-muted text-xs italic">
           {t('panels:conditionGroupEditor.noConditions')}
         </p>
       ) : (

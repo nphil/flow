@@ -104,7 +104,10 @@ export function WaitFields({ node, onChange }: WaitFieldsProps) {
           <div className="space-y-2">
             <h3 className="font-medium">{t('nodes:wait.triggersHeading')}</h3>
             {waitForTrigger?.map((trigger, index) => (
-              <div key={index} className="space-y-3 rounded-md border p-3">
+              <div
+                key={index}
+                className="space-y-3 rounded-flow-card border border-flow-border p-3"
+              >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-sm capitalize">
                     {t('nodes:wait.triggerLabel', { index: index + 1, platform: trigger.trigger })}
@@ -113,7 +116,7 @@ export function WaitFields({ node, onChange }: WaitFieldsProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => removeTrigger(index)}
-                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="h-8 w-8 p-0 text-flow-danger"
                   >
                     <Trash2Icon />
                   </Button>

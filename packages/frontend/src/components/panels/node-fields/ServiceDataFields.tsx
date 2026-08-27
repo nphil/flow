@@ -114,7 +114,7 @@ export function ServiceDataFields({
 
   return (
     <div className="mt-3 flex flex-col gap-3 border-t pt-3">
-      <h4 className="mb-3 font-semibold text-muted-foreground text-xs">
+      <h4 className="mb-3 font-semibold text-flow-text-muted text-xs">
         {t('nodes:serviceDataFields.heading')}
       </h4>
       {Object.entries(serviceFields).map(([fieldName, field]) => {
@@ -193,10 +193,10 @@ export function ServiceDataFields({
                 onChange={(e) => onChange(fieldName, e.target.checked)}
                 className="rounded"
               />
-              <Label className="font-medium text-muted-foreground text-xs">
+              <Label className="font-medium text-flow-text-muted text-xs">
                 {fieldLabel}
                 {field.required && (
-                  <span className="ml-0.5 text-destructive">{t('labels.requiredAsterisk')}</span>
+                  <span className="ml-0.5 text-flow-danger">{t('labels.requiredAsterisk')}</span>
                 )}
               </Label>
             </div>
