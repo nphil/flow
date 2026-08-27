@@ -2,5 +2,49 @@
   "conditionGroupEditor": {
     "noConditions": "Aucune condition ajoutée",
     "addCondition": "Ajouter une condition"
+  },
+  "automationsTab": {
+    "newAutomation": "Nouvelle automatisation",
+    "searchPlaceholder": "Chercher des automatisations…",
+    "chips": {
+      "all": "Toutes",
+      "enabled": "Activées",
+      "disabled": "Désactivées",
+      "recent": "Récentes"
+    },
+    "connectionErrorHeadline": "Connexion perdue",
+    "emptyHeadline": "Aucune automatisation encore",
+    "emptyBody": "Créez votre première automatisation pour la voir ici.",
+    "noResults": "Aucune automatisation ne correspond à votre recherche.",
+    "enable": "Activer l'automatisation",
+    "disable": "Désactiver l'automatisation",
+    "toggleFailed": "Impossible de mettre à jour l'état de l'automatisation : {{message}}",
+    "openFailed": "Impossible d'ouvrir l'automatisation : {{message}}"
+  },
+  "header": {
+    "run": "Exécuter (test)",
+    "runSuccess": "Déclenché « {{name}} »",
+    "runFailed": "Impossible de déclencher l'automatisation : {{message}}",
+    "undo": "Annuler",
+    "redo": "Refaire",
+    "autoArrange": "Arrangement automatique",
+    "zoomFit": "Zoomer pour adapter",
+    "moreActions": "Plus d'actions",
+    "importYaml": "Importer YAML",
+    "exportYaml": "Exporter YAML",
+    "duplicate": "Dupliquer",
+    "duplicateName": "{{name}} (copie)",
+    "duplicated": "Dupliqué — enregistrer pour créer la nouvelle automatisation",
+    "deleted": "Automatisation supprimée",
+    "deleteFailed": "Impossible de supprimer l'automatisation : {{message}}",
+    "theme": "Thème",
+    "animations": "Animations",
+    "disconnect": "Changer de serveur / Déconnecter",
+    "about": "À propos",
+    "enabled": "Activée",
+    "disabled": "Désactivée",
+    "reconnecting": "Reconnexion…",
+    "openPalette": "Ouvrir la palette de nœuds",
+    "openPanel": "Ouvrir le panneau"
   }
 }

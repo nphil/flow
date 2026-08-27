@@ -2,5 +2,49 @@
   "conditionGroupEditor": {
     "noConditions": "Noch keine Bedingungen hinzugefügt",
     "addCondition": "Bedingung hinzufügen"
+  },
+  "automationsTab": {
+    "newAutomation": "Neue Automatisierung",
+    "searchPlaceholder": "Automatisierungen suchen…",
+    "chips": {
+      "all": "Alle",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "recent": "Zuletzt verwendet"
+    },
+    "connectionErrorHeadline": "Verbindung verloren",
+    "emptyHeadline": "Noch keine Automatisierungen",
+    "emptyBody": "Erstellen Sie Ihre erste Automatisierung, um sie hier zu sehen.",
+    "noResults": "Keine Automatisierungen stimmen mit Ihrer Suche überein.",
+    "enable": "Automatisierung aktivieren",
+    "disable": "Automatisierung deaktivieren",
+    "toggleFailed": "Automatisierungsstatus konnte nicht aktualisiert werden: {{message}}",
+    "openFailed": "Automatisierung konnte nicht geöffnet werden: {{message}}"
+  },
+  "header": {
+    "run": "Ausführen (Test)",
+    "runSuccess": "\"{{name}}\" ausgelöst",
+    "runFailed": "Automatisierung konnte nicht ausgelöst werden: {{message}}",
+    "undo": "Rückgängig",
+    "redo": "Wiederherstellen",
+    "autoArrange": "Automatisch anordnen",
+    "zoomFit": "Zoom anpassen",
+    "moreActions": "Weitere Aktionen",
+    "importYaml": "YAML importieren",
+    "exportYaml": "YAML exportieren",
+    "duplicate": "Duplizieren",
+    "duplicateName": "{{name}} (Kopie)",
+    "duplicated": "Dupliziert — speichern um die neue Automatisierung zu erstellen",
+    "deleted": "Automatisierung gelöscht",
+    "deleteFailed": "Automatisierung konnte nicht gelöscht werden: {{message}}",
+    "theme": "Design",
+    "animations": "Animationen",
+    "disconnect": "Server wechseln / Trennen",
+    "about": "Über",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "reconnecting": "Wird wiederverbunden…",
+    "openPalette": "Knotenkatalog öffnen",
+    "openPanel": "Bereich öffnen"
   }
 }

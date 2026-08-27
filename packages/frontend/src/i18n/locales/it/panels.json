@@ -2,5 +2,49 @@
   "conditionGroupEditor": {
     "noConditions": "Nessuna condizione aggiunta",
     "addCondition": "Aggiungi Condizione"
+  },
+  "automationsTab": {
+    "newAutomation": "Nuova automazione",
+    "searchPlaceholder": "Cerca automazioni…",
+    "chips": {
+      "all": "Tutte",
+      "enabled": "Abilitate",
+      "disabled": "Disabilitate",
+      "recent": "Recenti"
+    },
+    "connectionErrorHeadline": "Connessione persa",
+    "emptyHeadline": "Ancora nessuna automazione",
+    "emptyBody": "Crea la tua prima automazione per vederla qui.",
+    "noResults": "Nessuna automazione corrisponde alla ricerca.",
+    "enable": "Abilita automazione",
+    "disable": "Disabilita automazione",
+    "toggleFailed": "Impossibile aggiornare lo stato dell'automazione: {{message}}",
+    "openFailed": "Impossibile aprire l'automazione: {{message}}"
+  },
+  "header": {
+    "run": "Esegui (test)",
+    "runSuccess": "Attivata \"{{name}}\"",
+    "runFailed": "Impossibile attivare l'automazione: {{message}}",
+    "undo": "Annulla",
+    "redo": "Ripeti",
+    "autoArrange": "Disponi automaticamente",
+    "zoomFit": "Adatta zoom",
+    "moreActions": "Altre azioni",
+    "importYaml": "Importa YAML",
+    "exportYaml": "Esporta YAML",
+    "duplicate": "Duplica",
+    "duplicateName": "{{name}} (copia)",
+    "duplicated": "Duplicata — salva per creare la nuova automazione",
+    "deleted": "Automazione eliminata",
+    "deleteFailed": "Impossibile eliminare l'automazione: {{message}}",
+    "theme": "Tema",
+    "animations": "Animazioni",
+    "disconnect": "Cambia server / Disconnetti",
+    "about": "Informazioni",
+    "enabled": "Abilitata",
+    "disabled": "Disabilitata",
+    "reconnecting": "Riconnessione in corso…",
+    "openPalette": "Apri tavolozza nodi",
+    "openPanel": "Apri pannello"
   }
 }

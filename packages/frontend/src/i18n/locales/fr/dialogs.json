@@ -126,5 +126,60 @@
       "not_triggered": "Non déclenchée",
       "disallowed_recursion_detected": "Récursion bloquée"
     }
+  },
+  "connect": {
+    "title": "Connecter à Home Assistant",
+    "subtitle": "Flow a besoin d'une URL et d'un jeton d'accès longue durée pour fonctionner en mode autonome.",
+    "urlLabel": "URL de Home Assistant",
+    "urlPlaceholder": "http://homeassistant.local:8123",
+    "tokenLabel": "Jeton d'accès longue durée",
+    "tokenPlaceholder": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+    "tokenHelp": "En créer un dans HA : Profil → Sécurité → Jetons d'accès longue durée",
+    "connect": "Tester et connecter",
+    "testing": "Test en cours…",
+    "securityNote": "Ce jeton accorde l'accès administrateur complet — n'utilisez Flow en mode autonome que sur un réseau de confiance.",
+    "errors": {
+      "missingFields": "Veuillez fournir à la fois une URL et un jeton.",
+      "invalidToken": "Jeton invalide — authentification échouée.",
+      "httpError": "HTTP {{status}}: {{statusText}}",
+      "unexpectedResponse": "Réponse inattendue du serveur.",
+      "mixedContent": "Cette page est servie en HTTPS mais l'URL de Home Assistant est HTTP — les navigateurs bloquent cela. Utilisez HTTPS pour les deux, ou ouvrez Flow en HTTP.",
+      "corsHint": "Impossible d'atteindre le serveur. Si Home Assistant est actif, c'est probablement un problème CORS — ajoutez à configuration.yaml :\nhttp:\n  cors_allowed_origins:\n    - {{origin}}",
+      "connectionFailed": "Connexion échouée."
+    }
+  },
+  "dirtyGuard": {
+    "title": "Modifications non enregistrées",
+    "description": "Cette automatisation a des modifications non enregistrées. Les enregistrer d'abord, ou abandonner et continuer ?",
+    "discard": "Abandonner"
+  },
+  "deleteAutomation": {
+    "title": "Supprimer l'automatisation ?",
+    "description": "\"{{name}}\" sera définitivement supprimée de Home Assistant. Cela ne peut pas être annulé.",
+    "deleting": "Suppression…"
+  },
+  "importExport": {
+    "title": "Importer / Exporter",
+    "description": "Importer le YAML d'une automatisation, ou copier/télécharger celui que vous éditez.",
+    "importTab": "Importer",
+    "exportTab": "Exporter",
+    "pasteYaml": "Coller YAML",
+    "uploadYaml": "Charger .yaml",
+    "pastePlaceholder": "Coller le YAML de l'automatisation Home Assistant…",
+    "uploadPrompt": "Cliquez pour choisir un fichier .yaml",
+    "fileLoaded": "Fichier chargé — voir l'aperçu ci-dessous",
+    "parsing": "Analyse…",
+    "nodeCount": "{{count}} nœud analysé",
+    "nodeCount_other": "{{count}} nœuds analysés",
+    "replaceCurrent": "Remplacer le courant",
+    "applyAsNew": "Appliquer comme nouveau",
+    "download": "Télécharger",
+    "nothingToExport": "Ajoutez des nœuds à la toile pour exporter YAML."
+  },
+  "about": {
+    "tagline": "Un éditeur visuel de style Node-RED pour les automatisations Home Assistant.",
+    "version": "Version {{version}}",
+    "attribution": "Flow est une refonte et recréation de C.A.F.E. par Federico Zivolo, sous licence MIT.",
+    "originalProject": "Projet original"
   }
 }

@@ -16,7 +16,8 @@
     "importJson": "Importer depuis JSON",
     "importYaml": "Importer depuis YAML",
     "testConnection": "Tester la connexion",
-    "disconnect": "Déconnecter"
+    "disconnect": "Déconnecter",
+    "copied": "Copié !"
   },
   "labels": {
     "automationName": "Nom de l'automatisation",
@@ -77,7 +78,9 @@
     "duration": "00:05:00",
     "enterTemplate": "Entrer un modèle Jinja2...",
     "jsonExample": "{ \"clé\": \"valeur\" }",
-    "none": "Aucun"
+    "none": "Aucun",
+    "searchNodes": "Chercher des nœuds…",
+    "noNodesFound": "Aucun nœud trouvé"
   },
   "help": {
     "clickNodesToAdd": "Cliquez sur les nœuds pour les ajouter",
@@ -96,7 +99,9 @@
     "clickToConfigure": "Cliquez pour configurer la connexion Home Assistant",
     "openDetached": "Ouvrir une fenêtre détachée",
     "removeSource": "Retirer la source de l'espace fusionné",
-    "backToHA": "Retour à Home Assistant"
+    "backToHA": "Retour à Home Assistant",
+    "collapsePalette": "Réduire la palette",
+    "expandPalette": "Agrandir la palette"
   },
   "strategy": {
     "auto": "Auto",
@@ -162,5 +167,38 @@
   },
   "stateTrigger": {
     "useValue": "Utiliser la valeur"
+  },
+  "automationSettings": {
+    "title": "Paramètres de l'automatisation",
+    "description": "Description",
+    "mode": "Mode",
+    "modeDescription": "Contrôle ce qui se passe quand l'automatisation est déclenchée alors qu'elle s'exécute déjà.",
+    "modes": {
+      "single": "Unique",
+      "restart": "Redémarrage",
+      "queued": "En attente",
+      "parallel": "Parallèle"
+    },
+    "modeDescriptions": {
+      "single": "Ne pas démarrer une nouvelle exécution si une est déjà en cours",
+      "restart": "Arrêter l'exécution actuelle et en démarrer une nouvelle",
+      "queued": "Mettre les nouvelles exécutions en attente pour qu'elles s'exécutent après celle en cours",
+      "parallel": "Démarrer une nouvelle exécution indépendante en parallèle"
+    },
+    "max": "Max d'exécutions",
+    "maxDescription": "Nombre maximal d'exécutions simultanées ou en attente.",
+    "maxExceeded": "Max dépassé",
+    "maxExceededDescription": "Quoi faire quand le nombre maximal d'exécutions est dépassé.",
+    "maxExceededOptions": {
+      "silent": "Silencieux",
+      "warning": "Avertissement",
+      "critical": "Critique"
+    }
+  },
+  "theme": {
+    "auto": "Auto",
+    "light": "Clair",
+    "dark": "Sombre",
+    "haHint": "Se fond dans votre thème Home Assistant. Caché en mode autonome."
   }
 }

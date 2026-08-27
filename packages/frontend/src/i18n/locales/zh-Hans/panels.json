@@ -2,5 +2,49 @@
   "conditionGroupEditor": {
     "noConditions": "尚未添加条件",
     "addCondition": "添加条件"
+  },
+  "automationsTab": {
+    "newAutomation": "新建自动化",
+    "searchPlaceholder": "搜索自动化…",
+    "chips": {
+      "all": "全部",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "recent": "最近"
+    },
+    "connectionErrorHeadline": "连接已断开",
+    "emptyHeadline": "尚无自动化",
+    "emptyBody": "创建您的第一个自动化以在此查看。",
+    "noResults": "没有自动化与您的搜索匹配。",
+    "enable": "启用自动化",
+    "disable": "禁用自动化",
+    "toggleFailed": "更新自动化状态失败：{{message}}",
+    "openFailed": "打开自动化失败：{{message}}"
+  },
+  "header": {
+    "run": "运行（测试）",
+    "runSuccess": "已触发\"{{name}}\"",
+    "runFailed": "触发自动化失败：{{message}}",
+    "undo": "撤销",
+    "redo": "重做",
+    "autoArrange": "自动排列",
+    "zoomFit": "缩放以适应",
+    "moreActions": "更多操作",
+    "importYaml": "导入YAML",
+    "exportYaml": "导出YAML",
+    "duplicate": "复制",
+    "duplicateName": "{{name}}（副本）",
+    "duplicated": "已复制 — 保存以创建新的自动化",
+    "deleted": "自动化已删除",
+    "deleteFailed": "删除自动化失败：{{message}}",
+    "theme": "主题",
+    "animations": "动画",
+    "disconnect": "更改服务器 / 断开连接",
+    "about": "关于",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "reconnecting": "正在重新连接…",
+    "openPalette": "打开节点调板",
+    "openPanel": "打开面板"
   }
 }

@@ -8,6 +8,7 @@
     "update": "Aktualisieren",
     "refresh": "Aktualisieren",
     "copy": "Kopieren",
+    "copied": "Kopiert!",
     "use": "Verwenden",
     "add": "Hinzufügen",
     "addTrigger": "Auslöser hinzufügen",
@@ -63,6 +64,8 @@
   },
   "placeholders": {
     "automationName": "Automatisierungsname",
+    "searchNodes": "Knoten suchen…",
+    "noNodesFound": "Keine Knoten gefunden",
     "optionalDisplayName": "Optionaler Anzeigename",
     "optionalUniqueId": "Optionale eindeutige ID",
     "enterAutomationName": "Automatisierungsname eingeben...",
@@ -96,7 +99,9 @@
     "clickToConfigure": "Klicken um Home Assistant-Verbindung zu konfigurieren",
     "openDetached": "Eigenes Fenster öffnen",
     "removeSource": "Quelle aus dem Merge-Workspace entfernen",
-    "backToHA": "Zurück zu Home Assistant"
+    "backToHA": "Zurück zu Home Assistant",
+    "collapsePalette": "Palette einklappen",
+    "expandPalette": "Palette ausklappen"
   },
   "strategy": {
     "auto": "Auto",
@@ -162,5 +167,11 @@
   },
   "stateTrigger": {
     "useValue": "Wert verwenden"
+  },
+  "theme": {
+    "auto": "Automatisch",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "haHint": "Passt sich Ihrem Home Assistant-Design an. Im Standalone-Modus verborgen."
   }
 }

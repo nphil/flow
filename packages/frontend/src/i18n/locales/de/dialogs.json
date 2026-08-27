@@ -126,5 +126,60 @@
       "not_triggered": "Nicht ausgelöst",
       "disallowed_recursion_detected": "Rekursion blockiert"
     }
+  },
+  "connect": {
+    "title": "Mit Home Assistant verbinden",
+    "subtitle": "Flow benötigt eine URL und ein langlebiges Zugriffstoken zum Ausführen im Standalone-Modus.",
+    "urlLabel": "Home Assistant URL",
+    "urlPlaceholder": "http://homeassistant.local:8123",
+    "tokenLabel": "Langlebiges Zugriffstoken",
+    "tokenPlaceholder": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+    "tokenHelp": "Erstellen Sie eines in HA: Profil → Sicherheit → Langlebige Zugriffstokens",
+    "connect": "Test & Verbinden",
+    "testing": "Wird getestet…",
+    "securityNote": "Dieses Token gewährt vollständigen Admin-Zugriff — verwenden Sie Flow Standalone nur in einem Netzwerk, dem Sie vertrauen.",
+    "errors": {
+      "missingFields": "Bitte geben Sie sowohl eine URL als auch ein Token an.",
+      "invalidToken": "Ungültiges Token — Authentifizierung fehlgeschlagen.",
+      "httpError": "HTTP {{status}}: {{statusText}}",
+      "unexpectedResponse": "Unerwartete Antwort vom Server.",
+      "mixedContent": "Diese Seite wird über HTTPS bereitgestellt, aber die Home Assistant URL ist HTTP — Browser blockieren das. Verwenden Sie HTTPS für beide oder öffnen Sie Flow über HTTP.",
+      "corsHint": "Der Server konnte nicht erreicht werden. Wenn Home Assistant läuft, ist dies wahrscheinlich CORS — fügen Sie zu configuration.yaml hinzu:\nhttp:\n  cors_allowed_origins:\n    - {{origin}}",
+      "connectionFailed": "Verbindung fehlgeschlagen."
+    }
+  },
+  "dirtyGuard": {
+    "title": "Ungespeicherte Änderungen",
+    "description": "Diese Automatisierung hat ungespeicherte Änderungen. Speichern Sie diese zuerst, oder verwerfen Sie diese und fahren fort?",
+    "discard": "Verwerfen"
+  },
+  "deleteAutomation": {
+    "title": "Automatisierung löschen?",
+    "description": "\"{{name}}\" wird dauerhaft aus Home Assistant entfernt. Dies kann nicht rückgängig gemacht werden.",
+    "deleting": "Wird gelöscht…"
+  },
+  "importExport": {
+    "title": "Importieren / Exportieren",
+    "description": "Bringen Sie die YAML einer Automatisierung ein, oder kopieren/laden Sie diejenige, die Sie bearbeiten.",
+    "importTab": "Importieren",
+    "exportTab": "Exportieren",
+    "pasteYaml": "YAML einfügen",
+    "uploadYaml": "Datei .yaml hochladen",
+    "pastePlaceholder": "Home Assistant Automatisierungs-YAML einfügen…",
+    "uploadPrompt": "Klicken Sie, um eine .yaml-Datei auszuwählen",
+    "fileLoaded": "Datei geladen — siehe Vorschau unten",
+    "parsing": "Wird geparst…",
+    "nodeCount": "{{count}} Knoten geparst",
+    "nodeCount_other": "{{count}} Knoten geparst",
+    "replaceCurrent": "Aktuellen ersetzen",
+    "applyAsNew": "Als neu anwenden",
+    "download": "Herunterladen",
+    "nothingToExport": "Fügen Sie Knoten zur Canvas hinzu, um YAML zu exportieren."
+  },
+  "about": {
+    "tagline": "Ein visueller, Node-RED-ähnlicher Editor für Home Assistant Automatisierungen.",
+    "version": "Version {{version}}",
+    "attribution": "Flow ist eine Neumarke und ein Rebuild von C.A.F.E. von Federico Zivolo, MIT lizenziert.",
+    "originalProject": "Originales Projekt"
   }
 }

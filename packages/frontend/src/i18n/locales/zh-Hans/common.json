@@ -8,6 +8,7 @@
     "update": "更新",
     "refresh": "刷新",
     "copy": "复制",
+    "copied": "已复制！",
     "use": "使用",
     "add": "添加",
     "addTrigger": "添加触发器",
@@ -63,6 +64,8 @@
   },
   "placeholders": {
     "automationName": "自动化名称",
+    "searchNodes": "搜索节点…",
+    "noNodesFound": "未找到节点",
     "optionalDisplayName": "可选显示名称",
     "optionalUniqueId": "可选唯一ID",
     "enterAutomationName": "输入自动化名称...",
@@ -96,7 +99,9 @@
     "clickToConfigure": "点击配置Home Assistant连接",
     "openDetached": "在独立窗口打开",
     "removeSource": "从合并工作区移除来源",
-    "backToHA": "返回 Home Assistant"
+    "backToHA": "返回 Home Assistant",
+    "collapsePalette": "折叠调板",
+    "expandPalette": "展开调板"
   },
   "strategy": {
     "auto": "自动",
@@ -162,5 +167,11 @@
   },
   "stateTrigger": {
     "useValue": "使用值"
+  },
+  "theme": {
+    "auto": "自动",
+    "light": "浅色",
+    "dark": "深色",
+    "haHint": "混合到您的Home Assistant主题中。在独立模式下隐藏。"
   }
 }

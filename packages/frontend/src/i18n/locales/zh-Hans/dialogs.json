@@ -126,5 +126,60 @@
       "not_triggered": "未触发",
       "disallowed_recursion_detected": "递归被阻止"
     }
+  },
+  "connect": {
+    "title": "连接到Home Assistant",
+    "subtitle": "Flow需要URL和长期访问令牌才能独立运行。",
+    "urlLabel": "Home Assistant URL",
+    "urlPlaceholder": "http://homeassistant.local:8123",
+    "tokenLabel": "长期访问令牌",
+    "tokenPlaceholder": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+    "tokenHelp": "在HA中创建：个人资料 → 安全 → 长期访问令牌",
+    "connect": "测试并连接",
+    "testing": "正在测试…",
+    "securityNote": "此令牌授予完全管理员访问权限 — 仅在信任的网络上使用Flow独立模式。",
+    "errors": {
+      "missingFields": "请同时提供URL和令牌。",
+      "invalidToken": "令牌无效 — 身份验证失败。",
+      "httpError": "HTTP {{status}}：{{statusText}}",
+      "unexpectedResponse": "来自服务器的响应意外。",
+      "mixedContent": "此页面通过HTTPS提供，但Home Assistant URL是HTTP — 浏览器会阻止这种情况。请两者都使用HTTPS，或通过HTTP打开Flow。",
+      "corsHint": "无法连接到服务器。如果Home Assistant已启动，这可能是CORS问题 — 添加到configuration.yaml：\nhttp:\n  cors_allowed_origins:\n    - {{origin}}",
+      "connectionFailed": "连接失败。"
+    }
+  },
+  "dirtyGuard": {
+    "title": "未保存的更改",
+    "description": "此自动化有未保存的更改。先保存还是放弃并继续？",
+    "discard": "放弃"
+  },
+  "deleteAutomation": {
+    "title": "删除自动化？",
+    "description": "\"{{name}}\"将从Home Assistant中永久删除。这无法撤销。",
+    "deleting": "正在删除…"
+  },
+  "importExport": {
+    "title": "导入 / 导出",
+    "description": "引入自动化的YAML，或复制/下载您正在编辑的YAML。",
+    "importTab": "导入",
+    "exportTab": "导出",
+    "pasteYaml": "粘贴YAML",
+    "uploadYaml": "上传.yaml",
+    "pastePlaceholder": "粘贴Home Assistant自动化YAML…",
+    "uploadPrompt": "点击选择.yaml文件",
+    "fileLoaded": "文件已加载 — 查看下面的预览",
+    "parsing": "正在解析…",
+    "nodeCount": "解析了{{count}}个节点",
+    "nodeCount_other": "解析了{{count}}个节点",
+    "replaceCurrent": "替换当前",
+    "applyAsNew": "应用为新的",
+    "download": "下载",
+    "nothingToExport": "向画布添加节点以导出YAML。"
+  },
+  "about": {
+    "tagline": "用于Home Assistant自动化的可视化Node-RED风格编辑器。",
+    "version": "版本{{version}}",
+    "attribution": "Flow是由Federico Zivolo创建的C.A.F.E.的重新品牌和重建，采用MIT许可。",
+    "originalProject": "原始项目"
   }
 }

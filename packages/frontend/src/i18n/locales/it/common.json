@@ -8,6 +8,7 @@
     "update": "Aggiorna",
     "refresh": "Aggiorna",
     "copy": "Copia",
+    "copied": "Copiato!",
     "use": "Usa",
     "add": "Aggiungi",
     "addTrigger": "Aggiungi Trigger",
@@ -63,6 +64,8 @@
   },
   "placeholders": {
     "automationName": "Nome automazione",
+    "searchNodes": "Cerca nodi…",
+    "noNodesFound": "Nessun nodo trovato",
     "optionalDisplayName": "Nome visualizzato opzionale",
     "optionalUniqueId": "ID univoco opzionale",
     "enterAutomationName": "Inserisci nome automazione...",
@@ -96,7 +99,9 @@
     "clickToConfigure": "Clicca per configurare la connessione a Home Assistant",
     "openDetached": "Apri finestra separata",
     "removeSource": "Rimuovi sorgente dal workspace unito",
-    "backToHA": "Torna a Home Assistant"
+    "backToHA": "Torna a Home Assistant",
+    "collapsePalette": "Comprimi tavolozza",
+    "expandPalette": "Espandi tavolozza"
   },
   "strategy": {
     "auto": "Auto",
@@ -162,5 +167,11 @@
   },
   "stateTrigger": {
     "useValue": "Usa valore"
+  },
+  "theme": {
+    "auto": "Auto",
+    "light": "Chiaro",
+    "dark": "Scuro",
+    "haHint": "Si adatta al tuo tema Home Assistant. Nascosto in modalità standalone."
   }
 }
