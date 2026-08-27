@@ -1,0 +1,407 @@
+/**
+ * Flow design tokens.
+ *
+ * Semantic CSS custom properties per `html[data-theme="<palette>-<light|dark>"]`, plus a
+ * shared shape/motion/type layer. Palette hex values are sourced from Cody's own theme
+ * catalog (/data/home/Cody/app/globals.css) for the base bg/panel/border/text/accent/status
+ * tiers, remapped to Flow's own semantic names (see mapping below). Node-kind hues (trigger/
+ * condition/action/timing/data/flowctl) are drawn from each palette family's own published
+ * accent colors (Catppuccin, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest); two
+ * gaps with no clean canonical light-mode/hue source were filled deliberately and are called
+ * out below so a future pass can revisit them with fresh eyes:
+ *   - Nord and Tokyo Night ship no official light-mode accent set. Their `-light` node-kind
+ *     colors are derived from the dark-mode canonical hue (same hue, reduced lightness,
+ *     mild saturation boost) targeting ~4.6:1 contrast against that palette's own light `--bg`
+ *     -- the same technique Cody's own hand-picked `nord-light`/`tokyo-light` accents exhibit.
+ *   - Rosé Pine ships no green accent at all (by design). `--node-action` for rosepine is
+ *     synthesized at hue ~150° using the palette's own average saturation/lightness so it
+ *     reads as "one of the family" rather than a foreign color.
+ *
+ * Cody token -> Flow token mapping used throughout this file:
+ *   --bg -> --bg                --text -> --text                --accent -> --accent
+ *   --bg-panel -> --bg-panel    --text-muted -> --text-secondary --accent-hover -> --accent-hover
+ *   --bg-hover -> --bg-elevated --text-dim -> --text-muted       --on-accent -> --on-accent (kept)
+ *   --border -> --border        --status-error -> --danger       --status-success -> --ok
+ *                                --status-warning -> --warn
+ * `--accent-subtle` has no direct Cody token; it is a computed color-mix() tint, matching the
+ * color-mix() technique Cody itself uses for its own derived tones (seam hover/active, overlay
+ * backdrop). `--node-unknown` reuses each block's own `--text-muted` (a neutral, already
+ * WCAG-checked tone) rather than inventing a slate hex per palette.
+ *
+ * Wave 2 migrates shadcn's HSL tokens (index.css `--background`, `--foreground`, `--primary`,
+ * etc.) onto these vars; they are intentionally left untouched for now (see tailwind.config.ts
+ * comment) -- tracked as Wave 3 debt: delete the old HSL token block once every component reads
+ * from here instead.
+ */
+
+html[data-theme$="-light"] {
+  color-scheme: light;
+  --shadow-card: 0 1px 2px rgba(60, 50, 35, 0.05), 0 2px 8px rgba(60, 50, 35, 0.06);
+  --shadow-pop: 0 2px 6px rgba(60, 50, 35, 0.07), 0 8px 24px rgba(60, 50, 35, 0.1);
+  --shadow-modal: 0 4px 12px rgba(60, 50, 35, 0.08), 0 16px 48px rgba(60, 50, 35, 0.14);
+}
+
+html[data-theme$="-dark"] {
+  color-scheme: dark;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(235, 225, 210, 0.03);
+  --shadow-pop: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(235, 225, 210, 0.04);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(235, 225, 210, 0.05);
+}
+
+:root {
+  /* Shape */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur-med: 220ms;
+  --dur-slow: 320ms;
+  --dur-theme: 450ms;
+  --ease-out-warm: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Type -- loaded via @fontsource in main.tsx, no external CDN */
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'Noto Sans Mono Variable', 'Noto Sans Mono', 'JetBrains Mono', 'Fira Code',
+    Consolas, ui-monospace, monospace;
+
+  /* Pre-hydration fallback so the panel never paints unstyled: catppuccin-light, mirrored
+     below in html[data-theme="catppuccin-light"]. useFlowTheme overwrites data-theme (and,
+     in 'ha' mode, individual tokens) as soon as it mounts. */
+  --bg: #EFF1F5;
+  --bg-panel: #E6E9EF;
+  --bg-elevated: #DCE0E8;
+  --border: #BCC0CC;
+  --text: #4C4F69;
+  --text-secondary: #5C5F77;
+  --text-muted: #6C6F85;
+  --accent: #8839EF;
+  --accent-hover: #7526DC;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #D20F39;
+  --ok: #2F7D1E;
+  --warn: #9C6500;
+  --node-trigger: #DF8E1D;
+  --node-condition: #1E66F5;
+  --node-action: #40A02F;
+  --node-timing: #7287FD;
+  --node-data: #179299;
+  --node-flowctl: #EA76CB;
+  --node-unknown: var(--text-muted);
+  --shadow-card: 0 1px 2px rgba(60, 50, 35, 0.05), 0 2px 8px rgba(60, 50, 35, 0.06);
+  --shadow-pop: 0 2px 6px rgba(60, 50, 35, 0.07), 0 8px 24px rgba(60, 50, 35, 0.1);
+  --shadow-modal: 0 4px 12px rgba(60, 50, 35, 0.08), 0 16px 48px rgba(60, 50, 35, 0.14);
+}
+
+/* Catppuccin — light */
+html[data-theme="catppuccin-light"] {
+  --bg: #EFF1F5;
+  --bg-panel: #E6E9EF;
+  --bg-elevated: #DCE0E8;
+  --border: #BCC0CC;
+  --text: #4C4F69;
+  --text-secondary: #5C5F77;
+  --text-muted: #6C6F85;
+  --accent: #8839EF;
+  --accent-hover: #7526DC;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #D20F39;
+  --ok: #2F7D1E;
+  --warn: #9C6500;
+  --node-trigger: #DF8E1D;
+  --node-condition: #1E66F5;
+  --node-action: #40A02F;
+  --node-timing: #7287FD;
+  --node-data: #179299;
+  --node-flowctl: #EA76CB;
+  --node-unknown: var(--text-muted);
+}
+
+/* Nord — light */
+html[data-theme="nord-light"] {
+  --bg: #E5E9F0;
+  --bg-panel: #DCE2EC;
+  --bg-elevated: #D3DAE6;
+  --border: #B8C3D4;
+  --text: #2E3440;
+  --text-secondary: #434C5E;
+  --text-muted: #4C566A;
+  --accent: #3F6791;
+  --accent-hover: #2F5279;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #A03E48;
+  --ok: #4B7A3C;
+  --warn: #87661C;
+  --node-trigger: #896010;
+  --node-condition: #466A95;
+  --node-action: #54703B;
+  --node-timing: #895780;
+  --node-data: #2D6F82;
+  --node-flowctl: #B2404B;
+  --node-unknown: var(--text-muted);
+}
+
+/* Tokyo Night — light */
+html[data-theme="tokyo-light"] {
+  --bg: #E1E2E7;
+  --bg-panel: #D8DAE3;
+  --bg-elevated: #CCCFDA;
+  --border: #B0B6C8;
+  --text: #2E4E9E;
+  --text-secondary: #3F4C7A;
+  --text-muted: #5A67A0;
+  --accent: #1A5FBF;
+  --accent-hover: #0F4B9E;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #C51A4E;
+  --ok: #4C6A2E;
+  --warn: #7E5F2E;
+  --node-trigger: #895915;
+  --node-condition: #0150FA;
+  --node-action: #486E1F;
+  --node-timing: #762EFA;
+  --node-data: #0068A5;
+  --node-flowctl: #CA0026;
+  --node-unknown: var(--text-muted);
+}
+
+/* Gruvbox — light */
+html[data-theme="gruvbox-light"] {
+  --bg: #FBF1C7;
+  --bg-panel: #F2E5BC;
+  --bg-elevated: #EBDBB2;
+  --border: #D5C4A1;
+  --text: #3C3836;
+  --text-secondary: #504945;
+  --text-muted: #665C54;
+  --accent: #AF3A03;
+  --accent-hover: #8F2F02;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #9D0006;
+  --ok: #79740E;
+  --warn: #8F5D00;
+  --node-trigger: #B57614;
+  --node-condition: #076678;
+  --node-action: #79740E;
+  --node-timing: #8F3F71;
+  --node-data: #427B58;
+  --node-flowctl: #9D0006;
+  --node-unknown: var(--text-muted);
+}
+
+/* Rosé Pine — light */
+html[data-theme="rosepine-light"] {
+  --bg: #FAF4ED;
+  --bg-panel: #F4EDE4;
+  --bg-elevated: #EDE4DA;
+  --border: #DBD0C5;
+  --text: #575279;
+  --text-secondary: #6B6689;
+  --text-muted: #797593;
+  --accent: #9B4E67;
+  --accent-hover: #824054;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #A83B50;
+  --ok: #3A7A63;
+  --warn: #8E6A18;
+  --node-trigger: #EA9D34;
+  --node-condition: #286983;
+  --node-action: #4C8B63;
+  --node-timing: #907AA9;
+  --node-data: #56949F;
+  --node-flowctl: #D7827E;
+  --node-unknown: var(--text-muted);
+}
+
+/* Everforest — light */
+html[data-theme="everforest-light"] {
+  --bg: #F3EAD3;
+  --bg-panel: #EAE4CA;
+  --bg-elevated: #E3DDC1;
+  --border: #CFC9AB;
+  --text: #4C5A61;
+  --text-secondary: #5C6A72;
+  --text-muted: #6C7A76;
+  --accent: #61710A;
+  --accent-hover: #4C5A05;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #FFFFFF;
+  --danger: #C03A37;
+  --ok: #256F55;
+  --warn: #8A6100;
+  --node-trigger: #DFA000;
+  --node-condition: #3A94C5;
+  --node-action: #8DA101;
+  --node-timing: #DF69BA;
+  --node-data: #35A77C;
+  --node-flowctl: #F85552;
+  --node-unknown: var(--text-muted);
+}
+
+/* Catppuccin — dark */
+html[data-theme="catppuccin-dark"] {
+  --bg: #1E1E2E;
+  --bg-panel: #272739;
+  --bg-elevated: #313244;
+  --border: #3B3D52;
+  --text: #CDD6F4;
+  --text-secondary: #A6ADC8;
+  --text-muted: #9399B2;
+  --accent: #CBA6F7;
+  --accent-hover: #DDC2FF;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #1E1E2E;
+  --danger: #F38BA8;
+  --ok: #A6E3A1;
+  --warn: #F9E2AF;
+  --node-trigger: #F9E2AF;
+  --node-condition: #89B4FA;
+  --node-action: #A6E3A1;
+  --node-timing: #B4BEFE;
+  --node-data: #94E2D5;
+  --node-flowctl: #F5C2E7;
+  --node-unknown: var(--text-muted);
+}
+
+/* Nord — dark */
+html[data-theme="nord-dark"] {
+  --bg: #2E3440;
+  --bg-panel: #3B4252;
+  --bg-elevated: #434C5E;
+  --border: #454F63;
+  --text: #ECEFF4;
+  --text-secondary: #D8DEE9;
+  --text-muted: #A9B2C3;
+  --accent: #88C0D0;
+  --accent-hover: #A3D3E0;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #2E3440;
+  --danger: #D68E94;
+  --ok: #A3BE8C;
+  --warn: #EBCB8B;
+  --node-trigger: #EBCB8B;
+  --node-condition: #5E81AC;
+  --node-action: #A3BE8C;
+  --node-timing: #B48EAD;
+  --node-data: #88C0D0;
+  --node-flowctl: #BF616A;
+  --node-unknown: var(--text-muted);
+}
+
+/* Tokyo Night — dark */
+html[data-theme="tokyo-dark"] {
+  --bg: #1A1B26;
+  --bg-panel: #24283B;
+  --bg-elevated: #2C3049;
+  --border: #30364F;
+  --text: #C0CAF5;
+  --text-secondary: #A9B1D6;
+  --text-muted: #8791BE;
+  --accent: #7AA2F7;
+  --accent-hover: #9CBBFF;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #1A1B26;
+  --danger: #F7768E;
+  --ok: #9ECE6A;
+  --warn: #E0AF68;
+  --node-trigger: #E0AF68;
+  --node-condition: #7AA2F7;
+  --node-action: #9ECE6A;
+  --node-timing: #BB9AF7;
+  --node-data: #7DCFFF;
+  --node-flowctl: #F7768E;
+  --node-unknown: var(--text-muted);
+}
+
+/* Gruvbox — dark */
+html[data-theme="gruvbox-dark"] {
+  --bg: #282828;
+  --bg-panel: #32302F;
+  --bg-elevated: #3C3836;
+  --border: #4A4542;
+  --text: #EBDBB2;
+  --text-secondary: #D5C4A1;
+  --text-muted: #A89984;
+  --accent: #FE8019;
+  --accent-hover: #FFA05C;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #282828;
+  --danger: #FB4934;
+  --ok: #B8BB26;
+  --warn: #FABD2F;
+  --node-trigger: #FABD2F;
+  --node-condition: #83A598;
+  --node-action: #B8BB26;
+  --node-timing: #D3869B;
+  --node-data: #8EC07C;
+  --node-flowctl: #FB4934;
+  --node-unknown: var(--text-muted);
+}
+
+/* Rosé Pine — dark */
+html[data-theme="rosepine-dark"] {
+  --bg: #232136;
+  --bg-panel: #2A273F;
+  --bg-elevated: #393552;
+  --border: #403C58;
+  --text: #E0DEF4;
+  --text-secondary: #A6A2C4;
+  --text-muted: #908CAA;
+  --accent: #EA9A97;
+  --accent-hover: #F5B7B4;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #232136;
+  --danger: #EB6F92;
+  --ok: #9CCFD8;
+  --warn: #F6C177;
+  --node-trigger: #F6C177;
+  --node-condition: #31748F;
+  --node-action: #8FC79E;
+  --node-timing: #C4A7E7;
+  --node-data: #9CCFD8;
+  --node-flowctl: #EBBCBA;
+  --node-unknown: var(--text-muted);
+}
+
+/* Everforest — dark */
+html[data-theme="everforest-dark"] {
+  --bg: #2D353B;
+  --bg-panel: #343F44;
+  --bg-elevated: #3D484D;
+  --border: #4A555B;
+  --text: #D3C6AA;
+  --text-secondary: #B0BCB2;
+  --text-muted: #9AA79E;
+  --accent: #A7C080;
+  --accent-hover: #BFD69A;
+  --accent-subtle: color-mix(in srgb, var(--accent) 14%, transparent);
+  --on-accent: #2D353B;
+  --danger: #E67E80;
+  --ok: #83C092;
+  --warn: #DBBC7F;
+  --node-trigger: #DBBC7F;
+  --node-condition: #7FBBB3;
+  --node-action: #A7C080;
+  --node-timing: #D699B6;
+  --node-data: #83C092;
+  --node-flowctl: #E67E80;
+  --node-unknown: var(--text-muted);
+}
+
+/* Respect prefers-reduced-motion: collapse every timing token so transitions/animations
+   built on top of them become no-ops without each component needing its own media query. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-med: 0ms;
+    --dur-slow: 0ms;
+    --dur-theme: 0ms;
+  }
+}
