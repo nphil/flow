@@ -79,6 +79,42 @@ Flow is architected with strict engineering principles to ensure your home remai
 
 ---
 
+## 🤖 AI / MCP
+
+Flow's Home Assistant integration also registers a **"Flow Automations"** LLM API (`homeassistant.helpers.llm`) that gives any MCP-connected AI assistant full, structured access to your automations — list them, read and write their YAML, enable/disable them, trigger a test run, and inspect execution traces. No extra server, port, or credential: it rides on Home Assistant's own built-in **MCP Server** integration and your existing HA authentication.
+
+### Enabling it
+
+1. Install and set up **Flow** as above — its Home Assistant integration registers the API automatically at startup; there is nothing to configure on Flow's side.
+2. In Home Assistant, go to **Settings → Devices & Services → Add Integration** and add the built-in **Model Context Protocol Server** integration (if you haven't already).
+3. During its setup (or its **Configure** screen if it's already installed), select **Flow Automations** from the list of LLM APIs to expose, alongside or instead of the default **Assist** API.
+4. Point any MCP client (Claude, an MCP-compatible IDE, etc.) at your Home Assistant's MCP endpoint using a long-lived access token, the same way you would for the Assist API.
+
+This requires a Home Assistant release that ships `homeassistant.helpers.llm.async_register_api` (the same mechanism behind Assist's tool-calling and the MCP Server integration itself). On older releases, Flow logs a warning and skips registering it — the panel and everything else still sets up normally.
+
+### Tools
+
+| Tool | What it does |
+| --- | --- |
+| `flow_list_automations` | List every automation: id, alias, description, enabled state, last trigger time, mode. |
+| `flow_get_automation` | Get one automation's full YAML config, entity_id, and enabled state. |
+| `flow_create_automation` | Create a new automation from YAML (validated first; nothing is saved if it's invalid). |
+| `flow_update_automation` | Replace an existing automation's YAML (validated first; nothing is saved if it's invalid). |
+| `flow_delete_automation` | Permanently delete an automation. |
+| `flow_set_automation_enabled` | Turn an automation on or off without changing its configuration. |
+| `flow_trigger_automation` | Manually run an automation now, optionally skipping its conditions. |
+| `flow_list_traces` | List an automation's recent execution runs and their outcomes. |
+| `flow_get_trace` | Get one run's full step-by-step trace: path, timestamps, variables, errors. |
+| `flow_validate_automation` | Check whether a piece of YAML is a valid automation, without saving it. |
+
+Every tool speaks plain Home Assistant automation YAML — the same schema used in `automations.yaml` and the built-in editor — so anything an MCP client writes round-trips cleanly through Flow's canvas and the native editor too.
+
+### ⚠️ Security note
+
+The Flow Automations API gives a connected MCP client **full control over your automations**: it can read, create, edit, delete, enable/disable, and manually trigger any of them, including ones that unlock doors, disarm alarms, or control anything else your automations touch. Treat the MCP endpoint, and any token you issue for it, with the same care as admin access to Home Assistant itself — only connect clients and models you trust, and consider using a dedicated long-lived token you can revoke independently of your own.
+
+---
+
 ## 💬 Frequently Asked Questions
 
 ### How do I use script responses and variables?
