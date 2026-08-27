@@ -1,7 +1,7 @@
 {
   "domain": "flow",
   "name": "Flow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "after_dependencies": ["automation", "trace"],
   "codeowners": [],
   "config_flow": true,
