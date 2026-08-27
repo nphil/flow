@@ -96,8 +96,8 @@ export function YamlPreview() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b p-3">
-        <h3 className="font-semibold text-foreground text-sm">{t('labels.yamlOutput')}</h3>
+      <div className="flex items-center justify-between border-b border-flow-border p-3">
+        <h3 className="font-semibold text-flow-text text-sm">{t('labels.yamlOutput')}</h3>
         <div className="flex items-center gap-2">
           <Select
             value={forceStrategy}
@@ -119,7 +119,7 @@ export function YamlPreview() {
             disabled={!yaml}
             className={cn(
               'h-7 w-7 p-0',
-              copied ? 'bg-green-100 text-green-600 hover:bg-green-100' : 'text-muted-foreground'
+              copied ? 'bg-green-100 text-green-600 hover:bg-green-100' : 'text-flow-text-muted'
             )}
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -128,8 +128,8 @@ export function YamlPreview() {
       </div>
 
       {strategy && (
-        <div className="flex items-center gap-2 border-b bg-muted/50 px-3 py-1.5">
-          <span className="text-muted-foreground text-xs">{t('labels.strategy')}</span>
+        <div className="flex items-center gap-2 border-b border-flow-border bg-flow-elevated px-3 py-1.5">
+          <span className="text-flow-text-muted text-xs">{t('labels.strategy')}</span>
           <Badge variant="secondary" className="text-xs">
             {strategy}
           </Badge>

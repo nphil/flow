@@ -65,7 +65,7 @@ export function PropertyEditor({
     <div className="space-y-3">
       <div className="border-t pt-3">
         <div className="flex items-center justify-between">
-          <Label className="font-medium text-muted-foreground text-xs">
+          <Label className="font-medium text-flow-text-muted text-xs">
             {t('nodes:panel.additionalProperties')}
           </Label>
           <Button
@@ -142,7 +142,7 @@ export function PropertyEditor({
             )}
           </FormField>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={editor.cancelAdding}>
               {t('buttons.cancel')}
             </Button>
@@ -183,14 +183,14 @@ function PropertyDisplay({ name, value, onChange, onDelete }: PropertyDisplayPro
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="font-medium text-muted-foreground text-xs capitalize">
+        <Label className="min-w-0 truncate font-medium text-flow-text-muted text-xs capitalize">
           {name.replace(/_/g, ' ')}
         </Label>
         <Button
           variant="ghost"
           size="sm"
           onClick={onDelete}
-          className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+          className="h-6 w-6 shrink-0 p-0 text-flow-danger"
         >
           <Trash2 className="h-3 w-3" />
         </Button>

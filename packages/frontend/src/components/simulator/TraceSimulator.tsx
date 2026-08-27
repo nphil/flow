@@ -119,7 +119,7 @@ export function TraceSimulator() {
   return (
     <div className="h-full space-y-4 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-foreground text-sm">{t('simulator:trace.heading')}</h3>
+        <h3 className="font-semibold text-flow-text text-sm">{t('simulator:trace.heading')}</h3>
         <div className="flex gap-1">
           {!isSimulating ? (
             <Button
@@ -130,8 +130,8 @@ export function TraceSimulator() {
               className={cn(
                 'h-8 w-8 p-0',
                 nodes.length === 0
-                  ? 'text-muted-foreground'
-                  : 'border-green-200 text-green-600 hover:bg-green-50'
+                  ? 'text-flow-text-muted'
+                  : 'border-flow-ok text-flow-ok hover:bg-flow-elevated'
               )}
             >
               <Play className="h-4 w-4" />
@@ -155,13 +155,13 @@ export function TraceSimulator() {
       {/* Condition overrides */}
       {conditionNodes.length > 0 && (
         <div className="space-y-2">
-          <Label className="font-medium text-muted-foreground text-xs">
+          <Label className="font-medium text-flow-text-muted text-xs">
             {t('simulator:trace.conditionOverrides')}
           </Label>
           <div className="space-y-2">
             {conditionNodes.map((node) => (
               <div key={node.id} className="flex items-center justify-between text-xs">
-                <span className="mr-2 flex-1 truncate text-muted-foreground">
+                <span className="mr-2 min-w-0 flex-1 truncate text-flow-text-muted">
                   {(node.data as { alias?: string }).alias || node.id}
                 </span>
                 <Select
@@ -204,7 +204,7 @@ export function TraceSimulator() {
       {/* Execution path */}
       {executionPath.length > 0 && (
         <div className="space-y-2">
-          <Label className="font-medium text-muted-foreground text-xs">
+          <Label className="font-medium text-flow-text-muted text-xs">
             {t('simulator:trace.executionPath')}
           </Label>
           <ol className="list-inside list-decimal space-y-1 text-xs">
@@ -218,7 +218,7 @@ export function TraceSimulator() {
                     'py-0.5',
                     i === executionPath.length - 1 && isSimulating
                       ? 'font-medium text-green-600'
-                      : 'text-muted-foreground'
+                      : 'text-flow-text-muted'
                   )}
                 >
                   {alias || nodeId}

@@ -12,7 +12,7 @@ export function SpeedControl({ speed, onSpeedChange, disabled }: SpeedControlPro
   const { t } = useTranslation(['common']);
   return (
     <div className="space-y-2">
-      <Label className="font-medium text-muted-foreground text-xs">
+      <Label className="font-medium text-flow-text-muted text-xs">
         {t('labels.speed', { speed })}
       </Label>
       <Slider

@@ -21,12 +21,12 @@ interface FormFieldProps {
 export function FormField({ label, required, description, children }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-2">
-      <Label className="font-medium text-muted-foreground text-xs">
+      <Label className="font-medium text-flow-text-muted text-xs">
         {label}
-        {required && <span className="ml-1 text-destructive">{'*'}</span>}
+        {required && <span className="ml-1 text-flow-danger">{'*'}</span>}
       </Label>
       {children}
-      {description && <p className="text-muted-foreground text-xs">{description}</p>}
+      {description && <p className="text-flow-text-muted text-xs">{description}</p>}
     </div>
   );
 }

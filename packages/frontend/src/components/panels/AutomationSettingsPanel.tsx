@@ -61,7 +61,7 @@ export function AutomationSettingsPanel() {
 
   return (
     <div className="h-full flex-1 space-y-4 overflow-y-auto p-4">
-      <h3 className="mt-1.5 font-semibold text-foreground text-sm">
+      <h3 className="mt-1.5 font-semibold text-flow-text text-sm">
         {t('automationSettings.title')}
       </h3>
 
@@ -101,7 +101,7 @@ export function AutomationSettingsPanel() {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-flow-text-muted text-xs">
           {t(`automationSettings.modeDescriptions.${mode}`)}
         </p>
       </FormField>
