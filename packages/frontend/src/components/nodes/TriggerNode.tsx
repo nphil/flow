@@ -5,6 +5,8 @@ import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { TriggerNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
+import { NodeTraceBadge } from './NodeTraceBadge';
+import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface TriggerNodeProps extends NodeProps {
   data: TriggerNodeData;
@@ -14,6 +16,7 @@ export const TriggerNode = memo(function TriggerNode({ id, data, selected }: Tri
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
+  const traceView = useNodeTraceStatus(id);
   const isActive = activeNodeId === id;
   const stepNumber = getExecutionStepNumber(id);
   const isDisabled = data.enabled === false;
@@ -130,8 +133,11 @@ export const TriggerNode = memo(function TriggerNode({ id, data, selected }: Tri
         selected && 'ring-2 ring-amber-500 ring-offset-2',
         isActive && 'node-active ring-4 ring-green-500',
         isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400'
+        hasErrors && 'border-red-500 ring-2 ring-red-400',
+        !isActive && traceView.ringClass,
+        traceView.dimmed && 'opacity-40'
       )}
+      title={traceView.tooltip || undefined}
     >
       {hasErrors && (
         <div
@@ -146,6 +152,7 @@ export const TriggerNode = memo(function TriggerNode({ id, data, selected }: Tri
           <Ban className="h-3 w-3" />
         </div>
       )}
+      <NodeTraceBadge view={traceView} />
       <div className="mb-1 flex items-center gap-2">
         <div className="rounded bg-amber-200 p-1">
           <Zap className="h-4 w-4 text-amber-700" />

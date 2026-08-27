@@ -87,6 +87,7 @@ function saveConfig(config: HassConfig): void {
 
 interface HassContextProps {
   hass: HomeAssistant | undefined;
+  connection: Connection | null;
   isRemote: boolean;
   isLoading: boolean;
   connectionError: string | null;
@@ -399,6 +400,22 @@ export const HassProvider: FC<
     return undefined;
   }, [externalHass, shouldUseRemote, wsConnection, config.url, config.token]);
 
+  // Exposed separately from `hass.connection` so consumers (e.g. live trace
+  // event subscriptions) don't need to reach through the synthetic remote
+  // `hass` object this provider builds.
+  const connection = useMemo<Connection | null>(() => {
+    if (externalHass) {
+      // `externalHass.connection` is typed through custom-card-helpers' own
+      // bundled copy of home-assistant-js-websocket, a distinct (if
+      // structurally identical) nominal type from the top-level package
+      // this file imports `Connection` from — bridge the two at this
+      // external boundary the same way the synthetic remote `hass` object
+      // below does.
+      return externalHass.connection ? (externalHass.connection as unknown as Connection) : null;
+    }
+    return wsConnection;
+  }, [externalHass, wsConnection]);
+
   // For remote mode, use remoteEntities directly since hass.states is a getter
   // that doesn't trigger useMemo recalculation when remoteEntities changes
   const entities = useMemo(() => {
@@ -473,6 +490,7 @@ export const HassProvider: FC<
 
   const value: HassContextProps = {
     hass,
+    connection,
     isRemote: shouldUseRemote,
     isLoading: shouldUseRemote && hasRemoteConfig ? isLoading : false,
     connectionError: shouldUseRemote ? connectionError : null,

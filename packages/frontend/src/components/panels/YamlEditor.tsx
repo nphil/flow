@@ -14,6 +14,7 @@ interface YamlEditorProps {
 
 export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorProps) {
   const fromFlowGraph = useFlowStore((s) => s.fromFlowGraph);
+  const setTracePathMap = useFlowStore((s) => s.setTracePathMap);
   const isDark = useDarkMode();
 
   // Keep editor in sync with external YAML (canvas → YAML)
@@ -33,6 +34,7 @@ export function YamlEditor({ yaml, errors, warnings, onYamlChange }: YamlEditorP
         return;
       }
       fromFlowGraph(importResult.graph);
+      setTracePathMap(importResult.nodePathMap ?? null);
     } catch {
       // Ignore, let parent handle errors
     }

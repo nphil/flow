@@ -170,5 +170,20 @@
   },
   "quickAdd": {
     "searchPlaceholder": "Search nodes…"
+  },
+  "trace": {
+    "status": {
+      "ok": "Completed",
+      "active": "Running…",
+      "conditionFalse": "Condition false",
+      "error": "Failed"
+    },
+    "reason": {
+      "conditionTrue": "Condition evaluated to true",
+      "conditionFalse": "Condition evaluated to false"
+    },
+    "visits": "Visited {{count}} times",
+    "remaining": "{{time}} left",
+    "elapsed": "{{time}} elapsed"
   }
 }

@@ -6,6 +6,8 @@ import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { ConditionNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
+import { NodeTraceBadge } from './NodeTraceBadge';
+import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface ConditionNodeProps extends NodeProps {
   data: ConditionNodeData;
@@ -19,6 +21,7 @@ export const ConditionNode = memo(function ConditionNode({
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
+  const traceView = useNodeTraceStatus(id);
   const isActive = activeNodeId === id;
   const stepNumber = getExecutionStepNumber(id);
   const isDisabled = data.enabled === false;
@@ -45,8 +48,11 @@ export const ConditionNode = memo(function ConditionNode({
         selected && 'ring-2 ring-blue-500 ring-offset-2',
         isActive && 'node-active ring-4 ring-green-500',
         isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400'
+        hasErrors && 'border-red-500 ring-2 ring-red-400',
+        !isActive && traceView.ringClass,
+        traceView.dimmed && 'opacity-40'
       )}
+      title={traceView.tooltip || undefined}
     >
       {hasErrors && (
         <div
@@ -61,6 +67,7 @@ export const ConditionNode = memo(function ConditionNode({
           <Ban className="h-3 w-3" />
         </div>
       )}
+      <NodeTraceBadge view={traceView} />
       <Handle
         type="target"
         position={Position.Left}

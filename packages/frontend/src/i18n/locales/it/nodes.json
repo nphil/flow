@@ -143,5 +143,20 @@
   },
   "quickAdd": {
     "searchPlaceholder": "Cerca nodi…"
+  },
+  "trace": {
+    "status": {
+      "ok": "Completato",
+      "active": "In esecuzione…",
+      "conditionFalse": "Condizione falsa",
+      "error": "Fallito"
+    },
+    "reason": {
+      "conditionTrue": "Condizione valutata vera",
+      "conditionFalse": "Condizione valutata falsa"
+    },
+    "visits": "Visitato {{count}} volte",
+    "remaining": "{{time}} rimanenti",
+    "elapsed": "{{time}} trascorsi"
   }
 }

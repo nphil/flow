@@ -6,7 +6,10 @@ import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { WaitNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { formatDuration } from './formatDuration';
+import { durationToMs, formatDuration } from './formatDuration';
+import { NodeTraceBadge } from './NodeTraceBadge';
+import { useNodeTraceStatus } from './useNodeTraceStatus';
+import { useTraceCountdown } from './useTraceCountdown';
 
 interface WaitNodeProps extends NodeProps {
   data: WaitNodeData;
@@ -17,12 +20,19 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
+  const traceView = useNodeTraceStatus(id);
   const isActive = activeNodeId === id;
   const stepNumber = getExecutionStepNumber(id);
   const isDisabled = data.enabled === false;
 
   // Format timeout for display (reuse shared util)
   const timeoutDisplay = formatDuration(data.timeout);
+
+  // Live countdown: count down towards the configured timeout when one is
+  // set, otherwise count up while the wait is pending.
+  const isCounting = traceView.traceState?.status === 'active' && traceView.isRunning;
+  const timeoutTotalMs = durationToMs(data.timeout);
+  const countdown = useTraceCountdown(isCounting, traceView.traceState?.timestamp, timeoutTotalMs);
 
   return (
     <div
@@ -32,8 +42,11 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
         selected && 'ring-2 ring-orange-500 ring-offset-2',
         isActive && 'node-active ring-4 ring-green-500',
         isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400'
+        hasErrors && 'border-red-500 ring-2 ring-red-400',
+        !isActive && traceView.ringClass,
+        traceView.dimmed && 'opacity-40'
       )}
+      title={traceView.tooltip || undefined}
     >
       {hasErrors && (
         <div
@@ -48,6 +61,7 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
           <Ban className="h-3 w-3" />
         </div>
       )}
+      <NodeTraceBadge view={traceView} />
       <Handle
         type="target"
         position={Position.Left}
@@ -81,6 +95,13 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
         {timeoutDisplay && (
           <div className="opacity-75">
             {t('nodes:wait.timeoutLabel')} {timeoutDisplay}
+          </div>
+        )}
+        {countdown && (
+          <div className="font-mono font-semibold text-orange-900 tabular-nums">
+            {timeoutTotalMs != null
+              ? t('nodes:trace.remaining', { time: countdown })
+              : t('nodes:trace.elapsed', { time: countdown })}
           </div>
         )}
       </div>

@@ -106,6 +106,25 @@
   },
   "traceViewer": {
     "saveAutomationFirst": "先保存自动化以查看追踪",
-    "noTracesFound": "未找到自动化追踪"
+    "noTracesFound": "未找到自动化追踪",
+    "liveStart": "实时观察运行",
+    "liveStop": "停止实时观察",
+    "listening": "监听中…",
+    "runInProgress": "正在运行",
+    "summary": "运行摘要：",
+    "result": "结果：",
+    "started": "开始时间：",
+    "execution": {
+      "running": "运行中",
+      "finished": "已完成",
+      "aborted": "已中止",
+      "cancelled": "已取消",
+      "error": "错误",
+      "failed_conditions": "条件未满足",
+      "failed_single": "已在运行",
+      "failed_max_runs": "已达最大运行数",
+      "not_triggered": "未触发",
+      "disallowed_recursion_detected": "递归被阻止"
+    }
   }
 }

@@ -42,27 +42,47 @@ export interface AutomationCatalogItem {
   tags: string[];
 }
 
+/**
+ * Terminal values HA's `script_execution_set()` can record on a stopped run
+ * (see `homeassistant/helpers/trace.py`). `null` while a run is in progress.
+ */
+export type ScriptExecutionState =
+  | 'finished'
+  | 'aborted'
+  | 'cancelled'
+  | 'error'
+  | 'failed_conditions'
+  | 'failed_single'
+  | 'failed_max_runs'
+  | 'not_triggered'
+  | 'disallowed_recursion_detected';
+
 export interface TraceStep {
   path: string;
   timestamp: string;
   changed_variables?: Record<string, unknown>;
-  result?: {
-    result?: boolean;
-    state?: Record<string, unknown>;
-    params?: Record<string, unknown>;
-    delay?: number;
-    done?: boolean;
+  // Shape varies by step type: conditions carry {result: boolean}, choose
+  // carries {choice: number | 'default'}, if carries {choice: 'then'|'else'},
+  // delay carries {delay: number, done: boolean}, a not-triggered trigger
+  // step carries {reason: string, data?: Record<string, unknown>}.
+  result?: Record<string, unknown>;
+  error?: string;
+  template_errors?: string[];
+  child_id?: {
+    domain: string;
+    item_id: string;
+    run_id: string;
   };
 }
 
 export interface AutomationTrace {
-  last_step: string;
+  last_step: string | null;
   run_id: string;
   state: 'running' | 'stopped';
-  script_execution: 'running' | 'finished' | 'cancelled';
+  script_execution: ScriptExecutionState | null;
   timestamp: {
     start: string;
-    finish?: string;
+    finish: string | null;
   };
   domain: string;
   item_id: string;
@@ -74,20 +94,23 @@ export interface AutomationTrace {
     parent_id?: string;
     user_id?: string;
   };
+  error?: string;
 }
 
 export interface TraceListItem {
   run_id: string;
-  last_step: string;
+  last_step: string | null;
   state: 'running' | 'stopped';
-  script_execution: 'running' | 'finished' | 'cancelled';
+  script_execution: ScriptExecutionState | null;
   timestamp: {
     start: string;
-    finish?: string;
+    finish: string | null;
   };
-  trigger: string;
+  trigger?: string | null;
   domain: string;
   item_id: string;
+  not_triggered?: boolean;
+  error?: string;
 }
 
 /**
@@ -825,6 +848,23 @@ export class HomeAssistantAPI {
     } catch (error) {
       console.error('Failed to get automation trace details:', error);
       return null;
+    }
+  }
+
+  /**
+   * Get a map of context id -> run for every stored trace. Used to correlate
+   * an `automation_triggered` event (whose payload has no run_id) with the
+   * trace it produced via the event's `context.id`.
+   */
+  async getTraceContexts(): Promise<
+    Record<string, { run_id: string; domain: string; item_id: string }>
+  > {
+    try {
+      const result = await this.sendMessage({ type: 'trace/contexts' });
+      return (result as Record<string, { run_id: string; domain: string; item_id: string }>) || {};
+    } catch (error) {
+      console.error('Failed to get trace contexts:', error);
+      return {};
     }
   }
 }

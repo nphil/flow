@@ -143,5 +143,20 @@
   },
   "quickAdd": {
     "searchPlaceholder": "搜索节点…"
+  },
+  "trace": {
+    "status": {
+      "ok": "已完成",
+      "active": "运行中…",
+      "conditionFalse": "条件为假",
+      "error": "失败"
+    },
+    "reason": {
+      "conditionTrue": "条件结果为真",
+      "conditionFalse": "条件结果为假"
+    },
+    "visits": "访问 {{count}} 次",
+    "remaining": "剩余 {{time}}",
+    "elapsed": "已用 {{time}}"
   }
 }

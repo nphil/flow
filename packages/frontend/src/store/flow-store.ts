@@ -6,7 +6,9 @@ import type {
   NodeValidationError,
 } from '@cafe/shared';
 import { validateNodeData } from '@cafe/shared';
-import { FlowTranspiler } from '@cafe/transpiler';
+import type { TracePathMap } from '@cafe/transpiler';
+import { FlowTranspiler, resolveTracePath } from '@cafe/transpiler';
+import { dump as yamlDump } from 'js-yaml';
 import {
   addEdge,
   applyEdgeChanges,
@@ -21,7 +23,7 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { shallow } from 'zustand/shallow';
-import type { AutomationTrace } from '@/lib/ha-api';
+import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { generateNodeId, generateUUID } from '@/lib/utils';
 import type { HomeAssistant } from '@/types/hass';
@@ -127,6 +129,24 @@ export type FlowNodeData =
   | SetVariablesNodeData;
 
 /**
+ * Live-trace status for a canvas node, derived from HA trace steps resolved
+ * onto it via the store's tracePathMap.
+ */
+export type NodeTraceStatus = 'ok' | 'active' | 'condition-false' | 'error';
+
+export interface NodeTraceState {
+  status: NodeTraceStatus;
+  /** ISO timestamp of the first trace step that visited this node */
+  timestamp: string;
+  /** Result payload of the most recent trace step that visited this node */
+  result?: Record<string, unknown>;
+  error?: string;
+  visitCount: number;
+  /** The trace path this node was resolved from */
+  path: string;
+}
+
+/**
  * Flow store state
  */
 export interface FlowState {
@@ -166,6 +186,17 @@ export interface FlowState {
   traceData: AutomationTrace | null;
   traceExecutionPath: string[];
   traceTimestamps: Record<string, string>;
+  nodeTraceStates: Record<string, NodeTraceState>;
+  isLiveTrace: boolean;
+  traceRunsVersion: number;
+  /**
+   * Trace path -> canvas node id map for the automation currently on the
+   * canvas. Derived from the same YamlParser run that produced the canvas
+   * nodes (or a re-parse of the YAML generated on save), so its node ids
+   * always match the canvas — trace configs re-parsed on their own would
+   * generate fresh ids that match nothing.
+   */
+  tracePathMap: TracePathMap | null;
 
   // Shared simulation/trace state
   simulationSpeed: number;
@@ -215,6 +246,9 @@ export interface FlowState {
   showTrace: (traceData: AutomationTrace) => void;
   hideTrace: () => void;
   clearTraceExecutionPath: () => void;
+  setLiveTrace: (isLive: boolean) => void;
+  bumpTraceRuns: () => void;
+  setTracePathMap: (map: TracePathMap | null) => void;
 
   // Shared simulation/trace actions
   setSimulationSpeed: (speed: number) => void;
@@ -285,6 +319,43 @@ function findDuplicateIdErrors(nodes: Node<FlowNodeData>[]): Map<string, NodeVal
   return errors;
 }
 
+/**
+ * Computes a trace step's live-trace status in isolation. When a node is
+ * visited more than once (e.g. inside a repeat loop), `showTrace` calls this
+ * again for every visit so the most recently executed step always wins.
+ */
+function getTraceStepStatus(step: TraceStep): NodeTraceStatus {
+  if (step.error || (step.template_errors?.length ?? 0) > 0) {
+    return 'error';
+  }
+  const result = step.result;
+  if (result && typeof result.result === 'boolean' && result.result === false) {
+    return 'condition-false';
+  }
+  if (step.path.startsWith('trigger/') && result && typeof result.reason === 'string') {
+    return 'condition-false';
+  }
+  return 'ok';
+}
+
+/**
+ * Derive the trace path map for a fully assembled automation config by
+ * round-tripping it through the transpiler's parser. The config carries
+ * `_cafe_metadata`, so the parse restores the exact canvas node ids.
+ * Returns null (never throws) when the config can't be parsed.
+ */
+async function deriveTracePathMap(
+  automationConfig: Record<string, unknown>
+): Promise<TracePathMap | null> {
+  try {
+    const transpiler = new FlowTranspiler();
+    const result = await transpiler.fromYaml(yamlDump(automationConfig));
+    return result.success ? (result.nodePathMap ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 const defaultFlowMetadata: FlowMetadata = {
   mode: 'single',
   initial_state: true,
@@ -312,6 +383,10 @@ const initialState = {
   traceData: null,
   traceExecutionPath: [],
   traceTimestamps: {},
+  nodeTraceStates: {},
+  isLiveTrace: false,
+  traceRunsVersion: 0,
+  tracePathMap: null as TracePathMap | null,
   simulationSpeed: 800,
   nodeErrors: new Map<string, NodeValidationError[]>(),
   clipboard: null,
@@ -334,6 +409,7 @@ export type PersistedFlowState = Pick<
   | 'automationId'
   | 'lastSaved'
   | 'originalSnapshot'
+  | 'tracePathMap'
 >;
 
 // Partial state selector for persistence
@@ -348,6 +424,7 @@ const persistSelector = (state: FlowState): PersistedFlowState => ({
   automationId: state.automationId,
   lastSaved: state.lastSaved,
   originalSnapshot: state.originalSnapshot,
+  tracePathMap: state.tracePathMap,
 });
 
 /**
@@ -509,9 +586,7 @@ export const useFlowStore = create<FlowState>()(
           set((s) => ({
             nodes: [
               ...s.nodes.map((n) =>
-                n.id === waitNodeId
-                  ? { ...n, data: { ...n.data, continue_on_timeout: true } }
-                  : n
+                n.id === waitNodeId ? { ...n, data: { ...n.data, continue_on_timeout: true } } : n
               ),
               conditionNode,
             ],
@@ -674,6 +749,9 @@ export const useFlowStore = create<FlowState>()(
               isSaving: false,
               lastSaved: new Date(),
               hasUnsavedChanges: false,
+              // The saved YAML is what future traces will reference; re-derive
+              // the path map from it so it tracks the just-saved structure.
+              tracePathMap: await deriveTracePathMap(automationConfig),
             });
 
             return automationId;
@@ -782,6 +860,7 @@ export const useFlowStore = create<FlowState>()(
               isSaving: false,
               lastSaved: new Date(),
               hasUnsavedChanges: false,
+              tracePathMap: await deriveTracePathMap(automationConfig),
             });
           } catch (error) {
             set({ isSaving: false });
@@ -799,61 +878,40 @@ export const useFlowStore = create<FlowState>()(
         clearExecutionPath: () => set({ executionPath: [] }),
 
         showTrace: (traceData) => {
+          const pathMap = get().tracePathMap;
           const traceExecutionPath: string[] = [];
           const traceTimestamps: Record<string, string> = {};
+          const nodeTraceStates: Record<string, NodeTraceState> = {};
 
-          // Extract execution path and timestamps from trace data
-          if (traceData?.trace) {
-            // Get current flow nodes grouped by type and sorted by position
-            const state = get();
-            const nodesByType: Record<string, Node<FlowNodeData>[]> = {
-              trigger: [],
-              condition: [],
-              action: [],
-              wait: [],
-              delay: [],
+          const sortedSteps = Object.values(traceData.trace)
+            .flat()
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+          for (const step of sortedSteps) {
+            const nodeId = pathMap ? resolveTracePath(pathMap, step.path) : null;
+            if (!nodeId) continue;
+
+            if (!traceExecutionPath.includes(nodeId)) {
+              traceExecutionPath.push(nodeId);
+              traceTimestamps[nodeId] = step.timestamp;
+            }
+
+            const previous = nodeTraceStates[nodeId];
+            nodeTraceStates[nodeId] = {
+              status: getTraceStepStatus(step),
+              timestamp: previous?.timestamp ?? step.timestamp,
+              result: step.result,
+              error: step.error ?? step.template_errors?.[0],
+              visitCount: (previous?.visitCount ?? 0) + 1,
+              path: previous?.path ?? step.path,
             };
+          }
 
-            // Group nodes by type and sort them (could be by y-position or order in array)
-            for (const node of state.nodes) {
-              const nodeType = node.type as keyof typeof nodesByType;
-              if (nodesByType[nodeType]) {
-                nodesByType[nodeType].push(node);
-              }
-            }
-
-            // Sort each group by y-position to match likely execution order
-            for (const type in nodesByType) {
-              nodesByType[type].sort((a, b) => a.position.y - b.position.y);
-            }
-
-            // Sort trace steps by timestamp to get execution order
-            const sortedSteps = Object.entries(traceData.trace)
-              .flatMap(([path, steps]) => {
-                if (Array.isArray(steps)) {
-                  return steps.map((step) => ({ ...step, path }));
-                }
-                return [];
-              })
-              .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-            // Map trace paths to actual node IDs
-            for (const step of sortedSteps) {
-              const pathParts = step.path.split('/');
-              const nodeType = pathParts[0]; // trigger, condition, action, etc.
-              const nodeIndex = parseInt(pathParts[1], 10); // 0, 1, 2, etc.
-
-              // Find the corresponding node in our flow
-              const nodesOfType = nodesByType[nodeType] || [];
-              if (nodesOfType[nodeIndex]) {
-                const nodeId = nodesOfType[nodeIndex].id;
-
-                if (!traceExecutionPath.includes(nodeId)) {
-                  traceExecutionPath.push(nodeId);
-                  traceTimestamps[nodeId] = step.timestamp;
-                }
-              }
-            }
+          const lastStep = sortedSteps[sortedSteps.length - 1];
+          const lastNodeId = lastStep && pathMap ? resolveTracePath(pathMap, lastStep.path) : null;
+          const lastNodeState = lastNodeId ? nodeTraceStates[lastNodeId] : undefined;
+          if (lastNodeId && lastNodeState && traceData.state === 'running') {
+            nodeTraceStates[lastNodeId] = { ...lastNodeState, status: 'active' };
           }
 
           set({
@@ -861,6 +919,7 @@ export const useFlowStore = create<FlowState>()(
             traceData,
             traceExecutionPath,
             traceTimestamps,
+            nodeTraceStates,
             activeNodeId: null,
           });
         },
@@ -870,9 +929,13 @@ export const useFlowStore = create<FlowState>()(
             traceData: null,
             traceExecutionPath: [],
             traceTimestamps: {},
+            nodeTraceStates: {},
             activeNodeId: null,
           }),
         clearTraceExecutionPath: () => set({ traceExecutionPath: [], traceTimestamps: {} }),
+        setLiveTrace: (isLive) => set({ isLiveTrace: isLive }),
+        bumpTraceRuns: () => set((state) => ({ traceRunsVersion: state.traceRunsVersion + 1 })),
+        setTracePathMap: (map) => set({ tracePathMap: map }),
 
         setSimulationSpeed: (speed) => set({ simulationSpeed: speed }),
         getExecutionStepNumber: (nodeId) => {
@@ -1001,6 +1064,9 @@ export const useFlowStore = create<FlowState>()(
             hasUnsavedChanges: false,
             lastSaved: null,
             originalSnapshot,
+            // Any previous automation's path map is stale for this graph;
+            // callers that parsed YAML set the fresh one via setTracePathMap.
+            tracePathMap: null,
             nodeErrors: new Map(),
           });
           // Validate all nodes after loading

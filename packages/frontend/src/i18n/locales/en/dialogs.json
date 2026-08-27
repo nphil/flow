@@ -106,6 +106,25 @@
   },
   "traceViewer": {
     "saveAutomationFirst": "Save the automation first to view traces",
-    "noTracesFound": "No automation traces found"
+    "noTracesFound": "No automation traces found",
+    "liveStart": "Watch live runs",
+    "liveStop": "Stop watching live runs",
+    "listening": "listening…",
+    "runInProgress": "run in progress",
+    "summary": "Run Summary:",
+    "result": "Result:",
+    "started": "Started:",
+    "execution": {
+      "running": "Running",
+      "finished": "Finished",
+      "aborted": "Aborted",
+      "cancelled": "Cancelled",
+      "error": "Error",
+      "failed_conditions": "Condition not met",
+      "failed_single": "Already running",
+      "failed_max_runs": "Max runs reached",
+      "not_triggered": "Not triggered",
+      "disallowed_recursion_detected": "Recursion blocked"
+    }
   }
 }

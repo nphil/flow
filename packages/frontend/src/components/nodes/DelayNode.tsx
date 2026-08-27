@@ -1,26 +1,40 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
 import { AlertCircle, Ban, Clock } from 'lucide-react';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { DelayNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { formatDuration } from './formatDuration';
+import { durationToMs, formatDuration } from './formatDuration';
+import { NodeTraceBadge } from './NodeTraceBadge';
+import { useNodeTraceStatus } from './useNodeTraceStatus';
+import { useTraceCountdown } from './useTraceCountdown';
 
 interface DelayNodeProps extends NodeProps {
   data: DelayNodeData;
 }
 
 export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNodeProps) {
+  const { t } = useTranslation(['nodes']);
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
+  const traceView = useNodeTraceStatus(id);
   const isActive = activeNodeId === id;
   const stepNumber = getExecutionStepNumber(id);
   const isDisabled = data.enabled === false;
 
   // Format delay for display (reuse shared util)
   const delayDisplay = formatDuration(data.delay);
+
+  // Live countdown: prefer the resolved delay from the trace step result
+  // (templates already evaluated by HA), fall back to the configured value.
+  const isCounting = traceView.traceState?.status === 'active' && traceView.isRunning;
+  const traceDelaySeconds = traceView.traceState?.result?.delay;
+  const countdownTotalMs =
+    typeof traceDelaySeconds === 'number' ? traceDelaySeconds * 1000 : durationToMs(data.delay);
+  const countdown = useTraceCountdown(isCounting, traceView.traceState?.timestamp, countdownTotalMs);
 
   return (
     <div
@@ -30,8 +44,11 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
         selected && 'ring-2 ring-purple-500 ring-offset-2',
         isActive && 'node-active ring-4 ring-green-500',
         isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400'
+        hasErrors && 'border-red-500 ring-2 ring-red-400',
+        !isActive && traceView.ringClass,
+        traceView.dimmed && 'opacity-40'
       )}
+      title={traceView.tooltip || undefined}
     >
       {hasErrors && (
         <div
@@ -46,6 +63,7 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
           <Ban className="h-3 w-3" />
         </div>
       )}
+      <NodeTraceBadge view={traceView} />
       <Handle
         type="target"
         position={Position.Left}
@@ -66,6 +84,11 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
 
       <div className="text-purple-700 text-xs">
         <div className="font-mono">{delayDisplay}</div>
+        {countdown && (
+          <div className="font-mono font-semibold text-purple-900 tabular-nums">
+            {t('nodes:trace.remaining', { time: countdown })}
+          </div>
+        )}
       </div>
 
       <Handle

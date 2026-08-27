@@ -106,6 +106,25 @@
   },
   "traceViewer": {
     "saveAutomationFirst": "Salva prima l'automazione per visualizzare le tracce",
-    "noTracesFound": "Nessuna traccia di automazione trovata"
+    "noTracesFound": "Nessuna traccia di automazione trovata",
+    "liveStart": "Osserva le esecuzioni live",
+    "liveStop": "Interrompi l'osservazione live",
+    "listening": "in ascolto…",
+    "runInProgress": "esecuzione in corso",
+    "summary": "Riepilogo Esecuzione:",
+    "result": "Risultato:",
+    "started": "Avviata:",
+    "execution": {
+      "running": "In corso",
+      "finished": "Completata",
+      "aborted": "Interrotta",
+      "cancelled": "Annullata",
+      "error": "Errore",
+      "failed_conditions": "Condizione non soddisfatta",
+      "failed_single": "Già in esecuzione",
+      "failed_max_runs": "Max esecuzioni raggiunto",
+      "not_triggered": "Non attivata",
+      "disallowed_recursion_detected": "Ricorsione bloccata"
+    }
   }
 }

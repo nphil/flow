@@ -70,6 +70,8 @@ export function FlowCanvas() {
     executionPath,
     isShowingTrace,
     traceExecutionPath,
+    nodeTraceStates,
+    traceData,
     canDeleteEdge,
   } = useFlowStore();
 
@@ -206,6 +208,15 @@ export function FlowCanvas() {
     [screenToFlowPosition, addNode]
   );
 
+  const isTraceRunning = traceData?.state === 'running';
+
+  // Node type lookup for handle-aware trace edge lighting
+  const nodeTypeById = useMemo(() => {
+    const byId: Record<string, string | undefined> = {};
+    for (const node of nodes) byId[node.id] = node.type;
+    return byId;
+  }, [nodes]);
+
   // Style edges based on simulation state, trace state, and selected node
   const styledEdges = useMemo(() => {
     return edges.map((edge) => {
@@ -220,16 +231,20 @@ export function FlowCanvas() {
         targetIdx !== -1 &&
         targetIdx === sourceIdx + 1;
 
-      // Check if this edge is part of the trace execution path
-      const traceSourceIdx = traceExecutionPath.indexOf(edge.source);
-      const traceTargetIdx = traceExecutionPath.indexOf(edge.target);
-
-      const isActiveInTrace =
-        isShowingTrace &&
-        traceExecutionPath.length >= 2 &&
-        traceSourceIdx !== -1 &&
-        traceTargetIdx !== -1 &&
-        traceTargetIdx === traceSourceIdx + 1;
+      // Trace lighting is handle-aware: an edge is lit iff both endpoints
+      // were visited and — for condition sources — the edge leaves the
+      // handle matching the recorded condition result. Unknown results
+      // fall back to lighting every visited branch.
+      const sourceTrace = nodeTraceStates[edge.source];
+      const targetTrace = nodeTraceStates[edge.target];
+      let isActiveInTrace = false;
+      if (isShowingTrace && sourceTrace && targetTrace) {
+        const conditionResult = sourceTrace.result?.result;
+        isActiveInTrace =
+          nodeTypeById[edge.source] === 'condition' && typeof conditionResult === 'boolean'
+            ? edge.sourceHandle === (conditionResult ? 'true' : 'false')
+            : true;
+      }
 
       // Check if this edge is connected to the selected node
       const isConnectedToSelected =
@@ -244,9 +259,10 @@ export function FlowCanvas() {
         edgeStyle = { stroke: '#22c55e', strokeWidth: 3 };
         markerEnd = { type: MarkerType.ArrowClosed, color: '#22c55e' };
       } else if (isActiveInTrace) {
-        // Trace visualization - orange for trace path
-        edgeStyle = { stroke: '#f59e0b', strokeWidth: 3 };
-        markerEnd = { type: MarkerType.ArrowClosed, color: '#f59e0b' };
+        // Trace visualization - green for the actually-taken path,
+        // animated only while the run is still in progress
+        edgeStyle = { stroke: '#22c55e', strokeWidth: 3 };
+        markerEnd = { type: MarkerType.ArrowClosed, color: '#22c55e' };
       } else if (isConnectedToSelected) {
         // Blue highlighting for connected edges
         edgeStyle = { stroke: '#3b82f6', strokeWidth: 3 };
@@ -256,7 +272,7 @@ export function FlowCanvas() {
       return {
         ...edge,
         type: 'deletable',
-        animated: isActiveInSimulation || isActiveInTrace,
+        animated: isActiveInSimulation || (isActiveInTrace && isTraceRunning),
         style: edgeStyle,
         markerEnd,
       };
@@ -266,7 +282,9 @@ export function FlowCanvas() {
     isSimulating,
     executionPath,
     isShowingTrace,
-    traceExecutionPath,
+    nodeTraceStates,
+    nodeTypeById,
+    isTraceRunning,
     selectedNodeId,
     isDarkMode,
   ]);

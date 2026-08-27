@@ -143,5 +143,20 @@
   },
   "quickAdd": {
     "searchPlaceholder": "Rechercher des nœuds…"
+  },
+  "trace": {
+    "status": {
+      "ok": "Terminé",
+      "active": "En cours…",
+      "conditionFalse": "Condition fausse",
+      "error": "Échec"
+    },
+    "reason": {
+      "conditionTrue": "Condition évaluée à vrai",
+      "conditionFalse": "Condition évaluée à faux"
+    },
+    "visits": "Visité {{count}} fois",
+    "remaining": "{{time}} restant",
+    "elapsed": "{{time}} écoulé"
   }
 }

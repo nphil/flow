@@ -143,5 +143,20 @@
   },
   "quickAdd": {
     "searchPlaceholder": "Knoten suchen…"
+  },
+  "trace": {
+    "status": {
+      "ok": "Abgeschlossen",
+      "active": "Läuft…",
+      "conditionFalse": "Bedingung falsch",
+      "error": "Fehlgeschlagen"
+    },
+    "reason": {
+      "conditionTrue": "Bedingung ergab wahr",
+      "conditionFalse": "Bedingung ergab falsch"
+    },
+    "visits": "{{count}}-mal besucht",
+    "remaining": "{{time}} verbleibend",
+    "elapsed": "{{time}} vergangen"
   }
 }

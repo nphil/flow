@@ -28,7 +28,7 @@ export function ImportYamlDialog({ isOpen, onClose, onImportSuccess }: ImportYam
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const { fromFlowGraph } = useFlowStore();
+  const { fromFlowGraph, setTracePathMap } = useFlowStore();
   const { fitView } = useReactFlow();
 
   if (!isOpen) return null;
@@ -57,6 +57,7 @@ export function ImportYamlDialog({ isOpen, onClose, onImportSuccess }: ImportYam
       // Import the graph
       if (result.graph) {
         fromFlowGraph(result.graph);
+        setTracePathMap(result.nodePathMap ?? null);
 
         // Center the viewport on the imported nodes
         setTimeout(() => {

@@ -26,6 +26,7 @@ import {
 } from '@cafe/shared';
 import { load as yamlLoad } from 'js-yaml';
 import { generateEdgeId, generateGraphId, generateNodeId } from '../utils/generateIds';
+import { PathRecorder, type TracePathMap } from '../utils/tracePathMap';
 import { applyHeuristicLayout } from './layout';
 
 // Type guards for Home Assistant objects
@@ -259,6 +260,14 @@ function isEventAction(action: unknown): action is Record<string, unknown> {
 }
 
 /**
+ * Matches the synthetic node id the state-machine strategy generates for a
+ * trigger with multiple targets (see `generateParallelEntryBlocks`). These
+ * ids never correspond to a real canvas node — they get expanded into the
+ * real target nodes and removed from the node map before nodes are built.
+ */
+const PARALLEL_TRIGGER_ID_PATTERN = /^__parallel_trigger_\d+$/;
+
+/**
  * Information about a node parsed from a state-machine choose block or inline parallel branch
  */
 interface StateMachineNodeInfo {
@@ -268,6 +277,8 @@ interface StateMachineNodeInfo {
   trueTarget: string | null;
   falseTarget: string | null;
   parallelItems?: unknown[];
+  /** Index within the choose block's `sequence` array where `parallelItems` was found. */
+  parallelItemsIndex?: number;
 }
 
 /**
@@ -279,6 +290,8 @@ export interface ParseResult {
   errors?: string[];
   warnings: string[];
   hadMetadata: boolean;
+  /** Home Assistant trace path <-> canvas node id map. Present when `success` is true. */
+  nodePathMap?: TracePathMap;
 }
 
 /**
@@ -325,6 +338,15 @@ interface ParseOptions {
    * When undefined, nodes inherit their own enabled property.
    */
   inheritedEnabled?: boolean;
+  /** Records the Home Assistant trace path(s) each created node id maps to. */
+  recorder: PathRecorder;
+  /**
+   * Home Assistant trace path prefix for the action list this call is
+   * walking (e.g. `action` for the top-level action list, `action/2/then`
+   * for an if-block's then branch). Each item's own trace path is
+   * `${pathPrefix}/${index}`.
+   */
+  pathPrefix: string;
 }
 
 /**
@@ -371,6 +393,7 @@ export class YamlParser {
    */
   async parse(yamlString: string): Promise<ParseResult> {
     const warnings: string[] = [];
+    const recorder = new PathRecorder();
 
     try {
       // Step 1: Parse YAML string
@@ -426,8 +449,8 @@ export class YamlParser {
 
       // Step 6: Parse nodes and edges from YAML structure
       const { nodes, edges } = isStateMachine
-        ? this.parseStateMachineStructure(content, warnings, metadataNodeIds)
-        : this.parseAutomationStructure(content, warnings, metadataNodeIds);
+        ? this.parseStateMachineStructure(content, warnings, metadataNodeIds, recorder)
+        : this.parseAutomationStructure(content, warnings, metadataNodeIds, recorder);
 
       // Step 7: Apply positions from metadata or generate heuristic layout
       let nodesWithPositions: FlowNode[];
@@ -489,12 +512,14 @@ export class YamlParser {
             if (e.path[0] === 'nodes' && typeof e.path[1] === 'number') {
               const idx = e.path[1];
               const node = graph.nodes[idx];
-              nodeInfo = `Node index ${idx} (id: ${node?.id}, type: ${node?.type
-                })\nData: ${JSON.stringify(node?.data, null, 2)}`;
+              nodeInfo = `Node index ${idx} (id: ${node?.id}, type: ${
+                node?.type
+              })\nData: ${JSON.stringify(node?.data, null, 2)}`;
             }
           }
-          return `Schema path: ${e.path.join('.')}\nMessage: ${e.message}${nodeInfo ? `\n${nodeInfo}` : ''
-            }`;
+          return `Schema path: ${e.path.join('.')}\nMessage: ${e.message}${
+            nodeInfo ? `\n${nodeInfo}` : ''
+          }`;
         });
         // Also log to console for debugging
         console.error('Zod validation error details:', errorDetails);
@@ -523,6 +548,7 @@ export class YamlParser {
         graph: validation.data,
         warnings,
         hadMetadata,
+        nodePathMap: recorder.toTracePathMap(),
       };
     } catch (error) {
       // Enhanced catch block: log YAML and error
@@ -645,7 +671,8 @@ export class YamlParser {
   private parseStateMachineStructure(
     content: Record<string, unknown>,
     warnings: string[],
-    metadataNodeIds: string[]
+    metadataNodeIds: string[],
+    recorder: PathRecorder
   ): { nodes: FlowNode[]; edges: FlowEdge[] } {
     const nodes: FlowNode[] = [];
     const edges: FlowEdge[] = [];
@@ -659,8 +686,14 @@ export class YamlParser {
 
     let entryNodeId: string | null = null;
     const nodeInfoMap = new Map<string, StateMachineNodeInfo>();
+    // Trace path (`action/{dispatchIdx}/repeat/sequence/{chooseIdx}/choose/{b}`)
+    // each choose-block-derived node was parsed from. Kept separately from
+    // nodeInfoMap because `__parallel_trigger_*` entries are deleted below
+    // once they've been expanded, but their base path is still needed to
+    // compose paths for the real nodes inlined inside them.
+    const chooseBlockPaths = new Map<string, string>();
 
-    for (const action of actions) {
+    actions.forEach((action, dispatchIdx) => {
       const actionObj = action as Record<string, unknown>;
 
       // Find entry node from initial variables
@@ -677,32 +710,60 @@ export class YamlParser {
         const sequence = repeat.sequence as unknown[];
 
         if (Array.isArray(sequence)) {
-          for (const seqItem of sequence) {
+          sequence.forEach((seqItem, chooseIdx) => {
             const seqObj = seqItem as Record<string, unknown>;
 
             if (Array.isArray(seqObj.choose)) {
-              for (const chooseBlock of seqObj.choose) {
-                const nodeInfo = this.parseStateMachineChooseBlock(
-                  chooseBlock as Record<string, unknown>
-                );
+              seqObj.choose.forEach((chooseBlock, b) => {
+                const block = chooseBlock as Record<string, unknown>;
+                const nodeInfo = this.parseStateMachineChooseBlock(block);
                 if (nodeInfo) {
                   nodeInfoMap.set(nodeInfo.nodeId, nodeInfo);
+                  const basePath = `action/${dispatchIdx}/repeat/sequence/${chooseIdx}/choose/${b}`;
+                  chooseBlockPaths.set(nodeInfo.nodeId, basePath);
+
+                  // `__parallel_trigger_*` dispatcher branches don't correspond to a
+                  // single canvas node — they get resolved into real nodes below,
+                  // which are recorded against their own deeper paths instead.
+                  if (!PARALLEL_TRIGGER_ID_PATTERN.test(nodeInfo.nodeId)) {
+                    const conditions = block.conditions;
+                    const conditionsCount = Array.isArray(conditions) ? conditions.length : 0;
+                    for (let k = 0; k < conditionsCount; k++) {
+                      recorder.record(nodeInfo.nodeId, `${basePath}/conditions/${k}`);
+                    }
+                    const sequence2 = block.sequence;
+                    const sequenceCount = Array.isArray(sequence2) ? sequence2.length : 0;
+                    for (let j = 0; j < sequenceCount; j++) {
+                      recorder.record(nodeInfo.nodeId, `${basePath}/sequence/${j}`);
+                    }
+                  }
                 }
-              }
+              });
             }
-          }
+          });
         }
       }
-    }
+    });
 
     // Resolve __parallel_trigger_* synthetic entries.
     // The transpiler generates these for triggers with multiple targets.
     // Expand them back into direct trigger→target edges instead of phantom nodes.
     const parallelTriggerTargets = new Map<string, string[]>();
     for (const [nodeId, info] of nodeInfoMap) {
-      if (!/^__parallel_trigger_\d+$/.test(nodeId)) continue;
+      if (!PARALLEL_TRIGGER_ID_PATTERN.test(nodeId)) continue;
 
-      const targetIds = this.parseInlineParallelBranches(info.parallelItems ?? [], nodeInfoMap);
+      const basePath = chooseBlockPaths.get(nodeId);
+      const parallelPrefix =
+        basePath !== undefined && info.parallelItemsIndex !== undefined
+          ? `${basePath}/sequence/${info.parallelItemsIndex}/parallel`
+          : null;
+
+      const targetIds = this.parseInlineParallelBranches(
+        info.parallelItems ?? [],
+        nodeInfoMap,
+        recorder,
+        parallelPrefix
+      );
       if (targetIds.length > 0) {
         parallelTriggerTargets.set(nodeId, targetIds);
       }
@@ -735,7 +796,8 @@ export class YamlParser {
     const triggerNodes = this.parseTriggers(
       triggers as Record<string, unknown>[],
       warnings,
-      getNextNodeId
+      getNextNodeId,
+      recorder
     );
     nodes.push(...triggerNodes);
 
@@ -878,16 +940,19 @@ export class YamlParser {
    */
   private parseInlineParallelBranches(
     parallelItems: unknown[],
-    nodeInfoMap: Map<string, StateMachineNodeInfo>
+    nodeInfoMap: Map<string, StateMachineNodeInfo>,
+    recorder: PathRecorder,
+    pathPrefix: string | null
   ): string[] {
     const targetIds: string[] = [];
     let idCounter = 0;
 
     const generateId = (type: string): string => `inline_${type}_${idCounter++}`;
 
-    for (const item of parallelItems) {
+    parallelItems.forEach((item, branchIndex) => {
       const pItem = item as Record<string, unknown>;
       const alias = pItem.alias as string | undefined;
+      const branchPath = pathPrefix ? `${pathPrefix}/${branchIndex}/sequence` : null;
 
       // New format: { alias: "parallel_branch:<nodeId>", ... }
       const branchMatch = alias?.match(/^parallel_branch:(.+)$/);
@@ -901,12 +966,22 @@ export class YamlParser {
             pItem.sequence as Record<string, unknown>[],
             rootNodeId,
             nodeInfoMap,
-            generateId
+            generateId,
+            recorder,
+            branchPath
           );
         } else {
-          this.parseInlineActionItem(pItem, rootNodeId, nodeInfoMap, generateId);
+          // Single-action branch — HA still traces it as sequence index 0.
+          this.parseInlineActionItem(
+            pItem,
+            rootNodeId,
+            nodeInfoMap,
+            generateId,
+            recorder,
+            branchPath ? `${branchPath}/0` : null
+          );
         }
-        continue;
+        return;
       }
 
       // Legacy format: { action: "system_log.write", data: { message: "Node: <nodeId>" } }
@@ -917,11 +992,13 @@ export class YamlParser {
         if (message) {
           const nodeMatch = message.match(/^Node:\s*(.+)$/);
           if (nodeMatch) {
-            targetIds.push(nodeMatch[1]);
+            const nodeId = nodeMatch[1];
+            targetIds.push(nodeId);
+            if (branchPath) recorder.record(nodeId, `${branchPath}/0`);
           }
         }
       }
-    }
+    });
 
     return targetIds;
   }
@@ -934,14 +1011,17 @@ export class YamlParser {
     actions: Record<string, unknown>[],
     firstNodeId: string,
     nodeInfoMap: Map<string, StateMachineNodeInfo>,
-    generateId: (type: string) => string
+    generateId: (type: string) => string,
+    recorder: PathRecorder,
+    pathPrefix: string | null
   ): void {
     let prevNodeId: string | null = null;
 
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
       const { nodeId: embeddedId } = this.extractCafeNodeId(action.alias as string | undefined);
-      const nodeId = i === 0 ? firstNodeId : (embeddedId ?? generateId(this.inferInlineNodeType(action)));
+      const nodeId =
+        i === 0 ? firstNodeId : (embeddedId ?? generateId(this.inferInlineNodeType(action)));
 
       // Chain previous non-condition node to this one
       if (prevNodeId) {
@@ -951,7 +1031,14 @@ export class YamlParser {
         }
       }
 
-      this.parseInlineActionItem(action, nodeId, nodeInfoMap, generateId);
+      this.parseInlineActionItem(
+        action,
+        nodeId,
+        nodeInfoMap,
+        generateId,
+        recorder,
+        pathPrefix ? `${pathPrefix}/${i}` : null
+      );
       prevNodeId = nodeId;
     }
   }
@@ -964,12 +1051,16 @@ export class YamlParser {
     item: Record<string, unknown>,
     nodeId: string,
     nodeInfoMap: Map<string, StateMachineNodeInfo>,
-    generateId: (type: string) => string
+    generateId: (type: string) => string,
+    recorder: PathRecorder,
+    pathPrefix: string | null
   ): void {
     // Strip parallel_branch: prefix from alias if present
     const rawAlias = item.alias as string | undefined;
     const { cleanAlias: cafeStripped } = this.extractCafeNodeId(rawAlias);
     const alias = cafeStripped?.startsWith('parallel_branch:') ? undefined : cafeStripped;
+
+    if (pathPrefix) recorder.record(nodeId, pathPrefix);
 
     if (item.if && Array.isArray(item.if)) {
       // Condition node (if/then/else)
@@ -978,23 +1069,46 @@ export class YamlParser {
       const data: Record<string, unknown> = { ...condition };
       if (alias) data.alias = alias;
 
+      // The if action's own decision has no dedicated node; it maps to this
+      // condition node, mirroring how a native if-action's `action/{i}` maps
+      // to its own condition node too.
+      if (pathPrefix) recorder.record(nodeId, `${pathPrefix}/if/condition/0`);
+
       let trueTarget: string | null = null;
       let falseTarget: string | null = null;
 
       const thenActions = item.then as Record<string, unknown>[] | undefined;
       if (thenActions && thenActions.length > 0) {
-        const { nodeId: thenEmbeddedId } = this.extractCafeNodeId(thenActions[0].alias as string | undefined);
+        const { nodeId: thenEmbeddedId } = this.extractCafeNodeId(
+          thenActions[0].alias as string | undefined
+        );
         const thenNodeId = thenEmbeddedId ?? generateId(this.inferInlineNodeType(thenActions[0]));
         trueTarget = thenNodeId;
-        this.parseInlineActionList(thenActions, thenNodeId, nodeInfoMap, generateId);
+        this.parseInlineActionList(
+          thenActions,
+          thenNodeId,
+          nodeInfoMap,
+          generateId,
+          recorder,
+          pathPrefix ? `${pathPrefix}/then` : null
+        );
       }
 
       const elseActions = item.else as Record<string, unknown>[] | undefined;
       if (elseActions && elseActions.length > 0) {
-        const { nodeId: elseEmbeddedId } = this.extractCafeNodeId(elseActions[0].alias as string | undefined);
+        const { nodeId: elseEmbeddedId } = this.extractCafeNodeId(
+          elseActions[0].alias as string | undefined
+        );
         const elseNodeId = elseEmbeddedId ?? generateId(this.inferInlineNodeType(elseActions[0]));
         falseTarget = elseNodeId;
-        this.parseInlineActionList(elseActions, elseNodeId, nodeInfoMap, generateId);
+        this.parseInlineActionList(
+          elseActions,
+          elseNodeId,
+          nodeInfoMap,
+          generateId,
+          recorder,
+          pathPrefix ? `${pathPrefix}/else` : null
+        );
       }
 
       nodeInfoMap.set(nodeId, { nodeId, nodeType: 'condition', data, trueTarget, falseTarget });
@@ -1006,23 +1120,42 @@ export class YamlParser {
       if (item.data) data.data = item.data;
       if (alias) data.alias = alias;
 
-      nodeInfoMap.set(nodeId, { nodeId, nodeType: 'action', data, trueTarget: null, falseTarget: null });
+      nodeInfoMap.set(nodeId, {
+        nodeId,
+        nodeType: 'action',
+        data,
+        trueTarget: null,
+        falseTarget: null,
+      });
     } else if (item.delay !== undefined) {
       // Delay node
       const data: Record<string, unknown> = { delay: item.delay };
       if (alias) data.alias = alias;
 
-      nodeInfoMap.set(nodeId, { nodeId, nodeType: 'delay', data, trueTarget: null, falseTarget: null });
+      nodeInfoMap.set(nodeId, {
+        nodeId,
+        nodeType: 'delay',
+        data,
+        trueTarget: null,
+        falseTarget: null,
+      });
     } else if (item.wait_template !== undefined || item.wait_for_trigger !== undefined) {
       // Wait node
       const data: Record<string, unknown> = {};
       if (item.wait_template) data.wait_template = item.wait_template;
       if (item.wait_for_trigger) data.wait_for_trigger = item.wait_for_trigger;
       if (item.timeout) data.timeout = item.timeout;
-      if (item.continue_on_timeout !== undefined) data.continue_on_timeout = item.continue_on_timeout;
+      if (item.continue_on_timeout !== undefined)
+        data.continue_on_timeout = item.continue_on_timeout;
       if (alias) data.alias = alias;
 
-      nodeInfoMap.set(nodeId, { nodeId, nodeType: 'wait', data, trueTarget: null, falseTarget: null });
+      nodeInfoMap.set(nodeId, {
+        nodeId,
+        nodeType: 'wait',
+        data,
+        trueTarget: null,
+        falseTarget: null,
+      });
     }
   }
 
@@ -1083,8 +1216,10 @@ export class YamlParser {
     let trueTarget: string | null = null;
     let falseTarget: string | null = null;
     let parallelItems: unknown[] | undefined;
+    let parallelItemsIndex: number | undefined;
 
-    for (const item of sequence) {
+    for (let seqIdx = 0; seqIdx < sequence.length; seqIdx++) {
+      const item = sequence[seqIdx];
       const seqItem = item as Record<string, unknown>;
 
       // Check for variables action (sets next node / edge)
@@ -1135,6 +1270,7 @@ export class YamlParser {
       // Check for parallel block (synthetic __parallel_trigger_* entries)
       else if (Array.isArray(seqItem.parallel)) {
         parallelItems = seqItem.parallel;
+        parallelItemsIndex = seqIdx;
       }
       // Check for service call action
       else if (seqItem.service || seqItem.action) {
@@ -1146,7 +1282,7 @@ export class YamlParser {
       }
     }
 
-    return { nodeId, nodeType, data, trueTarget, falseTarget, parallelItems };
+    return { nodeId, nodeType, data, trueTarget, falseTarget, parallelItems, parallelItemsIndex };
   }
 
   /**
@@ -1199,7 +1335,8 @@ export class YamlParser {
   private parseAutomationStructure(
     content: Record<string, unknown>,
     warnings: string[],
-    metadataNodeIds: string[]
+    metadataNodeIds: string[],
+    recorder: PathRecorder
   ): { nodes: FlowNode[]; edges: FlowEdge[] } {
     const nodes: FlowNode[] = [];
     const edges: FlowEdge[] = [];
@@ -1252,7 +1389,7 @@ export class YamlParser {
       return { nodes, edges };
     }
     const triggers = Array.isArray(triggerData) ? triggerData : [triggerData];
-    const triggerNodes = this.parseTriggers(triggers, warnings, getNextNodeId);
+    const triggerNodes = this.parseTriggers(triggers, warnings, getNextNodeId, recorder);
     nodes.push(...triggerNodes);
 
     // Build a map from trigger node ID → trigger's `id` field (for trigger-id condition routing)
@@ -1275,7 +1412,7 @@ export class YamlParser {
         : [];
 
     if (conditions.length > 0) {
-      const conditionResults = this.parseConditions(conditions, warnings, getNextNodeId);
+      const conditionResults = this.parseConditions(conditions, warnings, getNextNodeId, recorder);
       nodes.push(...conditionResults.nodes);
       edges.push(...conditionResults.edges);
 
@@ -1327,6 +1464,8 @@ export class YamlParser {
       getNextNodeId,
       conditionNodeIds,
       triggerNodeMap,
+      recorder,
+      pathPrefix: 'action',
     });
     nodes.push(...actionResults.nodes);
     edges.push(...actionResults.edges);
@@ -1340,8 +1479,18 @@ export class YamlParser {
   private parseTriggers(
     triggers: unknown[],
     warnings: string[],
-    getNextNodeId: (type: string) => string
+    getNextNodeId: (type: string) => string,
+    recorder: PathRecorder
   ): FlowNode[] {
+    // Home Assistant trace paths (`trigger/{i}`) are indexed against the
+    // original triggers array, not the object-filtered one below — precompute
+    // the mapping so recorded paths still line up once non-object entries
+    // (which never happen in practice, but are tolerated) are dropped.
+    const originalIndices: number[] = [];
+    triggers.forEach((t, i) => {
+      if (typeof t === 'object' && t !== null) originalIndices.push(i);
+    });
+
     // Process all object-type trigger items — do NOT filter with isHATrigger here,
     // because modern HA may use formats (e.g. dict-keyed or novel trigger types)
     // that don't have 'platform', 'trigger', or 'entity_id' at the top level.
@@ -1349,6 +1498,7 @@ export class YamlParser {
       .filter((t) => typeof t === 'object' && t !== null)
       .map((trigger, index) => {
         const nodeId = getNextNodeId('trigger');
+        const tracePath = `trigger/${originalIndices[index]}`;
         try {
           // Validate and parse trigger using HATriggerSchema
           const result = HATriggerSchema.safeParse(trigger);
@@ -1358,7 +1508,9 @@ export class YamlParser {
             );
             // Return a fallback TRIGGER node (not an action node) so the graph
             // always has at least one trigger — allowing the import to succeed.
-            return this.createFallbackTriggerNode(nodeId, trigger);
+            const fallbackNode = this.createFallbackTriggerNode(nodeId, trigger);
+            recorder.record(fallbackNode.id, tracePath);
+            return fallbackNode;
           }
           // Use platform directly from validated schema
           const node: TriggerNode = {
@@ -1367,10 +1519,13 @@ export class YamlParser {
             position: { x: 0, y: 0 },
             data: result.data,
           };
+          recorder.record(node.id, tracePath);
           return node;
         } catch (error) {
           warnings.push(`Failed to parse trigger ${index}: ${error}`);
-          return this.createFallbackTriggerNode(nodeId, trigger);
+          const fallbackNode = this.createFallbackTriggerNode(nodeId, trigger);
+          recorder.record(fallbackNode.id, tracePath);
+          return fallbackNode;
         }
       });
   }
@@ -1430,14 +1585,23 @@ export class YamlParser {
   private parseConditions(
     conditions: unknown[],
     warnings: string[],
-    getNextNodeId: (type: string) => string
+    getNextNodeId: (type: string) => string,
+    recorder: PathRecorder
   ): { nodes: ConditionNode[]; edges: FlowEdge[]; outputNodeIds: string[] } {
     const nodes: ConditionNode[] = [];
     const edges: FlowEdge[] = [];
     const outputNodeIds: string[] = [];
 
+    // Home Assistant trace paths (`condition/{i}`) are indexed against the
+    // original conditions array, not the isHACondition-filtered one below.
+    const originalIndices: number[] = [];
+    conditions.forEach((c, i) => {
+      if (isHACondition(c)) originalIndices.push(i);
+    });
+
     conditions.filter(isHACondition).forEach((condition, index) => {
       const nodeId = getNextNodeId('condition');
+      const tracePath = `condition/${originalIndices[index]}`;
       try {
         const result = HAConditionSchema.safeParse(condition);
         if (!result.success) {
@@ -1454,6 +1618,7 @@ export class YamlParser {
               value_template: JSON.stringify(condition),
             },
           });
+          recorder.record(nodeId, tracePath);
           return;
         }
 
@@ -1465,6 +1630,7 @@ export class YamlParser {
         };
         nodes.push(node);
         outputNodeIds.push(nodeId);
+        recorder.record(nodeId, tracePath);
       } catch (error) {
         warnings.push(`Failed to parse condition ${index}: ${error}`);
         // Create a minimal valid unknown condition node
@@ -1478,6 +1644,7 @@ export class YamlParser {
             value_template: JSON.stringify(condition),
           },
         });
+        recorder.record(nodeId, tracePath);
       }
     });
     return { nodes, edges, outputNodeIds };
@@ -1497,6 +1664,8 @@ export class YamlParser {
       conditionNodeIds = new Set(),
       triggerNodeMap,
       inheritedEnabled,
+      recorder,
+      pathPrefix,
     } = options;
 
     const nodes: FlowNode[] = [];
@@ -1532,6 +1701,8 @@ export class YamlParser {
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: large dispatch switch, refactoring deferred
     actions.forEach((action, index) => {
+      const actionPath = `${pathPrefix}/${index}`;
+
       if (!action || typeof action !== 'object') {
         // Unknown action type - create unknown node
         warnings.push(`Unknown action type (${JSON.stringify(action)}) at index ${index}`);
@@ -1546,6 +1717,7 @@ export class YamlParser {
             data: action as Record<string, unknown>,
           },
         });
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
         return;
@@ -1585,6 +1757,7 @@ export class YamlParser {
         };
 
         nodes.push(conditionNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         // Track this condition node so subsequent edges use 'true' handle
         localConditionNodeIds.add(nodeId);
@@ -1604,6 +1777,7 @@ export class YamlParser {
           },
         };
         nodes.push(setVariablesNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isDelayAction(action)) {
@@ -1623,6 +1797,7 @@ export class YamlParser {
           },
         };
         nodes.push(delayNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isWaitAction(action)) {
@@ -1686,6 +1861,7 @@ export class YamlParser {
         };
 
         nodes.push(waitNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isChooseAction(action)) {
@@ -1697,6 +1873,8 @@ export class YamlParser {
           conditionNodeIds: localConditionNodeIds,
           falsePathConditionIds,
           inheritedEnabled,
+          recorder,
+          pathPrefix: actionPath,
         });
         nodes.push(...chooseResult.nodes);
         edges.push(...chooseResult.edges);
@@ -1736,6 +1914,8 @@ export class YamlParser {
           falsePathConditionIds,
           triggerNodeMap,
           inheritedEnabled,
+          recorder,
+          pathPrefix: actionPath,
         });
         nodes.push(...ifResult.nodes);
         edges.push(...ifResult.edges);
@@ -1807,6 +1987,7 @@ export class YamlParser {
           },
         };
         nodes.push(actionNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isParallelAction(action)) {
@@ -1818,9 +1999,16 @@ export class YamlParser {
         const parallelStartNodes = [...currentNodeIds];
         // Collect the end nodes from all branches
         const allBranchEndNodes: string[] = [];
+        // HA indexes parallel branches by their position in the `parallel:`
+        // array regardless of shape, so track it alongside the existing loop.
+        let parallelBranchIndex = 0;
 
         // Parse each parallel branch - each starts from the same source
         for (const parallelItem of parallelActions) {
+          // HA wraps every parallel branch in a sequence, even a single action.
+          const branchPathPrefix = `${actionPath}/parallel/${parallelBranchIndex}/sequence`;
+          parallelBranchIndex++;
+
           if (Array.isArray(parallelItem)) {
             // It's a sequence array
             const seqResult = this.parseActions(parallelItem as Record<string, unknown>[], {
@@ -1829,6 +2017,8 @@ export class YamlParser {
               getNextNodeId,
               conditionNodeIds: localConditionNodeIds,
               inheritedEnabled,
+              recorder,
+              pathPrefix: branchPathPrefix,
             });
             if (seqResult.nodes.length > 0) {
               nodes.push(...seqResult.nodes);
@@ -1848,6 +2038,8 @@ export class YamlParser {
                 getNextNodeId,
                 conditionNodeIds: localConditionNodeIds,
                 inheritedEnabled,
+                recorder,
+                pathPrefix: branchPathPrefix,
               });
               if (seqResult.nodes.length > 0) {
                 nodes.push(...seqResult.nodes);
@@ -1864,6 +2056,8 @@ export class YamlParser {
                 getNextNodeId,
                 conditionNodeIds: localConditionNodeIds,
                 inheritedEnabled,
+                recorder,
+                pathPrefix: branchPathPrefix,
               });
               if (singleResult.nodes.length > 0) {
                 nodes.push(...singleResult.nodes);
@@ -1898,6 +2092,7 @@ export class YamlParser {
           },
         };
         nodes.push(actionNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isRepeatAction(action)) {
@@ -1942,7 +2137,11 @@ export class YamlParser {
             conditionNodes.push(condNode);
             nodes.push(condNode);
             localConditionNodeIds.add(condId);
+            recorder.record(condId, `${actionPath}/repeat/while/${ci}`);
           }
+          // The repeat action's own step has no dedicated node; it maps to
+          // the loop's entry point — for `while`, the test runs first.
+          recorder.record(conditionNodes[0].id, actionPath);
 
           // Connect previous nodes → first condition
           createEdgesFromCurrent(conditionNodes[0].id);
@@ -1961,6 +2160,8 @@ export class YamlParser {
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
             inheritedEnabled: blockEnabled,
+            recorder,
+            pathPrefix: `${actionPath}/repeat/sequence`,
           });
           nodes.push(...bodyResult.nodes);
           edges.push(...bodyResult.edges);
@@ -2013,6 +2214,8 @@ export class YamlParser {
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
             inheritedEnabled: blockEnabled,
+            recorder,
+            pathPrefix: `${actionPath}/repeat/sequence`,
           });
           nodes.push(...bodyResult.nodes);
           edges.push(...bodyResult.edges);
@@ -2068,7 +2271,13 @@ export class YamlParser {
             conditionNodes.push(condNode);
             nodes.push(condNode);
             localConditionNodeIds.add(condId);
+            recorder.record(condId, `${actionPath}/repeat/until/${ci}`);
           }
+          // The repeat action's own step has no dedicated node; it maps to
+          // the loop's entry point — for `until`, the body runs before the
+          // first test, so the entry is the first body node (or the first
+          // condition when the body is empty).
+          recorder.record(firstBodyNodeId ?? conditionNodes[0].id, actionPath);
 
           // Connect last body node → first condition
           if (lastBodyNodeId) {
@@ -2117,6 +2326,9 @@ export class YamlParser {
             },
           };
           nodes.push(initNode);
+          // The repeat action's own step has no dedicated node; for `count`,
+          // the counter-init node runs first, so it's the loop's entry point.
+          recorder.record(counterId, actionPath);
           createEdgesFromCurrent(counterId);
 
           // Parse body sequence
@@ -2126,6 +2338,8 @@ export class YamlParser {
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
             inheritedEnabled: blockEnabled,
+            recorder,
+            pathPrefix: `${actionPath}/repeat/sequence`,
           });
           nodes.push(...bodyResult.nodes);
           edges.push(...bodyResult.edges);
@@ -2206,6 +2420,7 @@ export class YamlParser {
             },
           };
           nodes.push(actionNode);
+          recorder.record(nodeId, actionPath);
           createEdgesFromCurrent(nodeId);
           currentNodeIds = [nodeId];
         }
@@ -2243,10 +2458,10 @@ export class YamlParser {
               target:
                 typeof target === 'object' && target !== null
                   ? (target as {
-                    entity_id?: string | string[];
-                    area_id?: string | string[];
-                    device_id?: string | string[];
-                  })
+                      entity_id?: string | string[];
+                      area_id?: string | string[];
+                      device_id?: string | string[];
+                    })
                   : undefined,
               data:
                 typeof data === 'object' && data !== null
@@ -2264,11 +2479,13 @@ export class YamlParser {
             },
           };
           nodes.push(actionNode);
+          recorder.record(nodeId, actionPath);
           createEdgesFromCurrent(nodeId);
           currentNodeIds = [nodeId];
         } catch (error) {
           warnings.push(`Failed to parse action ${index}: ${error}`);
           nodes.push(this.createUnknownNode(nodeId, action));
+          recorder.record(nodeId, actionPath);
         }
       } else if (isSetConversationResponseAction(action)) {
         // set_conversation_response action - convert to service call format
@@ -2289,6 +2506,7 @@ export class YamlParser {
           },
         };
         nodes.push(actionNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isStopAction(action)) {
@@ -2307,6 +2525,7 @@ export class YamlParser {
           },
         };
         nodes.push(actionNode);
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else {
@@ -2323,6 +2542,7 @@ export class YamlParser {
             data: action as Record<string, unknown>,
           },
         });
+        recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       }
@@ -2357,6 +2577,8 @@ export class YamlParser {
       conditionNodeIds = new Set(),
       falsePathConditionIds = new Set(),
       inheritedEnabled,
+      recorder,
+      pathPrefix,
     } = options;
 
     const nodes: FlowNode[] = [];
@@ -2364,6 +2586,10 @@ export class YamlParser {
     const outputNodeIds: string[] = [];
     const falsePathOutputIds: string[] = [];
     const localConditionIds = new Set(conditionNodeIds);
+    // The choose action's own trace step has no dedicated canvas node; it
+    // maps to whichever node is this block's entry point (the first
+    // condition node created, mirroring HA evaluating branches in order).
+    let entryNodeId: string | null = null;
 
     // Compute effective enabled state: if parent is disabled or this block is disabled
     const blockEnabled = chooseAction.enabled;
@@ -2380,16 +2606,25 @@ export class YamlParser {
     // Filter to only valid choices with non-empty conditions.
     // Note: an empty array (`conditions: []`) is truthy in JS, so it must be
     // rejected explicitly by checking the array length.
-    const validChoices = choices.filter((choice) => {
+    const isValidChoice = (choice: unknown): boolean => {
       if (typeof choice !== 'object' || choice === null) return false;
       const conds = (choice as Record<string, unknown>).conditions;
       return Array.isArray(conds) ? conds.length > 0 : Boolean(conds);
+    };
+    const validChoices = choices.filter(isValidChoice);
+    // Home Assistant trace paths (`choose/{b}`) are indexed against the
+    // original choose array, not the filtered one above.
+    const originalChoiceIndices: number[] = [];
+    choices.forEach((choice, i) => {
+      if (isValidChoice(choice)) originalChoiceIndices.push(i);
     });
 
     // Track what nodes should connect to the next condition (false path of current)
     let currentPreviousIds = [...previousNodeIds];
 
     validChoices.forEach((choice, choiceIndex) => {
+      const branchPath = `${pathPrefix}/choose/${originalChoiceIndices[choiceIndex]}`;
+
       // choice.conditions can be an array of conditions or a single condition object
       const conditionsArray = Array.isArray(choice.conditions)
         ? choice.conditions
@@ -2465,6 +2700,8 @@ export class YamlParser {
         choiceConditionNodes.push(conditionNode);
         nodes.push(conditionNode);
         localConditionIds.add(conditionId);
+        recorder.record(conditionId, `${branchPath}/conditions/${i}`);
+        if (entryNodeId === null) entryNodeId = conditionId;
       }
 
       // Guard: skip this choice entirely if no condition nodes were created
@@ -2509,6 +2746,8 @@ export class YamlParser {
           getNextNodeId,
           conditionNodeIds: localConditionIds,
           inheritedEnabled: effectiveEnabled,
+          recorder,
+          pathPrefix: `${branchPath}/sequence`,
         });
         nodes.push(...sequenceResult.nodes);
         edges.push(...sequenceResult.edges);
@@ -2550,6 +2789,8 @@ export class YamlParser {
         getNextNodeId,
         conditionNodeIds: localConditionIds,
         inheritedEnabled: effectiveEnabled,
+        recorder,
+        pathPrefix: `${pathPrefix}/choose/default`,
       });
       nodes.push(...defaultResult.nodes);
       edges.push(...defaultResult.edges);
@@ -2568,6 +2809,11 @@ export class YamlParser {
         const lastNodeId = defaultResult.nodes[defaultResult.nodes.length - 1].id;
         outputNodeIds.push(lastNodeId);
       }
+      // No branches ever ran (e.g. every choice was invalid) - the default
+      // sequence's first node is this block's entry point instead.
+      if (entryNodeId === null && defaultResult.nodes.length > 0) {
+        entryNodeId = defaultResult.nodes[0].id;
+      }
     } else if (validChoices.length > 0) {
       // No default - the last condition's false path is an implicit output
       // (the automation continues after the choose if no condition matches)
@@ -2575,6 +2821,10 @@ export class YamlParser {
       outputNodeIds.push(lastConditionId);
       // Track that this output should use FALSE path, not TRUE
       falsePathOutputIds.push(lastConditionId);
+    }
+
+    if (entryNodeId !== null) {
+      recorder.record(entryNodeId, pathPrefix);
     }
 
     return { nodes, edges, outputNodeIds, falsePathOutputIds };
@@ -2607,6 +2857,8 @@ export class YamlParser {
       falsePathConditionIds: incomingFalsePathIds = new Set(),
       triggerNodeMap,
       inheritedEnabled,
+      recorder,
+      pathPrefix,
     } = options;
 
     const nodes: FlowNode[] = [];
@@ -2694,7 +2946,11 @@ export class YamlParser {
       conditionNodes.push(conditionNode);
       nodes.push(conditionNode);
       localConditionIds.add(conditionId);
+      recorder.record(conditionId, `${pathPrefix}/if/condition/${i}`);
     }
+    // The if action's own trace step has no dedicated node; it maps to the
+    // primary (first) condition node, mirroring HA's own `action/{i}` step.
+    recorder.record(conditionNodes[0].id, pathPrefix);
 
     // Connect from previous nodes to the first condition.
     // Special case: if this is a single trigger-id condition (no else), only connect
@@ -2752,6 +3008,8 @@ export class YamlParser {
         getNextNodeId,
         conditionNodeIds: localConditionIds,
         inheritedEnabled: effectiveEnabled,
+        recorder,
+        pathPrefix: `${pathPrefix}/then`,
       });
       nodes.push(...thenResult.nodes);
       edges.push(...thenResult.edges);
@@ -2783,6 +3041,8 @@ export class YamlParser {
         getNextNodeId,
         conditionNodeIds: new Set(), // Don't use localConditionIds for else - we handle the edge manually
         inheritedEnabled: effectiveEnabled,
+        recorder,
+        pathPrefix: `${pathPrefix}/else`,
       });
       nodes.push(...elseResult.nodes);
 
@@ -2831,10 +3091,10 @@ export class YamlParser {
     const unconsumedPreviousIds =
       triggerConditionIds !== null && triggerNodeMap
         ? previousNodeIds.filter((id) => {
-          const triggerId = triggerNodeMap.get(id);
-          // Keep: trigger nodes whose id is not in this condition's id list, OR non-trigger nodes
-          return triggerId === undefined || !triggerConditionIds.includes(triggerId);
-        })
+            const triggerId = triggerNodeMap.get(id);
+            // Keep: trigger nodes whose id is not in this condition's id list, OR non-trigger nodes
+            return triggerId === undefined || !triggerConditionIds.includes(triggerId);
+          })
         : [];
 
     return { nodes, edges, outputNodeIds, falsePathOutputIds, unconsumedPreviousIds };

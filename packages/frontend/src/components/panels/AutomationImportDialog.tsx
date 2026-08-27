@@ -50,7 +50,8 @@ export function AutomationImportDialog({ isOpen, onClose }: AutomationImportDial
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const { hass, config: hassConfig, entities } = useHass();
-  const { setFlowName, setAutomationId, reset, fromFlowGraph, hasRealChanges } = useFlowStore();
+  const { setFlowName, setAutomationId, setTracePathMap, reset, fromFlowGraph, hasRealChanges } =
+    useFlowStore();
   const { fitView } = useReactFlow();
 
   const { catalogByArea, sortedCatalogItems } = useAutomationCatalog({
@@ -184,6 +185,7 @@ export function AutomationImportDialog({ isOpen, onClose }: AutomationImportDial
         }
 
         fromFlowGraph(result.graph);
+        setTracePathMap(result.nodePathMap ?? null);
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 300 });
         }, 50);

@@ -106,6 +106,25 @@
   },
   "traceViewer": {
     "saveAutomationFirst": "Speichern Sie zuerst die Automatisierung, um Traces anzuzeigen",
-    "noTracesFound": "Keine Automatisierungs-Traces gefunden"
+    "noTracesFound": "Keine Automatisierungs-Traces gefunden",
+    "liveStart": "Live-Läufe beobachten",
+    "liveStop": "Live-Beobachtung beenden",
+    "listening": "wartet…",
+    "runInProgress": "Lauf aktiv",
+    "summary": "Laufübersicht:",
+    "result": "Ergebnis:",
+    "started": "Gestartet:",
+    "execution": {
+      "running": "Läuft",
+      "finished": "Abgeschlossen",
+      "aborted": "Vorzeitig beendet",
+      "cancelled": "Abgebrochen",
+      "error": "Fehler",
+      "failed_conditions": "Bedingung nicht erfüllt",
+      "failed_single": "Läuft bereits",
+      "failed_max_runs": "Max. Läufe erreicht",
+      "not_triggered": "Nicht ausgelöst",
+      "disallowed_recursion_detected": "Rekursion blockiert"
+    }
   }
 }

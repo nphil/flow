@@ -167,6 +167,24 @@
   }
 }
 
+/* Live-trace active node: reuse the pulse plus a soft expanding glow.
+   (Separate from .node-active so the yellow ring utilities aren't
+   overridden by its green @apply'd ring color.) */
+.node-trace-active {
+  animation:
+    pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+    trace-ring 1.2s ease-out infinite;
+}
+
+@keyframes trace-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+  }
+}
+
 /* Save button animation for unsaved changes */
 @keyframes save-pulse {
   0%, 100% {
