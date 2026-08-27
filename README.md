@@ -35,7 +35,7 @@ For years, Home Assistant users had to choose: the **stability** of native YAML 
 - **Native YAML:** No side files, no external databases, and no proprietary formats. Everything is stored in HASS.
 - **Zero Overhead:** No secondary engine or extra Docker containers. Once saved, the logic runs in the HA Core with zero extra resource consumption.
 - **Optimized YAML Generation:** C.A.F.E. produces standard, linear sequences for simple flows and automatically utilizes a robust **State-Machine** pattern for complex logic like loops.
-- **Trace-Integrated:** Debug your visual flows using the official Home Assistant **Trace View**. C.A.F.E. maps execution paths back to your canvas.
+- **Live Flow Debugging:** Watch automations execute **on the canvas, as they run**. Nodes light up with per-node status, conditions show why a branch was skipped, and loops show their visit count — plus full integration with the official Home Assistant **Trace View**.
 
 ![side by side image of CAFE editor and Home Assistant trace view](./docs/images/side-by-side.png)
 
@@ -65,6 +65,7 @@ C.A.F.E. is architected with strict engineering principles to ensure your home r
 - **Set Variables Node:** Create and update flow-scoped variables dynamically within your automation logic.
 - **Entity Intelligence:** Full autocomplete and state-awareness via the native HASS WebSocket API.
 - **Visual Import:** Load any native automation and see it mapped instantly to nodes.
+- **Live Trace View:** A Node-RED-style live debugger built into the editor. Toggle **Live** in the Debug panel and every run paints itself onto your flow: executed nodes badge green, false conditions badge orange with the reason, errors badge red, unvisited nodes dim out, and delay/wait nodes count down while they hold. A run picker lets you replay any recent execution.
 
 ---
 
@@ -76,7 +77,7 @@ C.A.F.E. is architected with strict engineering principles to ensure your home r
 2. **Add Custom Repository**:
    - Go to **HACS** → **Integrations**
    - Click the **⋮** menu → **Custom repositories**
-   - Add: `https://github.com/FezVrasta/cafe-hass` as an **Integration**.
+   - Add: `https://github.com/nphil/haflow` as an **Integration**.
 3. **Install & Restart**: Find **C.A.F.E.** in HACS, download it, and restart Home Assistant.
 4. **Enable**: Go to **Settings** → **Devices & Services** → **Add Integration** → Search for **C.A.F.E.**
 
@@ -88,6 +89,12 @@ C.A.F.E. is architected with strict engineering principles to ensure your home r
 
 When you call a script and set a `response_variable` (e.g., `weather_data`), those values become available to all subsequent nodes in the flow. You can access them using standard Home Assistant Jinja syntax in any text field:
 `The temperature is {{ weather_data.temp }} degrees.`
+
+### How do I watch an automation run live?
+
+Open the automation in C.A.F.E., switch the right-hand panel to the **Debug** tab, and click the **Live** (radio tower) button in the *Automation Trace* section. C.A.F.E. subscribes to Home Assistant's trigger events and polls the run's trace, so the canvas updates while the automation is still executing — including long `delay` and `wait_for_trigger` steps, which show a live countdown.
+
+Each node badges its outcome: green (executed), orange (condition was false — hover for the reason), red (error), and a spinner while the step is in flight. Nodes the run never reached are dimmed, so a glance tells you which branch was taken. Loop bodies show `×N` for the number of visits. The **Select Trace Run** picker replays any of the recent runs Home Assistant retains.
 
 ### Does C.A.F.E. slow down my Home Assistant instance?
 
