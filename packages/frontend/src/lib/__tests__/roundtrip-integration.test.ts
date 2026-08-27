@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { FlowGraph } from '@cafe/shared';
-import { FlowTranspiler, transpiler } from '@cafe/transpiler';
+import type { FlowGraph } from '@flow/shared';
+import { FlowTranspiler, transpiler } from '@flow/transpiler';
 import * as yaml from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 import { useFlowStore } from '@/store/flow-store';
@@ -200,7 +200,7 @@ describe('Roundtrip Import/Export Tests', () => {
         expect(finalConfig).toBeDefined();
         expect(finalConfig.alias).toBe(originalConfig.alias);
 
-        // Metadata validation (CAFE variables should be present)
+        // Metadata validation (_cafe_metadata variables should be present)
         const variables = finalConfig.variables as
           | Record<string, Record<string, unknown>>
           | undefined;

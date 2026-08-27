@@ -65,7 +65,7 @@
     "warnings": "Avvisi",
     "successLoading": "Importato con successo! Caricamento flow...",
     "tipLabel": "Suggerimento:",
-    "tipText": "Se l'automazione è stata creata con C.A.F.E., le posizioni dei nodi saranno preservate. Altrimenti, i nodi saranno disposti automaticamente in un layout leggibile.",
+    "tipText": "Se l'automazione è stata creata con Flow, le posizioni dei nodi saranno preservate. Altrimenti, i nodi saranno disposti automaticamente in un layout leggibile.",
     "importing": "Importazione...",
     "import": "Importa",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "Connesso!",
     "disconnect": "Disconnetti",
     "corsNote": "Nota CORS",
-    "corsDescription": "Per connetterti da un browser, potrebbe essere necessario aggiungere gli header CORS alla tua configurazione HA. Se ti connetti da https://fezvrasta.github.io/hass-cafe, la tua istanza HA deve essere sotto HTTPS.",
+    "corsDescription": "Per connetterti da un browser, potrebbe essere necessario aggiungere gli header CORS alla tua configurazione HA. Se ti connetti da https://nphil.github.io/haflow, la tua istanza HA deve essere sotto HTTPS.",
     "tokenGuideLink": "Come creare un Token di Accesso a Lunga Durata",
     "apiRunning": "API in esecuzione.",
     "errors": {

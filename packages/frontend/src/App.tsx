@@ -51,9 +51,10 @@ import { ResizablePanel } from '@/components/ui/resizable-panel';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { version } from '../../../custom_components/cafe/manifest.json';
+import { version } from '../../../custom_components/flow/manifest.json';
 import { useHass } from './contexts/HassContext';
 import { useDarkMode } from './hooks/useDarkMode';
+import { useFlowTheme } from './hooks/useFlowTheme';
 import { useLanguage } from './hooks/useLanguage';
 import { useFlowStore } from './store/flow-store';
 
@@ -64,7 +65,7 @@ function App() {
 
   // Sidebar toggle button handler
   const handleSidebarToggle = () => {
-    window.parent.postMessage({ type: 'CAFE_TOGGLE_SIDEBAR' }, '*');
+    window.parent.postMessage({ type: 'FLOW_TOGGLE_SIDEBAR' }, '*');
   };
 
   // Navigate back to Home Assistant (only in panel mode, i.e. not remote)
@@ -105,6 +106,9 @@ function App() {
   });
   const forceSettingsOpen = actualIsRemote && (config.url === '' || config.token === '');
   const isDark = useDarkMode();
+  // Applies the Flow design-token theme (data-theme on <html>) independently of the
+  // shadcn `.dark` class above, which Wave 2 migrates onto these same tokens.
+  useFlowTheme();
 
   // Sync language with Home Assistant
   useLanguage();
@@ -247,7 +251,6 @@ function App() {
                   className="whitespace-nowrap font-bold text-foreground text-lg"
                   title={t('titles.appFullName')}
                 >
-                  {'☕ '}
                   {t('titles.appName')}
                 </h1>
               )}

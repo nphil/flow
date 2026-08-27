@@ -1,4 +1,4 @@
-import { transpiler } from '@cafe/transpiler';
+import { transpiler } from '@flow/transpiler';
 import { useReactFlow } from '@xyflow/react';
 import { AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { useState } from 'react';

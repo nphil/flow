@@ -86,8 +86,8 @@
     "backspaceDeleteKey": "Rücktaste/Entf-Taste"
   },
   "titles": {
-    "appName": "C.A.F.E.",
-    "appFullName": "Complex Automation Flow Editor",
+    "appName": "Flow",
+    "appFullName": "Flow",
     "settings": "Einstellungen",
     "updateAutomation": "Automatisierung in Home Assistant aktualisieren",
     "saveAutomation": "Automatisierung in Home Assistant speichern",

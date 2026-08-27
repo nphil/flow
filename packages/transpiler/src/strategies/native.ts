@@ -7,8 +7,8 @@ import type {
   SetVariablesNode,
   TriggerNode,
   WaitNode,
-} from '@cafe/shared';
-import { isDeviceAction } from '@cafe/shared';
+} from '@flow/shared';
+import { isDeviceAction } from '@flow/shared';
 import type { TopologyAnalysis } from '../analyzer/topology';
 import { findBackEdges } from '../analyzer/topology';
 import { BaseStrategy, type HAYamlOutput } from './base';

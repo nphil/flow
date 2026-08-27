@@ -65,7 +65,7 @@
     "warnings": "Avertissements",
     "successLoading": "Importé avec succès ! Chargement du flux...",
     "tipLabel": "Conseil :",
-    "tipText": "Si votre automatisation a été créée avec C.A.F.E., les positions des nœuds seront préservées. Sinon, les nœuds seront automatiquement arrangés dans une disposition lisible.",
+    "tipText": "Si votre automatisation a été créée avec Flow, les positions des nœuds seront préservées. Sinon, les nœuds seront automatiquement arrangés dans une disposition lisible.",
     "importing": "Importation...",
     "import": "Importer",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "Connecté !",
     "disconnect": "Déconnecter",
     "corsNote": "Note CORS",
-    "corsDescription": "Pour vous connecter depuis un navigateur, vous devrez peut-être ajouter des en-têtes CORS à votre configuration HA. Si vous vous connectez depuis https://fezvrasta.github.io/hass-cafe, votre instance HA doit être sous HTTPS.",
+    "corsDescription": "Pour vous connecter depuis un navigateur, vous devrez peut-être ajouter des en-têtes CORS à votre configuration HA. Si vous vous connectez depuis https://nphil.github.io/haflow, votre instance HA doit être sous HTTPS.",
     "tokenGuideLink": "Comment créer un jeton d'accès longue durée",
     "apiRunning": "API en cours d'exécution.",
     "errors": {

@@ -8,7 +8,7 @@
 // several same-type nodes spread across parallel branches, and the node
 // array order doesn't match the branch emission order, positions land on
 // the wrong node after a save/reload round trip.
-import { type FlowGraph, isActionNode, isConditionNode } from '@cafe/shared';
+import { type FlowGraph, isActionNode, isConditionNode } from '@flow/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { FlowTranspiler } from '../FlowTranspiler';
 

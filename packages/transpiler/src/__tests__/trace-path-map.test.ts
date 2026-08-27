@@ -1,11 +1,11 @@
-import type { FlowNode } from '@cafe/shared';
+import type { FlowNode } from '@flow/shared';
 import {
   isActionNode,
   isConditionNode,
   isDelayNode,
   isSetVariablesNode,
   isTriggerNode,
-} from '@cafe/shared';
+} from '@flow/shared';
 import { describe, expect, it } from 'vitest';
 import { YamlParser } from '../parser/YamlParser';
 import { resolveTracePath } from '../utils/tracePathMap';

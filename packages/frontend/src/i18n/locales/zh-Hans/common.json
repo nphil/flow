@@ -86,8 +86,8 @@
     "backspaceDeleteKey": "退格键/删除键"
   },
   "titles": {
-    "appName": "C.A.F.E.",
-    "appFullName": "复杂自动化流程编辑器",
+    "appName": "Flow",
+    "appFullName": "Flow",
     "settings": "设置",
     "updateAutomation": "在Home Assistant中更新自动化",
     "saveAutomation": "将自动化保存到Home Assistant",

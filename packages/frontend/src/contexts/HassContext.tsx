@@ -57,7 +57,7 @@ export interface HassConfig {
   token: string;
 }
 
-const STORAGE_KEY = 'cafe_hass_config';
+const STORAGE_KEY = 'flow_hass_config';
 
 /**
  * Load config from localStorage
@@ -163,7 +163,7 @@ export const HassProvider: FC<
         });
 
         connection.addEventListener('reconnect-error', (err: unknown) => {
-          console.error('C.A.F.E.: WebSocket reconnection failed:', err);
+          console.error('Flow: WebSocket reconnection failed:', err);
           setConnectionError('Reconnection failed');
         });
 
@@ -221,7 +221,7 @@ export const HassProvider: FC<
             }
             setEntityRegistry(entityMap);
           } catch (error) {
-            console.error('C.A.F.E.: Failed to fetch registries:', error);
+            console.error('Flow: Failed to fetch registries:', error);
           }
         };
         fetchRegistries();
@@ -234,7 +234,7 @@ export const HassProvider: FC<
           setWsConnection(null);
         };
       } catch (error) {
-        console.error('C.A.F.E.: Failed to establish WebSocket connection:', error);
+        console.error('Flow: Failed to establish WebSocket connection:', error);
         const errorMessage = error instanceof Error ? error.message : 'Connection failed';
         setConnectionError(errorMessage);
         setIsLoading(false);
@@ -287,7 +287,7 @@ export const HassProvider: FC<
         }
         setEntityRegistry(entityMap);
       } catch (error) {
-        console.error('C.A.F.E.: Failed to fetch registries from externalHass:', error);
+        console.error('Flow: Failed to fetch registries from externalHass:', error);
       }
     };
 

@@ -1,4 +1,4 @@
-import type { NodeValidationError } from '@cafe/shared';
+import type { NodeValidationError } from '@flow/shared';
 import { useMemo } from 'react';
 import { useFlowStore } from '@/store/flow-store';
 

@@ -6,7 +6,7 @@
 // `addWaitTimeoutBranch` store action builds. No dedicated transpiler/parser
 // support is needed for this: it's an ordinary Wait -> Condition chain using
 // existing choose/if machinery, verified end to end here.
-import { type FlowGraph, isActionNode } from '@cafe/shared';
+import { type FlowGraph, isActionNode } from '@flow/shared';
 import { load as yamlLoad } from 'js-yaml';
 import { v4 as uuidv4 } from 'uuid';
 import { FlowTranspiler } from '../FlowTranspiler';

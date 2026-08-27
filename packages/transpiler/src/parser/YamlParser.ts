@@ -13,7 +13,7 @@ import type {
   SetVariablesNode,
   TriggerNode,
   WaitNode,
-} from '@cafe/shared';
+} from '@flow/shared';
 import {
   CafeMetadataSchema,
   FlowGraphMetadataSchema,
@@ -23,7 +23,7 @@ import {
   isDeviceAction,
   isHACondition,
   validateGraphStructure,
-} from '@cafe/shared';
+} from '@flow/shared';
 import { load as yamlLoad } from 'js-yaml';
 import { generateEdgeId, generateGraphId, generateNodeId } from '../utils/generateIds';
 import { PathRecorder, type TracePathMap } from '../utils/tracePathMap';

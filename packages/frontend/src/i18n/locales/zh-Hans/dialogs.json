@@ -65,7 +65,7 @@
     "warnings": "警告",
     "successLoading": "导入成功！正在加载流程...",
     "tipLabel": "提示：",
-    "tipText": "如果您的自动化是使用C.A.F.E.创建的，节点位置将被保留。否则，节点将自动排列为可读布局。",
+    "tipText": "如果您的自动化是使用Flow创建的，节点位置将被保留。否则，节点将自动排列为可读布局。",
     "importing": "正在导入...",
     "import": "导入",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "已连接！",
     "disconnect": "断开连接",
     "corsNote": "CORS说明",
-    "corsDescription": "要从浏览器连接，您可能需要在HA配置中添加CORS头。如果您从 https://fezvrasta.github.io/hass-cafe 连接，您的HA实例必须使用HTTPS。",
+    "corsDescription": "要从浏览器连接，您可能需要在HA配置中添加CORS头。如果您从 https://nphil.github.io/haflow 连接，您的HA实例必须使用HTTPS。",
     "tokenGuideLink": "如何创建长期访问令牌",
     "apiRunning": "API正在运行。",
     "errors": {

@@ -4,10 +4,10 @@ import type {
   FlowMetadata,
   FlowNode,
   NodeValidationError,
-} from '@cafe/shared';
-import { validateNodeData } from '@cafe/shared';
-import type { TracePathMap } from '@cafe/transpiler';
-import { FlowTranspiler, resolveTracePath } from '@cafe/transpiler';
+} from '@flow/shared';
+import { validateNodeData } from '@flow/shared';
+import type { TracePathMap } from '@flow/transpiler';
+import { FlowTranspiler, resolveTracePath } from '@flow/transpiler';
 import { dump as yamlDump } from 'js-yaml';
 import {
   addEdge,
@@ -27,7 +27,7 @@ import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { generateNodeId, generateUUID } from '@/lib/utils';
 import type { HomeAssistant } from '@/types/hass';
-import { cafeIndexedDBStorage } from '@/utils/indexeddb-storage';
+import { flowIndexedDBStorage } from '@/utils/indexeddb-storage';
 
 /**
  * Node data types for React Flow
@@ -704,7 +704,7 @@ export const useFlowStore = create<FlowState>()(
             const validation = transpiler.validate(graph);
 
             if (validation.errors.length > 0) {
-              console.error('C.A.F.E.: Validation errors:', validation.errors);
+              console.error('Flow: Validation errors:', validation.errors);
               throw new Error(
                 `Validation failed: ${validation.errors.map((e) => e.message).join(', ')}`
               );
@@ -769,7 +769,7 @@ export const useFlowStore = create<FlowState>()(
             throw new Error('No automation ID set. Use saveAutomation() for new automations.');
           }
 
-          console.log('C.A.F.E.: Updating automation with ID from store:', state.automationId);
+          console.log('Flow: Updating automation with ID from store:', state.automationId);
 
           set({ isSaving: true });
 
@@ -973,14 +973,14 @@ export const useFlowStore = create<FlowState>()(
               // Add missing required fields for different node types
               if (n.type === 'trigger' && !nodeData.trigger) {
                 console.warn(
-                  `C.A.F.E.: Trigger node ${n.id} missing trigger type, adding default 'state'`
+                  `Flow: Trigger node ${n.id} missing trigger type, adding default 'state'`
                 );
                 nodeData.trigger = 'state';
               }
 
               if (n.type === 'action' && !nodeData.service) {
                 console.warn(
-                  `C.A.F.E.: Action node ${n.id} missing service, adding default 'light.turn_on'`
+                  `Flow: Action node ${n.id} missing service, adding default 'light.turn_on'`
                 );
                 nodeData.service = 'light.turn_on';
               }
@@ -1182,8 +1182,8 @@ export const useFlowStore = create<FlowState>()(
       }
     ),
     {
-      name: 'cafe-flow-storage',
-      storage: cafeIndexedDBStorage,
+      name: 'flow-editor-storage',
+      storage: flowIndexedDBStorage,
       partialize: persistSelector,
       version: 1,
       onRehydrateStorage: () => (state) => {

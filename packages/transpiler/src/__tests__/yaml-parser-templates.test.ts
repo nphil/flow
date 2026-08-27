@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { ConditionNode } from '@cafe/shared';
+import type { ConditionNode } from '@flow/shared';
 import { FlowTranspiler } from '../FlowTranspiler';
 import { yamlParser } from '../parser/YamlParser';
 

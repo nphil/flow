@@ -1,4 +1,4 @@
-import type { TriggerPlatform, WaitNode } from '@cafe/shared';
+import type { TriggerPlatform, WaitNode } from '@flow/shared';
 import { GitBranch, Trash2Icon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FieldError } from '@/components/forms/FieldError';

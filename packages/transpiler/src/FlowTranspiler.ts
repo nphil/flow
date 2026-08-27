@@ -1,4 +1,4 @@
-import type { FlowGraph } from '@cafe/shared';
+import type { FlowGraph } from '@flow/shared';
 import { dump as yamlDump } from 'js-yaml';
 import { analyzeTopology, type TopologyAnalysis } from './analyzer/topology';
 import { type ValidationResult, validateFlowGraph } from './analyzer/validator';

@@ -1,4 +1,4 @@
-import { transpiler } from '@cafe/transpiler';
+import { transpiler } from '@flow/transpiler';
 import { useReactFlow } from '@xyflow/react';
 import { dump as yamlDump } from 'js-yaml';
 import {
@@ -214,7 +214,7 @@ export function AutomationImportDialog({ isOpen, onClose }: AutomationImportDial
 
       onClose();
     } catch (error) {
-      console.error('C.A.F.E.: Failed to open automation:', error);
+      console.error('Flow: Failed to open automation:', error);
       toast.error(t('dialogs:import.importFailed', { message: (error as Error).message }));
     }
   };
@@ -309,7 +309,7 @@ export function AutomationImportDialog({ isOpen, onClose }: AutomationImportDial
       );
       onClose();
     } catch (error) {
-      console.error('C.A.F.E.: Failed to merge automations:', error);
+      console.error('Flow: Failed to merge automations:', error);
       toast.error(t('dialogs:import.mergeFailed', { message: (error as Error).message }));
     }
   };

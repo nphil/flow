@@ -1,4 +1,4 @@
-import type { FlowNode } from '@cafe/shared';
+import type { FlowNode } from '@flow/shared';
 import { FormField } from '@/components/forms/FormField';
 import { DeviceSelector } from '@/components/ui/DeviceSelector';
 import { Input } from '@/components/ui/input';

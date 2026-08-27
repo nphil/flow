@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/cafe-hass/',
+  base: '/flow-static/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

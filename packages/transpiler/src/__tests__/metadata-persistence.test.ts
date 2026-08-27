@@ -1,5 +1,5 @@
-import type { ConditionNode, FlowGraph, TriggerNode } from '@cafe/shared';
-import { isConditionNode, isTriggerNode } from '@cafe/shared';
+import type { ConditionNode, FlowGraph, TriggerNode } from '@flow/shared';
+import { isConditionNode, isTriggerNode } from '@flow/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { FlowTranspiler } from '../FlowTranspiler';

@@ -51,7 +51,7 @@ A comprehensive test framework for validating roundtrip data integrity between H
 #### YAML Roundtrip
 
 - ✅ Valid YAML output
-- ✅ CAFE metadata injection
+- ✅ `_cafe_metadata` injection (legacy wire-format key, preserved for backward compat)
 - ✅ Functional automation structure
 
 ## Key Achievements

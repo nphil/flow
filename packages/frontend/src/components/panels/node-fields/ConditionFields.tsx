@@ -1,4 +1,4 @@
-import type { ConditionType, FlowNode } from '@cafe/shared';
+import type { ConditionType, FlowNode } from '@flow/shared';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '@/components/forms/FormField';
 import { ConditionGroupEditor } from '@/components/panels/node-fields/ConditionGroupEditor';

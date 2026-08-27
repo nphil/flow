@@ -1,11 +1,11 @@
-import { transpiler } from '@cafe/transpiler';
+import { transpiler } from '@flow/transpiler';
 import { dump as yamlDump } from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 
 describe('Position Restoration', () => {
   it('should restore node positions from transpiler metadata', async () => {
     const automationConfig = {
-      alias: 'CAFE',
+      alias: 'Test Automation',
       description: '',
       trigger: [
         {

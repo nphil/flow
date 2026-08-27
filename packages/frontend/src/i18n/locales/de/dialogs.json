@@ -65,7 +65,7 @@
     "warnings": "Warnungen",
     "successLoading": "Erfolgreich importiert! Lade Flow...",
     "tipLabel": "Tipp:",
-    "tipText": "Wenn Ihre Automatisierung mit C.A.F.E. erstellt wurde, werden Knotenpositionen beibehalten. Andernfalls werden Knoten automatisch in einem lesbaren Layout angeordnet.",
+    "tipText": "Wenn Ihre Automatisierung mit Flow erstellt wurde, werden Knotenpositionen beibehalten. Andernfalls werden Knoten automatisch in einem lesbaren Layout angeordnet.",
     "importing": "Importiere...",
     "import": "Importieren",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "Verbunden!",
     "disconnect": "Trennen",
     "corsNote": "CORS-Hinweis",
-    "corsDescription": "Um sich von einem Browser zu verbinden, müssen Sie möglicherweise CORS-Header zu Ihrer HA-Konfiguration hinzufügen. Wenn Sie sich von https://fezvrasta.github.io/hass-cafe verbinden, muss Ihre HA-Instanz unter HTTPS laufen.",
+    "corsDescription": "Um sich von einem Browser zu verbinden, müssen Sie möglicherweise CORS-Header zu Ihrer HA-Konfiguration hinzufügen. Wenn Sie sich von https://nphil.github.io/haflow verbinden, muss Ihre HA-Instanz unter HTTPS laufen.",
     "tokenGuideLink": "Wie man ein langlebiges Zugriffstoken erstellt",
     "apiRunning": "API läuft.",
     "errors": {
