@@ -1,10 +1,10 @@
+import { describe, expect, it, vi } from 'vitest';
 import type { HassEntity } from '@/types/hass';
-import { describe, expect, it } from 'vitest';
 import {
-  fuzzyFilterAutomationCatalogItems,
-  groupAutomationCatalogByArea,
+  filterAutomationCatalogItemsByChip,
   mapAutomationEntityToCatalogItem,
-  sortAutomationCatalogItems,
+  planAutomationOpen,
+  setAutomationEnabled,
 } from '../useAutomationCatalog';
 
 function createAutomationEntity(overrides: Partial<HassEntity> = {}): HassEntity {
@@ -48,103 +48,88 @@ describe('useAutomationCatalog helpers', () => {
     });
   });
 
-  it('groups automations by area labels with area fallback handling', () => {
-    const items = [
-      mapAutomationEntityToCatalogItem(createAutomationEntity(), 'living_room'),
-      mapAutomationEntityToCatalogItem(
-        createAutomationEntity({
-          entity_id: 'automation.garden_lights',
-          attributes: {
-            id: '1002',
-            friendly_name: 'Garden Lights',
-            description: 'Garden automation',
-            tags: [],
-          },
-        }),
-        undefined
-      ),
-      mapAutomationEntityToCatalogItem(
-        createAutomationEntity({
-          entity_id: 'automation.garage_alert',
-          attributes: {
-            id: '1003',
-            friendly_name: 'Garage Alert',
-            description: 'Garage automation',
-            tags: [],
-          },
-        }),
-        'unknown_area'
-      ),
-    ].filter((item) => item !== null);
-
-    const grouped = groupAutomationCatalogByArea(
-      items,
-      { living_room: 'Living Room' },
-      { noArea: 'No Area', otherArea: 'Other Area' }
-    );
-
-    expect(grouped['Living Room']).toHaveLength(1);
-    expect(grouped['No Area']).toHaveLength(1);
-    expect(grouped['Other Area']).toHaveLength(1);
+  it('returns null for non-automation entities', () => {
+    const entity = createAutomationEntity({ entity_id: 'light.living_room' });
+    expect(mapAutomationEntityToCatalogItem(entity)).toBeNull();
   });
 
-  it('sorts by name and last triggered deterministically', () => {
+  describe('filterAutomationCatalogItemsByChip (list renders)', () => {
+    const now = new Date('2026-02-22T12:00:00.000Z').getTime();
     const items = [
-      {
-        ...mapAutomationEntityToCatalogItem(
-          createAutomationEntity({
-            entity_id: 'automation.b',
-            attributes: {
-              id: 'b',
-              friendly_name: 'B',
-              description: '',
-              tags: [],
-            },
-          })
-        )!,
-        last_triggered: '2026-02-22T10:00:00.000Z',
-      },
-      {
-        ...mapAutomationEntityToCatalogItem(
-          createAutomationEntity({
-            entity_id: 'automation.a',
-            attributes: {
-              id: 'a',
-              friendly_name: 'A',
-              description: '',
-              tags: [],
-            },
-          })
-        )!,
-        last_triggered: '2026-02-22T09:00:00.000Z',
-      },
-    ];
-
-    const byName = sortAutomationCatalogItems(items, 'name', 'asc');
-    expect(byName.map((item) => item.friendly_name)).toEqual(['A', 'B']);
-
-    const byLastTriggered = sortAutomationCatalogItems(items, 'lastTriggered', 'desc');
-    expect(byLastTriggered.map((item) => item.automation_id)).toEqual(['b', 'a']);
-  });
-
-  it('supports fuzzy filtering on names and descriptions', () => {
-    const items = [
-      mapAutomationEntityToCatalogItem(createAutomationEntity())!,
       mapAutomationEntityToCatalogItem(
         createAutomationEntity({
-          entity_id: 'automation.bedroom_scene',
-          attributes: {
-            id: '1004',
-            friendly_name: 'Bedroom Scene',
-            description: 'Activate bedtime scene',
-            tags: ['bedroom'],
-          },
+          entity_id: 'automation.b_disabled',
+          state: 'off',
+          attributes: { id: 'b', friendly_name: 'B Disabled', description: '', tags: [] },
         })
       )!,
+      {
+        ...mapAutomationEntityToCatalogItem(
+          createAutomationEntity({
+            entity_id: 'automation.a_recent',
+            attributes: { id: 'a', friendly_name: 'A Recent', description: '', tags: [] },
+          })
+        )!,
+        last_triggered: new Date(now - 60 * 60 * 1000).toISOString(), // 1h ago
+      },
+      {
+        ...mapAutomationEntityToCatalogItem(
+          createAutomationEntity({
+            entity_id: 'automation.c_stale',
+            attributes: { id: 'c', friendly_name: 'C Stale', description: '', tags: [] },
+          })
+        )!,
+        last_triggered: new Date(now - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      },
     ];
 
-    const results = fuzzyFilterAutomationCatalogItems(items, 'livng room');
-    expect(results).toHaveLength(1);
-    expect(results[0].entity_id).toBe('automation.living_room_lights');
+    it("'all' returns every item sorted alphabetically", () => {
+      const result = filterAutomationCatalogItemsByChip(items, 'all', now);
+      expect(result.map((item) => item.friendly_name)).toEqual([
+        'A Recent',
+        'B Disabled',
+        'C Stale',
+      ]);
+    });
+
+    it("'enabled' keeps only enabled automations", () => {
+      const result = filterAutomationCatalogItemsByChip(items, 'enabled', now);
+      expect(result.map((item) => item.automation_id)).toEqual(['a', 'c']);
+    });
+
+    it("'disabled' keeps only disabled automations", () => {
+      const result = filterAutomationCatalogItemsByChip(items, 'disabled', now);
+      expect(result.map((item) => item.automation_id)).toEqual(['b']);
+    });
+
+    it("'recent' keeps only automations triggered within 24h, most recent first", () => {
+      const result = filterAutomationCatalogItemsByChip(items, 'recent', now);
+      expect(result.map((item) => item.automation_id)).toEqual(['a']);
+    });
+  });
+
+  describe('setAutomationEnabled (toggle calls service)', () => {
+    it('calls setAutomationState with the entity id and requested state', async () => {
+      const setAutomationState = vi.fn().mockResolvedValue(undefined);
+      const item = mapAutomationEntityToCatalogItem(createAutomationEntity())!;
+
+      await setAutomationEnabled({ setAutomationState }, item, false);
+
+      expect(setAutomationState).toHaveBeenCalledTimes(1);
+      expect(setAutomationState).toHaveBeenCalledWith('automation.living_room_lights', false);
+    });
+  });
+
+  describe('planAutomationOpen (dirty guard blocks switch)', () => {
+    it('opens directly when the canvas is clean', () => {
+      expect(planAutomationOpen('1001', false)).toEqual({ action: 'open', automationId: '1001' });
+    });
+
+    it('requires confirmation when the canvas has unsaved changes', () => {
+      expect(planAutomationOpen('1001', true)).toEqual({
+        action: 'confirm',
+        automationId: '1001',
+      });
+    });
   });
 });

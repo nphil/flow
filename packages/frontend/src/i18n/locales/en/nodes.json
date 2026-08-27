@@ -17,7 +17,9 @@
     "addProperty": "Add Property",
     "propertyName": "Property Name",
     "type": "Type",
-    "value": "Value"
+    "value": "Value",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional note for yourself or teammates…"
   },
   "placeholders": {
     "customProperty": "e.g., my_custom_property",
@@ -80,7 +82,12 @@
     },
     "nestedConditions": "Nested Conditions",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "integration": {
+      "hint": "Integration-specific condition — Flow doesn't have a dedicated editor for every type, so its fields are shown directly below.",
+      "targetLabel": "Target",
+      "optionsLabel": "Options"
+    }
   },
   "actions": {
     "serviceLabel": "Service",
@@ -88,26 +95,26 @@
     "actionTypes": {
       "service": "Call Service",
       "event": "Fire Event",
-      "stop": "Stop execution"
+      "stop": "Stop execution",
+      "repeat": "Repeat (for each)"
     },
     "actionLabel": "Action",
     "eventNameLabel": "Event Name",
     "eventNamePlaceholder": "e.g. pico_subscription",
     "selectAction": "Select action...",
-    "targetEntities": "Target Entities",
-    "selectTargetEntities": "Select target entities...",
-    "targetDevices": "Target Devices",
-    "targetDevicesDescription": "Device IDs to target",
-    "addDeviceId": "Add device ID...",
-    "targetAreas": "Target Areas",
-    "targetAreasDescription": "Area IDs to target",
-    "addAreaId": "Add area ID...",
+    "targetLabel": "Target",
     "fireEvent": "fire event",
     "stopExecution": "Stop execution",
     "stopError": "Mark as error",
     "stopMessageLabel": "Stop message",
     "stopMessagePlaceholder": "e.g. Condition not met",
-    "markAsError": "Mark as error"
+    "markAsError": "Mark as error",
+    "forEach": {
+      "itemsLabel": "Items",
+      "itemsDescription": "One item per line. The loop body can reference the current item as {{ repeat.item }}.",
+      "itemsPlaceholder": "light.kitchen\nlight.bedroom",
+      "sequenceHint": "Loop steps aren't shown on the canvas — use the YAML view below to view or edit them."
+    }
   },
   "variables": {
     "variableCount_one": "{{count}} variable",
@@ -185,5 +192,8 @@
     "visits": "Visited {{count}} times",
     "remaining": "{{time}} left",
     "elapsed": "{{time}} elapsed"
+  },
+  "yamlFoldout": {
+    "toggle": "Edit as YAML"
   }
 }

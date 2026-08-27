@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering contributing to C.A.F.E. This document explains how to set up the repository locally, run the project, run tests, and the preferred workflow for making changes, opening pull requests and preparing releases.
+Thank you for considering contributing to Flow. This document explains how to set up the repository locally, run the project, run tests, and the preferred workflow for making changes, opening pull requests and preparing releases.
 
 **Please read these guidelines before opening a PR.**
 
@@ -8,18 +8,18 @@ Thank you for considering contributing to C.A.F.E. This document explains how to
 
 - **Clone the repo**:
   - `git clone <repo-url>`
-  - `cd cafe-hass`
+  - `cd haflow`
 - **Install**: The repository uses Yarn 4 workspaces. From the repository root run:
   - `yarn install`
 - **Start development**: To run the frontend in watch/dev mode for local development:
-  - `yarn dev` (from the `cafe-hass` folder in monorepo the root scripts will route properly)
+  - `yarn dev` (from the `haflow` folder in monorepo the root scripts will route properly)
 
 ## Project Structure (short)
 
 - `packages/frontend` — React + Vite frontend UI
 - `packages/shared` — shared types & Zod schemas
 - `packages/transpiler` — YAML parsing & transpilation
-- `custom_components/cafe` — Home Assistant integration (Python)
+- `custom_components/flow` — Home Assistant integration (Python)
 
 See the repository root and the `packages` folder for the full layout.
 
@@ -39,7 +39,7 @@ If you need to run a command inside a package, change into that package director
 
 - Keep TypeScript strict — the codebase is compiled with `--strict` and must remain type-safe.
 - Avoid `any`, `as` assertions, and `@ts-ignore` except when interacting with unavoidable external APIs; prefer `unknown` + type guards instead.
-- Use `@cafe/shared` types and Zod schemas for shared shapes — do not re-declare common types.
+- Use `@flow/shared` types and Zod schemas for shared shapes — do not re-declare common types.
 - Extract reusable logic to helpers or custom hooks rather than duplicating code.
 - In React/TypeScript files: do not use IIFEs; prefer named components or helper functions.
 
@@ -66,7 +66,7 @@ If you need to run a command inside a package, change into that package director
 ## Home Assistant Build / Deploy
 
 - The repository includes scripts to copy builds into the Home Assistant custom component directory. Use `yarn build:ha` from the repo root to build and copy files.
-- The manifest at [custom_components/cafe/manifest.json](custom_components/cafe/manifest.json#L1) must be kept in sync with release versions.
+- The manifest at [custom_components/flow/manifest.json](custom_components/flow/manifest.json#L1) must be kept in sync with release versions.
 
 ## Adding Packages or Tests
 
@@ -81,4 +81,4 @@ If you need to run a command inside a package, change into that package director
 
 - If you are unsure about something, open an issue or ask maintainers on the project's communication channel.
 
-Thank you for helping improve C.A.F.E.! We appreciate careful, well-tested contributions.
+Thank you for helping improve Flow! We appreciate careful, well-tested contributions.

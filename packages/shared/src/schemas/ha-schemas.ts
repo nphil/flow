@@ -17,6 +17,7 @@ export const HAConditionSchema: z.ZodType<
     condition?: string;
     alias?: string;
     enabled?: boolean;
+    note?: string;
     entity_id?: string | string[];
     state?: string | string[];
     value_template?: string;
@@ -31,12 +32,27 @@ export const HAConditionSchema: z.ZodType<
     below?: string | number;
     attribute?: string;
     id?: string | string[];
+    // Purpose-specific ("integration") condition fields (A3, HA 2026.x — e.g.
+    // `battery.is_level`, `climate.is_heating`, `motion.is_detected`). These
+    // conditions use `target` + `options` instead of entity_id/above/below.
+    // Loose passthrough already preserves anything else round-trip; these two
+    // are named explicitly so the generic integration-condition editor and
+    // TargetEditor get real types instead of `unknown`.
+    target?: {
+      entity_id?: string | string[];
+      device_id?: string | string[];
+      area_id?: string | string[];
+      floor_id?: string | string[];
+      label_id?: string | string[];
+    };
+    options?: Record<string, unknown>;
   },
   Record<string, unknown>
 > = z.looseObject({
   alias: z.string().optional(),
   condition: z.string().optional(),
   enabled: z.boolean().optional(),
+  note: z.string().optional(),
   entity_id: z.union([z.string(), z.array(z.string())]).optional(),
   state: z.union([z.string(), z.array(z.string())]).optional(),
   value_template: z.string().optional(),
@@ -52,6 +68,17 @@ export const HAConditionSchema: z.ZodType<
   attribute: z.string().optional(),
   // Support both string and array for trigger conditions
   id: z.union([z.string(), z.array(z.string())]).optional(),
+  // Purpose-specific ("integration") condition fields (A3) — see type above.
+  target: z
+    .looseObject({
+      entity_id: z.union([z.string(), z.array(z.string())]).optional(),
+      device_id: z.union([z.string(), z.array(z.string())]).optional(),
+      area_id: z.union([z.string(), z.array(z.string())]).optional(),
+      floor_id: z.union([z.string(), z.array(z.string())]).optional(),
+      label_id: z.union([z.string(), z.array(z.string())]).optional(),
+    })
+    .optional(),
+  options: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type HACondition = z.infer<typeof HAConditionSchema>;
@@ -73,6 +100,12 @@ export const HAPlatformEnum = z.enum([
   'homeassistant',
   'device',
   'calendar',
+  // Parity fix A1 (2026.x): geo_location, conversation (sentence triggers),
+  // persistent_notification, tag.
+  'geo_location',
+  'conversation',
+  'persistent_notification',
+  'tag',
 ]);
 export type HAPlatform = z.infer<typeof HAPlatformEnum>;
 
@@ -119,6 +152,25 @@ export const HATriggerSchema = z
     payload: z.string().optional(),
     // Conversation trigger fields
     command: z.union([z.string(), z.array(z.string())]).optional(),
+    enabled: z.boolean().optional(),
+    note: z.string().optional(),
+    // geo_location trigger fields (A1)
+    source: z.string().optional(),
+    // persistent_notification trigger fields (A1)
+    update_type: z.array(z.enum(['added', 'removed', 'updated', 'current'])).optional(),
+    notification_id: z.string().optional(),
+    // tag trigger fields (A1). device_id is intentionally NOT declared here
+    // (unlike tag_id) — the 'device' trigger platform already relies on
+    // device_id flowing through as a loose-object passthrough key (it always
+    // has, since this schema never declared it), and several existing
+    // fixture snapshots pin its exact output position among OTHER
+    // passthrough device-trigger keys (domain, type, ...). Declaring it here
+    // would promote it into the schema's declared-key group, which zod
+    // emits before passthrough extras — reordering it ahead of `domain`/
+    // `type` and breaking those snapshots. Passthrough already handles
+    // string-or-array (tag's shape) exactly the same as a plain string
+    // (device's shape) with zero validation, so nothing is lost.
+    tag_id: z.union([z.string(), z.array(z.string())]).optional(),
   })
   .transform((input) => {
     // Normalize to modern 'trigger' property (HA 2024.1+)
@@ -160,6 +212,16 @@ export interface HATriggerInput {
   topic?: string;
   payload?: string;
   command?: string | string[];
+  enabled?: boolean;
+  note?: string;
+  // geo_location (A1)
+  source?: string;
+  // persistent_notification (A1)
+  update_type?: Array<'added' | 'removed' | 'updated' | 'current'>;
+  notification_id?: string;
+  // tag (A1)
+  tag_id?: string | string[];
+  device_id?: string | string[];
 }
 
 /**
@@ -178,6 +240,18 @@ export interface HAAction {
   response_variable?: string;
   continue_on_error?: boolean;
   enabled?: boolean;
+  /**
+   * Per-step note (HA 2026.x `note:` key, `CONF_NOTE` in HA core's
+   * config_validation.py). Officially declared on every trigger/condition/
+   * action base schema — HA's own trigger/condition/action validators accept
+   * it (via `vol.Remove(CONF_NOTE)`, so it never fails "extra keys not
+   * allowed") though it's stripped from the *validated* in-memory object
+   * since it's frontend-only metadata; the config-save HTTP endpoint writes
+   * back the original posted dict (not the validator's stripped output), so
+   * it round-trips through real HA storage untouched. Used for A2 step notes
+   * instead of a custom key — see packages/transpiler round-trip test.
+   */
+  note?: string;
   delay?: string | number | { hours?: number; minutes?: number; seconds?: number };
   wait_template?: string | Record<string, unknown>;
   timeout?: string | number | Record<string, number>;
@@ -193,6 +267,8 @@ export interface HAAction {
     count?: string | number;
     while?: HACondition[];
     until?: string | string[] | HACondition[];
+    /** repeat.for_each (additive parity fix) — items may be scalars or objects. */
+    for_each?: unknown[];
     sequence: HAAction[];
   };
   [key: string]: unknown;
@@ -310,6 +386,7 @@ export const HAActionSchema: z.ZodType<HAAction> = z.lazy(() =>
     response_variable: z.string().optional(),
     continue_on_error: z.boolean().optional(),
     enabled: z.boolean().optional(),
+    note: z.string().optional(),
     delay: z.union([z.string(), z.number(), z.record(z.string(), z.number())]).optional(),
     wait_template: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
     timeout: z.union([z.string(), z.number(), z.record(z.string(), z.number())]).optional(),
@@ -326,6 +403,7 @@ export const HAActionSchema: z.ZodType<HAAction> = z.lazy(() =>
         count: z.union([z.string(), z.number()]).optional(),
         while: z.array(HAConditionSchema).optional(),
         until: z.union([z.string(), z.array(z.string()), z.array(HAConditionSchema)]).optional(),
+        for_each: z.array(z.unknown()).optional(),
         sequence: z.array(HAActionSchema),
       })
       .optional(),
@@ -373,6 +451,8 @@ export type HAScript = z.infer<typeof HAScriptSchema>;
 export const HADelaySchema = z.looseObject({
   id: z.string().optional(),
   alias: z.string().optional(),
+  enabled: z.boolean().optional(),
+  note: z.string().optional(),
   delay: z.union([
     z.string(),
     z.looseObject({
@@ -392,6 +472,8 @@ export const HAWaitSchema = z
   .looseObject({
     id: z.string().optional(),
     alias: z.string().optional(),
+    enabled: z.boolean().optional(),
+    note: z.string().optional(),
     wait_template: z.string().optional(),
     wait_for_trigger: z.array(HATriggerSchema).optional(),
     timeout: z
@@ -424,6 +506,8 @@ export type HAWait = z.infer<typeof HAWaitSchema>;
 export const HAVariablesSchema = z.looseObject({
   id: z.string().optional(),
   alias: z.string().optional(),
+  enabled: z.boolean().optional(),
+  note: z.string().optional(),
   variables: z.record(z.string(), z.unknown()),
 });
 export type HAVariables = z.infer<typeof HAVariablesSchema>;

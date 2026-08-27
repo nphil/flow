@@ -68,11 +68,11 @@ jobs:
 
       - name: Check integration files exist
         run: |
-          if [ ! -f "custom_components/cafe/www/index.html" ]; then
+          if [ ! -f "custom_components/flow/www/index.html" ]; then
             echo "❌ Integration build failed - missing index.html"
             exit 1
           fi
-          if [ ! -d "custom_components/cafe/www/assets" ]; then
+          if [ ! -d "custom_components/flow/www/assets" ]; then
             echo "❌ Integration build failed - missing assets directory"
             exit 1
           fi

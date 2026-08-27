@@ -8,7 +8,7 @@
 // several same-type nodes spread across parallel branches, and the node
 // array order doesn't match the branch emission order, positions land on
 // the wrong node after a save/reload round trip.
-import { type FlowGraph, isActionNode, isConditionNode } from '@cafe/shared';
+import { type FlowGraph, isActionNode, isConditionNode } from '@flow/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { FlowTranspiler } from '../FlowTranspiler';
 
@@ -71,12 +71,8 @@ describe('cafe-hass#225: node positions survive a save/reload round trip', () =>
 
     const conditionA = nodes.find((n) => isConditionNode(n) && n.data.entity_id === 'sensor.a');
     const conditionB = nodes.find((n) => isConditionNode(n) && n.data.entity_id === 'sensor.b');
-    const actionA = nodes.find(
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'light.a'
-    );
-    const actionB = nodes.find(
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'light.b'
-    );
+    const actionA = nodes.find((n) => isActionNode(n) && n.data.target?.entity_id === 'light.a');
+    const actionB = nodes.find((n) => isActionNode(n) && n.data.target?.entity_id === 'light.b');
 
     expect(conditionA?.position).toEqual({ x: 100, y: 100 });
     expect(actionA?.position).toEqual({ x: 100, y: 200 });

@@ -1,7 +1,6 @@
 import { AlertTriangle, Check, Copy, Loader2, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,7 +36,7 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
     updateAutomation,
   } = useFlowStore();
 
-  const { hass } = useHass();
+  const { hass, config: hassConfig } = useHass();
 
   const [localDescription, setLocalDescription] = useState(flowDescription);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +61,11 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
     }
 
     try {
-      const exists = await getHomeAssistantAPI(hass).automationExistsByAlias(name);
+      const exists = await getHomeAssistantAPI(hass, hassConfig).automationExistsByAlias(name);
       if (exists && !isUpdate) {
-        const uniqueName = await getHomeAssistantAPI(hass).getUniqueAutomationAlias(name);
+        const uniqueName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+          name
+        );
         setSuggestedName(uniqueName);
       } else {
         setSuggestedName(null);
@@ -136,7 +137,9 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
 
     try {
       // Get a unique name for the copy
-      const copyName = await getHomeAssistantAPI(hass).getUniqueAutomationAlias(flowName);
+      const copyName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+        flowName
+      );
       setFlowName(copyName);
       setFlowDescription(localDescription.trim());
 
@@ -156,43 +159,57 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 font-serif text-flow-text">
             <Save className="h-5 w-5" />
             {isUpdate ? t('dialogs:save.titleUpdate') : t('dialogs:save.title')}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-flow-text-secondary">
             {isUpdate ? t('dialogs:save.descriptionUpdate') : t('dialogs:save.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="automation-name">{t('dialogs:save.nameLabel')}</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="automation-name" className="font-mono text-flow-text-muted text-xs">
+              {t('dialogs:save.nameLabel')}
+            </Label>
             <Input
               id="automation-name"
               value={flowName}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder={t('placeholders.enterAutomationName')}
               disabled={isSaving}
+              className="border-flow-border bg-flow-bg font-mono text-flow-text placeholder:text-flow-text-muted focus-visible:ring-[var(--accent)]"
             />
           </div>
 
           {suggestedName && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>{t('dialogs:save.nameConflict', { suggestedName })}</span>
-                <Button variant="outline" size="sm" onClick={useSuggestedName} disabled={isSaving}>
-                  {t('buttons.use')}
-                </Button>
-              </AlertDescription>
-            </Alert>
+            <div className="flex items-center justify-between gap-2 rounded-flow-control border border-[var(--warn)] p-2.5 font-mono text-[var(--warn)] text-xs">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {t('dialogs:save.nameConflict', { suggestedName })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={useSuggestedName}
+                disabled={isSaving}
+                className="h-7 border-[var(--warn)] text-[var(--warn)] hover:bg-flow-elevated"
+              >
+                {t('buttons.use')}
+              </Button>
+            </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="automation-description">{t('dialogs:save.descriptionLabel')}</Label>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="automation-description"
+              className="font-mono text-flow-text-muted text-xs"
+            >
+              {t('dialogs:save.descriptionLabel')}
+            </Label>
             <Textarea
               id="automation-description"
               value={localDescription}
@@ -200,18 +217,24 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
               placeholder={t('placeholders.describeAutomation')}
               rows={3}
               disabled={isSaving}
+              className="border-flow-border bg-flow-bg font-mono text-flow-text text-sm placeholder:text-flow-text-muted focus-visible:ring-[var(--accent)]"
             />
           </div>
 
           {error && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="flex items-start gap-2 rounded-flow-control border border-[var(--danger)] p-2.5 font-mono text-[var(--danger)] text-xs">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+            <Button
+              variant="ghost"
+              onClick={handleClose}
+              disabled={isSaving}
+              className="text-flow-text hover:bg-flow-elevated"
+            >
               {t('buttons.cancel')}
             </Button>
             {isUpdate && (
@@ -219,6 +242,7 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
                 variant="outline"
                 onClick={handleSaveAsCopy}
                 disabled={isSaving || !flowName.trim()}
+                className="border-flow-border text-flow-text hover:bg-flow-elevated"
               >
                 {isSaving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -228,7 +252,11 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
                 {t('buttons.saveAsCopy')}
               </Button>
             )}
-            <Button onClick={handleSave} disabled={isSaving || !flowName.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !flowName.trim()}
+              className="bg-flow-accent text-flow-on-accent hover:bg-flow-accent-hover"
+            >
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

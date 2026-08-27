@@ -36,6 +36,8 @@ interface ComboboxProps<T extends ComboboxOption = ComboboxOption> {
   searchKeys?: string[];
   /** Fuse.js options for customizing fuzzy search behavior */
   fuzzyOptions?: Partial<FuzzySearchOptions>;
+  /** Optional grouping key. When provided, filtered options render as one CommandGroup per key, in first-seen order. */
+  groupBy?: (option: T) => string;
 }
 
 export function Combobox<T extends ComboboxOption = ComboboxOption>({
@@ -50,6 +52,7 @@ export function Combobox<T extends ComboboxOption = ComboboxOption>({
   renderValue,
   searchKeys = ['label', 'value'],
   fuzzyOptions = {},
+  groupBy,
 }: ComboboxProps<T>) {
   const { t } = useTranslation(['common']);
   const [open, setOpen] = React.useState(false);
@@ -74,6 +77,42 @@ export function Combobox<T extends ComboboxOption = ComboboxOption>({
   const handleSearch = (search: string) => {
     setQuery(search);
   };
+
+  const renderItem = (option: T) => (
+    <CommandItem
+      key={option.value}
+      value={option.value}
+      onSelect={(currentValue) => {
+        onChange(currentValue === value ? '' : currentValue);
+        setOpen(false);
+        setQuery(''); // Clear search on selection
+      }}
+    >
+      {renderOption ? renderOption(option) : option.label}
+      <Check
+        className={cn('ml-auto h-4 w-4', value === option.value ? 'opacity-100' : 'opacity-0')}
+      />
+    </CommandItem>
+  );
+
+  // Partition the already-fuzzy-filtered options into groups, preserving relative order
+  // and first-seen group order. Omitted `groupBy` keeps the original single-group shape.
+  const groups = React.useMemo(() => {
+    if (!groupBy) return null;
+    const order: string[] = [];
+    const byKey = new Map<string, T[]>();
+    for (const option of filteredOptions) {
+      const key = groupBy(option);
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.push(option);
+      } else {
+        byKey.set(key, [option]);
+        order.push(key);
+      }
+    }
+    return order.map((key) => ({ key, options: byKey.get(key) ?? [] }));
+  }, [filteredOptions, groupBy]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -103,27 +142,15 @@ export function Combobox<T extends ComboboxOption = ComboboxOption>({
           />
           <CommandList>
             <CommandEmpty>{t('combobox.noOptions')}</CommandEmpty>
-            <CommandGroup>
-              {filteredOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? '' : currentValue);
-                    setOpen(false);
-                    setQuery(''); // Clear search on selection
-                  }}
-                >
-                  {renderOption ? renderOption(option) : option.label}
-                  <Check
-                    className={cn(
-                      'ml-auto h-4 w-4',
-                      value === option.value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {groups ? (
+              groups.map(({ key, options: groupOptions }) => (
+                <CommandGroup key={key} heading={key}>
+                  {groupOptions.map(renderItem)}
+                </CommandGroup>
+              ))
+            ) : (
+              <CommandGroup>{filteredOptions.map(renderItem)}</CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

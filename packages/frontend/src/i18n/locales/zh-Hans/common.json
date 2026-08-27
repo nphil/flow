@@ -8,6 +8,7 @@
     "update": "更新",
     "refresh": "刷新",
     "copy": "复制",
+    "copied": "已复制！",
     "use": "使用",
     "add": "添加",
     "addTrigger": "添加触发器",
@@ -63,6 +64,8 @@
   },
   "placeholders": {
     "automationName": "自动化名称",
+    "searchNodes": "搜索节点…",
+    "noNodesFound": "未找到节点",
     "optionalDisplayName": "可选显示名称",
     "optionalUniqueId": "可选唯一ID",
     "enterAutomationName": "输入自动化名称...",
@@ -86,8 +89,8 @@
     "backspaceDeleteKey": "退格键/删除键"
   },
   "titles": {
-    "appName": "C.A.F.E.",
-    "appFullName": "复杂自动化流程编辑器",
+    "appName": "Flow",
+    "appFullName": "Flow",
     "settings": "设置",
     "updateAutomation": "在Home Assistant中更新自动化",
     "saveAutomation": "将自动化保存到Home Assistant",
@@ -96,7 +99,9 @@
     "clickToConfigure": "点击配置Home Assistant连接",
     "openDetached": "在独立窗口打开",
     "removeSource": "从合并工作区移除来源",
-    "backToHA": "返回 Home Assistant"
+    "backToHA": "返回 Home Assistant",
+    "collapsePalette": "折叠调板",
+    "expandPalette": "展开调板"
   },
   "strategy": {
     "auto": "自动",
@@ -162,5 +167,19 @@
   },
   "stateTrigger": {
     "useValue": "使用值"
+  },
+  "theme": {
+    "auto": "自动",
+    "light": "浅色",
+    "dark": "深色",
+    "haHint": "混合到您的Home Assistant主题中。在独立模式下隐藏。"
+  },
+  "pickers": {
+    "noEntities": "未找到实体。",
+    "noDevices": "未找到设备。",
+    "recent": "最近使用",
+    "moreKeepTyping": "还有 {{count}} 个 — 继续输入",
+    "deviceIdPlaceholder": "输入设备 ID...",
+    "deviceIdManualHint": "未找到设备。请手动输入设备 ID。"
   }
 }

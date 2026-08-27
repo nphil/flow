@@ -9,13 +9,13 @@
  * exercises `showTrace`'s own aggregation logic in isolation.
  */
 
-import type * as TranspilerModule from '@cafe/transpiler';
-import type { TracePathMap } from '@cafe/transpiler';
+import type * as TranspilerModule from '@flow/transpiler';
+import type { TracePathMap } from '@flow/transpiler';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
 import { useFlowStore } from '../flow-store';
 
-vi.mock('@cafe/transpiler', async (importOriginal) => {
+vi.mock('@flow/transpiler', async (importOriginal) => {
   const actual = await importOriginal<typeof TranspilerModule>();
   return {
     ...actual,

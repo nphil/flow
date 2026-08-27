@@ -1,4 +1,4 @@
-import type { TriggerPlatform, WaitNode } from '@cafe/shared';
+import type { TriggerPlatform, WaitNode } from '@flow/shared';
 import { GitBranch, Trash2Icon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FieldError } from '@/components/forms/FieldError';
@@ -16,8 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getTriggerFields, TRIGGER_PLATFORM_FIELDS } from '@/config/triggerFields';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
-import { useFlowStore } from '@/store/flow-store';
 import type { TriggerNodeData } from '@/store/flow-store';
+import { useFlowStore } from '@/store/flow-store';
 import { getNodeData, getNodeDataString } from '@/utils/nodeData';
 import { DurationField } from './DurationField';
 

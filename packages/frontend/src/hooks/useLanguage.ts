@@ -18,7 +18,7 @@ export function useLanguage() {
     const browserLanguage = navigator.language?.split('-')[0];
     const targetLanguage = hassLanguage || browserLanguage || 'en';
 
-    logger.debug('[C.A.F.E.] useLanguage effect running', {
+    logger.debug('useLanguage effect running', {
       hasHass: !!hass,
       hassLanguage,
       browserLanguage,
@@ -32,12 +32,10 @@ export function useLanguage() {
       const availableLanguages = Object.keys(i18n.options.resources || {});
 
       if (availableLanguages.includes(targetLanguage)) {
-        logger.debug('[C.A.F.E.] Changing language to:', targetLanguage);
+        logger.debug('Changing language to:', targetLanguage);
         i18n.changeLanguage(targetLanguage);
       } else {
-        logger.debug(
-          `[C.A.F.E.] Language '${targetLanguage}' not available, keeping '${i18n.language}'`
-        );
+        logger.debug(`Language '${targetLanguage}' not available, keeping '${i18n.language}'`);
       }
     }
   }, [hass, i18n]);

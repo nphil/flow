@@ -7,8 +7,8 @@ import type {
   SetVariablesNode,
   TriggerNode,
   WaitNode,
-} from '@cafe/shared';
-import { isDeviceAction } from '@cafe/shared';
+} from '@flow/shared';
+import { isDeviceAction } from '@flow/shared';
 import type { TopologyAnalysis } from '../analyzer/topology';
 import { findBackEdges } from '../analyzer/topology';
 import { BaseStrategy, type HAYamlOutput } from './base';
@@ -1357,6 +1357,10 @@ export class NativeStrategy extends BaseStrategy {
         action.enabled = false;
       }
 
+      if (typeof node.data.note === 'string') {
+        action.note = node.data.note;
+      }
+
       return action;
     }
 
@@ -1368,11 +1372,13 @@ export class NativeStrategy extends BaseStrategy {
           ...(repeatData.count !== undefined ? { count: repeatData.count } : {}),
           ...(repeatData.while ? { while: repeatData.while } : {}),
           ...(repeatData.until ? { until: repeatData.until } : {}),
+          ...(repeatData.for_each ? { for_each: repeatData.for_each } : {}),
           sequence: repeatData.sequence ?? [],
         },
       };
       if (node.data.alias) action.alias = node.data.alias;
       if (node.data.enabled === false) action.enabled = false;
+      if (typeof node.data.note === 'string') action.note = node.data.note;
       return action;
     }
 
@@ -1384,6 +1390,7 @@ export class NativeStrategy extends BaseStrategy {
         action.event_data = node.data.event_data;
       }
       if (node.data.enabled === false) action.enabled = false;
+      if (typeof node.data.note === 'string') action.note = node.data.note;
       return action;
     }
 
@@ -1393,6 +1400,7 @@ export class NativeStrategy extends BaseStrategy {
       if (node.data.alias) action.alias = node.data.alias;
       if (node.data.error === true) action.error = true;
       if (node.data.enabled === false) action.enabled = false;
+      if (typeof node.data.note === 'string') action.note = node.data.note;
       return action;
     }
 

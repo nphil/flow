@@ -2,5 +2,49 @@
   "conditionGroupEditor": {
     "noConditions": "No conditions added yet",
     "addCondition": "Add Condition"
+  },
+  "automationsTab": {
+    "newAutomation": "New automation",
+    "searchPlaceholder": "Search automations…",
+    "chips": {
+      "all": "All",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "recent": "Recent"
+    },
+    "connectionErrorHeadline": "Lost connection",
+    "emptyHeadline": "No automations yet",
+    "emptyBody": "Create your first automation to see it here.",
+    "noResults": "No automations match your search.",
+    "enable": "Enable automation",
+    "disable": "Disable automation",
+    "toggleFailed": "Failed to update automation state: {{message}}",
+    "openFailed": "Failed to open automation: {{message}}"
+  },
+  "header": {
+    "run": "Run (test)",
+    "runSuccess": "Triggered \"{{name}}\"",
+    "runFailed": "Failed to trigger automation: {{message}}",
+    "undo": "Undo",
+    "redo": "Redo",
+    "autoArrange": "Auto-arrange",
+    "zoomFit": "Zoom to fit",
+    "moreActions": "More actions",
+    "importYaml": "Import YAML",
+    "exportYaml": "Export YAML",
+    "duplicate": "Duplicate",
+    "duplicateName": "{{name}} (copy)",
+    "duplicated": "Duplicated — save to create the new automation",
+    "deleted": "Automation deleted",
+    "deleteFailed": "Failed to delete automation: {{message}}",
+    "theme": "Theme",
+    "animations": "Animations",
+    "disconnect": "Change server / Disconnect",
+    "about": "About",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "reconnecting": "Reconnecting…",
+    "openPalette": "Open node palette",
+    "openPanel": "Open panel"
   }
 }

@@ -26,12 +26,12 @@ jobs:
       - name: Validate integration structure
         run: |
           # Check required files exist
-          if [ ! -f "custom_components/cafe/manifest.json" ]; then
+          if [ ! -f "custom_components/flow/manifest.json" ]; then
             echo "❌ Missing manifest.json"
             exit 1
           fi
 
-          if [ ! -f "custom_components/cafe/__init__.py" ]; then
+          if [ ! -f "custom_components/flow/__init__.py" ]; then
             echo "❌ Missing __init__.py"
             exit 1
           fi
@@ -51,7 +51,7 @@ jobs:
           import sys
 
           try:
-              with open('custom_components/cafe/manifest.json', 'r') as f:
+              with open('custom_components/flow/manifest.json', 'r') as f:
                   manifest = json.load(f)
               
               required_fields = ['domain', 'name', 'version', 'documentation_url', 'issue_tracker']
@@ -122,18 +122,18 @@ jobs:
 
       - name: Validate frontend assets
         run: |
-          if [ ! -f "custom_components/cafe/www/index.html" ]; then
+          if [ ! -f "custom_components/flow/www/index.html" ]; then
             echo "❌ Frontend build failed - missing index.html"
             exit 1
           fi
 
-          if [ ! -d "custom_components/cafe/www/assets" ]; then
+          if [ ! -d "custom_components/flow/www/assets" ]; then
             echo "❌ Frontend build failed - missing assets directory"
             exit 1
           fi
 
           # Check if assets are not empty
-          if [ -z "$(ls -A custom_components/cafe/www/assets/)" ]; then
+          if [ -z "$(ls -A custom_components/flow/www/assets/)" ]; then
             echo "❌ Frontend assets directory is empty"
             exit 1
           fi
@@ -161,12 +161,12 @@ jobs:
           python3 -c "
           import json
 
-          with open('custom_components/cafe/manifest.json', 'r') as f:
+          with open('custom_components/flow/manifest.json', 'r') as f:
               manifest = json.load(f)
 
           manifest['version'] = '${VERSION}'
 
-          with open('custom_components/cafe/manifest.json', 'w') as f:
+          with open('custom_components/flow/manifest.json', 'w') as f:
               json.dump(manifest, f, indent=2)
 
           print(f'✅ Updated manifest.json version to ${VERSION}')
@@ -176,6 +176,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add custom_components/cafe/manifest.json
+          git add custom_components/flow/manifest.json
           git diff --staged --quiet || git commit -m "Update version to ${{ github.event.release.tag_name }}"
           git push

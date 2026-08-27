@@ -1,11 +1,11 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
-import { AlertCircle, Ban, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { memo } from 'react';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
-import { cn } from '@/lib/utils';
 import type { TriggerNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { NodeTraceBadge } from './NodeTraceBadge';
+import { getNodeSummary } from '@/utils/nodeData';
+import { handleKindClass, NodeShell } from './nodeVisuals';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface TriggerNodeProps extends NodeProps {
@@ -17,168 +17,23 @@ export const TriggerNode = memo(function TriggerNode({ id, data, selected }: Tri
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const isActive = activeNodeId === id;
-  const stepNumber = getExecutionStepNumber(id);
-  const isDisabled = data.enabled === false;
-
-  const triggerLabels: Record<string, string> = {
-    state: 'State Change',
-    time: 'Time',
-    time_pattern: 'Time Pattern',
-    event: 'Event',
-    mqtt: 'MQTT',
-    webhook: 'Webhook',
-    sun: 'Sun',
-    zone: 'Zone',
-    numeric_state: 'Numeric State',
-    template: 'Template',
-    homeassistant: 'Home Assistant',
-    device: 'Device',
-  };
-
-  // Generate display text based on trigger type
-  const getDisplayInfo = () => {
-    const triggerType = data.trigger;
-
-    switch (triggerType) {
-      case 'device':
-        return {
-          title: data.alias || 'Device Trigger',
-          subtitle: data.type ? `${data.domain || 'device'}: ${data.type}` : 'Device',
-          detail: data.device_id ? `Device: ${String(data.device_id).substring(0, 8)}...` : null,
-        };
-
-      case 'state':
-        return {
-          title: data.alias || 'State Change',
-          subtitle: Array.isArray(data.entity_id)
-            ? `${data.entity_id.length} entities:\n${data.entity_id.join(', ')}`
-            : data.entity_id || 'State',
-          detail: data.to ? `to: ${data.to}` : null,
-        };
-
-      case 'numeric_state':
-        return {
-          title: data.alias || 'Numeric State',
-          subtitle: Array.isArray(data.entity_id)
-            ? data.entity_id.join(', ')
-            : data.entity_id || 'Numeric State',
-          detail:
-            data.above || data.below
-              ? `${data.above ? `>${data.above}` : ''}${data.above && data.below ? ' ' : ''}${data.below ? `<${data.below}` : ''}`
-              : null,
-        };
-
-      case 'event':
-        return {
-          title: data.alias || 'Event',
-          subtitle: triggerLabels[triggerType],
-          detail: data.event_type || null,
-        };
-
-      case 'time':
-        return {
-          title: data.alias || 'Time',
-          subtitle: triggerLabels[triggerType],
-          detail: data.at || null,
-        };
-
-      case 'sun':
-        return {
-          title: data.alias || 'Sun',
-          subtitle: triggerLabels[triggerType],
-          detail: data.event ? `${data.event}${data.offset ? ` ${data.offset}` : ''}` : null,
-        };
-
-      case 'mqtt':
-        return {
-          title: data.alias || 'MQTT',
-          subtitle: triggerLabels[triggerType],
-          detail: data.topic || null,
-        };
-
-      case 'webhook':
-        return {
-          title: data.alias || 'Webhook',
-          subtitle: triggerLabels[triggerType],
-          detail: data.webhook_id || null,
-        };
-
-      case 'zone':
-        return {
-          title: data.alias || 'Zone',
-          subtitle: triggerLabels[triggerType],
-          detail:
-            data.zone ||
-            (Array.isArray(data.entity_id) ? data.entity_id.join(', ') : data.entity_id) ||
-            null,
-        };
-
-      default:
-        return {
-          title: data.alias || triggerLabels[triggerType] || 'Trigger',
-          subtitle: triggerLabels[triggerType] || triggerType,
-          detail: null,
-        };
-    }
-  };
-
-  const displayInfo = getDisplayInfo();
+  const { title, subtitle } = getNodeSummary('trigger', data);
 
   return (
-    <div
-      className={cn(
-        'relative min-w-[180px] max-w-[300px] rounded-lg border-2 border-amber-400 bg-amber-50 px-4 py-3',
-        'transition-all duration-200',
-        selected && 'ring-2 ring-amber-500 ring-offset-2',
-        isActive && 'node-active ring-4 ring-green-500',
-        isDisabled && 'border-dashed opacity-50 grayscale',
-        hasErrors && 'border-red-500 ring-2 ring-red-400',
-        !isActive && traceView.ringClass,
-        traceView.dimmed && 'opacity-40'
-      )}
-      title={traceView.tooltip || undefined}
+    <NodeShell
+      kind="trigger"
+      icon={Zap}
+      title={title}
+      subtitle={subtitle}
+      selected={selected}
+      disabled={data.enabled === false}
+      hasErrors={hasErrors}
+      errorMessages={errorMessages}
+      traceView={traceView}
+      isActive={activeNodeId === id}
+      stepNumber={getExecutionStepNumber(id)}
     >
-      {hasErrors && (
-        <div
-          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm"
-          title={errorMessages.join('\n')}
-        >
-          <AlertCircle className="h-3 w-3" />
-        </div>
-      )}
-      {isDisabled && !hasErrors && (
-        <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-500 text-white shadow-sm">
-          <Ban className="h-3 w-3" />
-        </div>
-      )}
-      <NodeTraceBadge view={traceView} />
-      <div className="mb-1 flex items-center gap-2">
-        <div className="rounded bg-amber-200 p-1">
-          <Zap className="h-4 w-4 text-amber-700" />
-        </div>
-        <span className="font-semibold text-amber-900 text-sm">{displayInfo.title}</span>
-        {stepNumber && (
-          <div className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 font-bold text-white text-xs">
-            {stepNumber}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-0.5 text-amber-700 text-xs">
-        <div className="line-clamp-2 truncate whitespace-pre-line font-medium">
-          {displayInfo.subtitle}
-        </div>
-        {displayInfo.detail && (
-          <div className="truncate opacity-75">{String(displayInfo.detail)}</div>
-        )}
-      </div>
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!w-3 !h-3 !bg-amber-500 !border-amber-700"
-      />
-    </div>
+      <Handle type="source" position={Position.Right} className={handleKindClass('trigger')} />
+    </NodeShell>
   );
 });

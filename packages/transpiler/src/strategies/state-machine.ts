@@ -8,8 +8,8 @@ import type {
   SetVariablesNode,
   TriggerNode,
   WaitNode,
-} from '@cafe/shared';
-import { isDeviceAction } from '@cafe/shared';
+} from '@flow/shared';
+import { isDeviceAction } from '@flow/shared';
 import type { TopologyAnalysis } from '../analyzer/topology';
 import { BaseStrategy, type HAYamlOutput } from './base';
 
@@ -136,7 +136,7 @@ export class StateMachineStrategy extends BaseStrategy {
                 {
                   service: 'system_log.write',
                   data: {
-                    message: 'C.A.F.E.: Unknown state "{{ current_node }}", ending flow',
+                    message: 'Flow: Unknown state "{{ current_node }}", ending flow',
                     level: 'warning',
                   },
                 },
@@ -343,9 +343,7 @@ export class StateMachineStrategy extends BaseStrategy {
    */
   private encodeNodeIdInAlias(action: Record<string, unknown>, nodeId: string): void {
     const existingAlias = action.alias as string | undefined;
-    action.alias = existingAlias
-      ? `cafe_node:${nodeId}:${existingAlias}`
-      : `cafe_node:${nodeId}`;
+    action.alias = existingAlias ? `cafe_node:${nodeId}:${existingAlias}` : `cafe_node:${nodeId}`;
   }
 
   /**
@@ -534,6 +532,10 @@ export class StateMachineStrategy extends BaseStrategy {
         action.enabled = false;
       }
 
+      if (typeof node.data.note === 'string') {
+        action.note = node.data.note;
+      }
+
       return action;
     }
 
@@ -545,11 +547,13 @@ export class StateMachineStrategy extends BaseStrategy {
           ...(repeatData.count !== undefined ? { count: repeatData.count } : {}),
           ...(repeatData.while ? { while: repeatData.while } : {}),
           ...(repeatData.until ? { until: repeatData.until } : {}),
+          ...(repeatData.for_each ? { for_each: repeatData.for_each } : {}),
           sequence: repeatData.sequence ?? [],
         },
       };
       if (node.data.alias) actionCall.alias = node.data.alias;
       if (node.data.enabled === false) actionCall.enabled = false;
+      if (typeof node.data.note === 'string') actionCall.note = node.data.note;
       return actionCall;
     }
 
@@ -561,6 +565,7 @@ export class StateMachineStrategy extends BaseStrategy {
         actionCall.event_data = node.data.event_data;
       }
       if (node.data.enabled === false) actionCall.enabled = false;
+      if (typeof node.data.note === 'string') actionCall.note = node.data.note;
       return actionCall;
     }
 

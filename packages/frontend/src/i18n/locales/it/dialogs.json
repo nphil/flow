@@ -65,7 +65,7 @@
     "warnings": "Avvisi",
     "successLoading": "Importato con successo! Caricamento flow...",
     "tipLabel": "Suggerimento:",
-    "tipText": "Se l'automazione è stata creata con C.A.F.E., le posizioni dei nodi saranno preservate. Altrimenti, i nodi saranno disposti automaticamente in un layout leggibile.",
+    "tipText": "Se l'automazione è stata creata con Flow, le posizioni dei nodi saranno preservate. Altrimenti, i nodi saranno disposti automaticamente in un layout leggibile.",
     "importing": "Importazione...",
     "import": "Importa",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "Connesso!",
     "disconnect": "Disconnetti",
     "corsNote": "Nota CORS",
-    "corsDescription": "Per connetterti da un browser, potrebbe essere necessario aggiungere gli header CORS alla tua configurazione HA. Se ti connetti da https://fezvrasta.github.io/hass-cafe, la tua istanza HA deve essere sotto HTTPS.",
+    "corsDescription": "Per connetterti da un browser, potrebbe essere necessario aggiungere gli header CORS alla tua configurazione HA. Se ti connetti da https://nphil.github.io/haflow, la tua istanza HA deve essere sotto HTTPS.",
     "tokenGuideLink": "Come creare un Token di Accesso a Lunga Durata",
     "apiRunning": "API in esecuzione.",
     "errors": {
@@ -126,5 +126,60 @@
       "not_triggered": "Non attivata",
       "disallowed_recursion_detected": "Ricorsione bloccata"
     }
+  },
+  "connect": {
+    "title": "Connetti a Home Assistant",
+    "subtitle": "Flow richiede un URL e un token di accesso a lunga durata per funzionare in modalità standalone.",
+    "urlLabel": "URL di Home Assistant",
+    "urlPlaceholder": "http://homeassistant.local:8123",
+    "tokenLabel": "Token di accesso a lunga durata",
+    "tokenPlaceholder": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+    "tokenHelp": "Creane uno in HA: Profilo → Sicurezza → Token di accesso a lunga durata",
+    "connect": "Testa e Connetti",
+    "testing": "Test in corso…",
+    "securityNote": "Questo token garantisce accesso completo da amministratore — usa Flow standalone solo su una rete di cui ti fidi.",
+    "errors": {
+      "missingFields": "Inserisci sia l'URL che il token.",
+      "invalidToken": "Token non valido — autenticazione fallita.",
+      "httpError": "HTTP {{status}}: {{statusText}}",
+      "unexpectedResponse": "Risposta inattesa dal server.",
+      "mixedContent": "Questa pagina è servita via HTTPS ma l'URL di Home Assistant è HTTP — i browser bloccano questa combinazione. Usa HTTPS per entrambi, oppure apri Flow via HTTP.",
+      "corsHint": "Impossibile raggiungere il server. Se Home Assistant è attivo, è probabile un errore CORS — aggiungi a configuration.yaml:\nhttp:\n  cors_allowed_origins:\n    - {{origin}}",
+      "connectionFailed": "Connessione fallita."
+    }
+  },
+  "dirtyGuard": {
+    "title": "Modifiche non salvate",
+    "description": "Questa automazione ha modifiche non salvate. Salvale prima, oppure scarta e continua?",
+    "discard": "Scarta"
+  },
+  "deleteAutomation": {
+    "title": "Eliminare l'automazione?",
+    "description": "\"{{name}}\" verrà rimossa definitivamente da Home Assistant. L'operazione non può essere annullata.",
+    "deleting": "Eliminazione…"
+  },
+  "importExport": {
+    "title": "Importa / Esporta",
+    "description": "Importa lo YAML di un'automazione, oppure copia/scarica quello che stai modificando.",
+    "importTab": "Importa",
+    "exportTab": "Esporta",
+    "pasteYaml": "Incolla YAML",
+    "uploadYaml": "Carica .yaml",
+    "pastePlaceholder": "Incolla lo YAML dell'automazione di Home Assistant…",
+    "uploadPrompt": "Clicca per scegliere un file .yaml",
+    "fileLoaded": "File caricato — vedi l'anteprima qui sotto",
+    "parsing": "Analisi in corso…",
+    "nodeCount": "{{count}} nodo analizzato",
+    "nodeCount_other": "{{count}} nodi analizzati",
+    "replaceCurrent": "Sostituisci Corrente",
+    "applyAsNew": "Applica Come Nuova",
+    "download": "Scarica",
+    "nothingToExport": "Aggiungi nodi al canvas per esportare lo YAML."
+  },
+  "about": {
+    "tagline": "Un editor visuale in stile Node-RED per le automazioni di Home Assistant.",
+    "version": "Versione {{version}}",
+    "attribution": "Flow è un rebrand e una riscrittura di C.A.F.E. di Federico Zivolo, con licenza MIT.",
+    "originalProject": "Progetto originale"
   }
 }

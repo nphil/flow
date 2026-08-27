@@ -6,7 +6,7 @@
 // `addWaitTimeoutBranch` store action builds. No dedicated transpiler/parser
 // support is needed for this: it's an ordinary Wait -> Condition chain using
 // existing choose/if machinery, verified end to end here.
-import { type FlowGraph, isActionNode } from '@cafe/shared';
+import { type FlowGraph, isActionNode } from '@flow/shared';
 import { load as yamlLoad } from 'js-yaml';
 import { v4 as uuidv4 } from 'uuid';
 import { FlowTranspiler } from '../FlowTranspiler';
@@ -74,7 +74,11 @@ describe('Wait node timeout branching', () => {
     const parsed = yamlLoad(result.yaml!) as {
       actions: [
         { wait_for_trigger: unknown[]; timeout: string; continue_on_timeout: boolean },
-        { if: { value_template: string }[]; then: { service: string }[]; else: { service: string }[] },
+        {
+          if: { value_template: string }[];
+          then: { service: string }[];
+          else: { service: string }[];
+        },
       ];
     };
 
@@ -123,9 +127,9 @@ describe('Wait node timeout branching', () => {
     );
     const trueActionNode = graph.nodes.find((n) => n.id === trueTarget?.target);
     const falseActionNode = graph.nodes.find((n) => n.id === falseTarget?.target);
-    expect(trueActionNode && isActionNode(trueActionNode) ? trueActionNode.data.service : null).toBe(
-      'light.turn_on'
-    );
+    expect(
+      trueActionNode && isActionNode(trueActionNode) ? trueActionNode.data.service : null
+    ).toBe('light.turn_on');
     expect(
       falseActionNode && isActionNode(falseActionNode) ? falseActionNode.data.service : null
     ).toBe('notify.notify');

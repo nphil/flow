@@ -1,4 +1,4 @@
-import type { FlowGraph } from '@cafe/shared';
+import type { FlowGraph } from '@flow/shared';
 import type { TopologyAnalysis } from '../analyzer/topology';
 
 /**

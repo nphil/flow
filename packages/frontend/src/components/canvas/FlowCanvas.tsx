@@ -2,6 +2,7 @@ import type { OnBeforeDelete, OnConnectEnd } from '@xyflow/react';
 import {
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   type EdgeTypes,
   MarkerType,
@@ -12,6 +13,7 @@ import {
   ReactFlow,
   useReactFlow,
 } from '@xyflow/react';
+import { LayoutGrid, Lock, LockOpen } from 'lucide-react';
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QuickAddMenu, type QuickAddPosition } from '@/components/canvas/QuickAddMenu';
@@ -24,9 +26,9 @@ import {
   TriggerNode,
   WaitNode,
 } from '@/components/nodes';
-import type { NodeTypeConfig } from '@/components/panels/NodePalette';
+import type { NodeCatalogEntry } from '@/components/nodes/catalog';
 import { NodeToolbar } from '@/components/toolbar/NodeToolbar';
-import { useDarkMode } from '@/hooks/useDarkMode';
+import { useFlowTheme } from '@/hooks/useFlowTheme';
 import { buildQuickAddConnection, type QuickAddDirection } from '@/lib/quick-add';
 import { generateNodeId } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
@@ -54,9 +56,12 @@ const edgeTypes: EdgeTypes = {
   deletable: DeletableEdge,
 };
 
+const NEW_NODE_WIDTH = 220;
+const NEW_NODE_HEIGHT = 90;
+
 export function FlowCanvas() {
   const { t } = useTranslation(['common', 'debug']);
-  const isDarkMode = useDarkMode();
+  const { mode } = useFlowTheme();
   const {
     nodes,
     edges,
@@ -65,7 +70,6 @@ export function FlowCanvas() {
     onConnect,
     selectNode,
     addNode,
-    selectedNodeId,
     isSimulating,
     executionPath,
     isShowingTrace,
@@ -73,11 +77,31 @@ export function FlowCanvas() {
     nodeTraceStates,
     traceData,
     canDeleteEdge,
+    isArranging,
+    autoArrange,
+    animationsEnabled,
   } = useFlowStore();
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, setViewport } = useReactFlow();
+  const { screenToFlowPosition, setViewport, fitView } = useReactFlow();
   const [quickAdd, setQuickAdd] = useState<QuickAddState | null>(null);
+  const [interactive, setInteractive] = useState(true);
+  // Live-flow motion pause conditions (design doc §13): tab hidden or
+  // canvas being dragged/zoomed. Both are discrete start/end events, not a
+  // per-tick loop — feed a CSS class (`.flow-motion-active` below) so the
+  // dash-flow/packet-dot keyframes themselves stay pure CSS.
+  const [tabHidden, setTabHidden] = useState(() =>
+    typeof document === 'undefined' ? false : document.hidden
+  );
+  const [interacting, setInteracting] = useState(false);
+
+  useEffect(() => {
+    const onVisibilityChange = () => setTabHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  const motionActive = animationsEnabled && !tabHidden && !interacting;
 
   // Dropping a dragged connection on empty canvas offers a quick-add menu
   // instead of just discarding it — see QuickAddMenu.tsx.
@@ -111,18 +135,16 @@ export function FlowCanvas() {
   const closeQuickAdd = useCallback(() => setQuickAdd(null), []);
 
   const handleQuickAddSelect = useCallback(
-    (config: NodeTypeConfig) => {
+    (entry: NodeCatalogEntry) => {
       if (!quickAdd) return;
-      const nodeWidth = 180;
-      const nodeHeight = 80;
       const newNode = {
-        id: generateNodeId(config.type),
-        type: config.type,
+        id: generateNodeId(entry.kind),
+        type: entry.kind,
         position: {
-          x: quickAdd.flowPosition.x - nodeWidth / 2,
-          y: quickAdd.flowPosition.y - nodeHeight / 2,
+          x: quickAdd.flowPosition.x - NEW_NODE_WIDTH / 2,
+          y: quickAdd.flowPosition.y - NEW_NODE_HEIGHT / 2,
         },
-        data: { ...config.defaultData },
+        data: { ...entry.defaultData },
       };
       addNode(newNode);
       onConnect(
@@ -142,6 +164,27 @@ export function FlowCanvas() {
   useEffect(() => {
     setViewport({ x: 0, y: 0, zoom: 0.75 });
   }, [setViewport]);
+
+  // Auto-arrange (design doc §5): the store animates positions via CSS while
+  // `isArranging` is true (see index.css's `.flow-arranging` rule below);
+  // once it flips back to false the layout has settled, so fit the viewport
+  // to the result. Centralized here so it fires identically whether the
+  // header or the canvas control triggered the arrange.
+  const wasArrangingRef = useRef(false);
+  useEffect(() => {
+    const wasArranging = wasArrangingRef.current;
+    wasArrangingRef.current = isArranging;
+    if (wasArranging && !isArranging) {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      fitView({ padding: 0.15, duration: reducedMotion ? 0 : 220 });
+    }
+  }, [isArranging, fitView]);
+
+  const handleAutoArrange = useCallback(() => {
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    const aspect = bounds && bounds.height > 0 ? bounds.width / bounds.height : 1;
+    autoArrange(aspect >= 1 ? 'RIGHT' : 'DOWN');
+  }, [autoArrange]);
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: OnSelectionChangeParams) => {
@@ -185,12 +228,9 @@ export function FlowCanvas() {
         });
 
         // Center the node at the cursor position by offsetting by half node dimensions
-        const nodeWidth = 180; // Approximate node width
-        const nodeHeight = 80; // Approximate node height
-
         const position = {
-          x: dropPosition.x - nodeWidth / 2,
-          y: dropPosition.y - nodeHeight / 2,
+          x: dropPosition.x - NEW_NODE_WIDTH / 2,
+          y: dropPosition.y - NEW_NODE_HEIGHT / 2,
         };
 
         const newNode = {
@@ -217,10 +257,24 @@ export function FlowCanvas() {
     return byId;
   }, [nodes]);
 
-  // Style edges based on simulation state, trace state, and selected node
+  // Style edges based on simulation state, trace state, and selected node.
+  // Actual stroke/hover/selected coloring lives in CSS (index.css's
+  // `.react-flow__edge` rules) — this derives: whether the edge is part of
+  // an execution path (`isActive`, static accent highlight), whether it
+  // should additionally get the animated dash-flow (`animated` — gated by
+  // the motion-pause conditions above and capped at 24 concurrent per
+  // design doc §13), which single edge gets the traveling packet dot
+  // (`isMostRecent`), and its branch-label chip text.
   const styledEdges = useMemo(() => {
-    return edges.map((edge) => {
-      // Check if this edge is part of the execution path during simulation
+    // Which node was most recently entered — its incoming edge gets the
+    // single packet dot (design doc §13: one dot total, not one per edge).
+    const mostRecentNodeId = isSimulating
+      ? executionPath[executionPath.length - 1]
+      : isShowingTrace
+        ? traceExecutionPath[traceExecutionPath.length - 1]
+        : undefined;
+
+    const withActivity = edges.map((edge) => {
       const sourceIdx = executionPath.indexOf(edge.source);
       const targetIdx = executionPath.indexOf(edge.target);
 
@@ -246,35 +300,48 @@ export function FlowCanvas() {
             : true;
       }
 
-      // Check if this edge is connected to the selected node
-      const isConnectedToSelected =
-        selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId);
+      const isActive = isActiveInSimulation || (isActiveInTrace && isTraceRunning);
+      const isMostRecent = isActive && edge.target === mostRecentNodeId;
 
-      // Determine edge styling based on state (priority: simulation > trace > selection)
-      let edgeStyle = { strokeWidth: 2, stroke: isDarkMode ? '#94a3b8' : '#64748b' };
-      let markerEnd = { type: MarkerType.ArrowClosed, color: isDarkMode ? '#94a3b8' : '#64748b' };
+      const branchLabel =
+        typeof edge.label === 'string' && edge.label
+          ? edge.label
+          : nodeTypeById[edge.source] === 'condition' && edge.sourceHandle
+            ? edge.sourceHandle === 'true'
+              ? 'True'
+              : edge.sourceHandle === 'false'
+                ? 'False'
+                : undefined
+            : undefined;
 
-      if (isActiveInSimulation) {
-        // Simulation takes precedence - green for active path
-        edgeStyle = { stroke: '#22c55e', strokeWidth: 3 };
-        markerEnd = { type: MarkerType.ArrowClosed, color: '#22c55e' };
-      } else if (isActiveInTrace) {
-        // Trace visualization - green for the actually-taken path,
-        // animated only while the run is still in progress
-        edgeStyle = { stroke: '#22c55e', strokeWidth: 3 };
-        markerEnd = { type: MarkerType.ArrowClosed, color: '#22c55e' };
-      } else if (isConnectedToSelected) {
-        // Blue highlighting for connected edges
-        edgeStyle = { stroke: '#3b82f6', strokeWidth: 3 };
-        markerEnd = { type: MarkerType.ArrowClosed, color: '#3b82f6' };
-      }
+      return { edge, isActive, isMostRecent, branchLabel };
+    });
 
+    // Cap simultaneously *animated* edges at 24 (design doc §13); beyond
+    // that, still light up as executed but without motion. The most-recent
+    // edge always gets a slot first so the packet dot never silently drops.
+    const activeIndices = withActivity
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.isActive)
+      .sort((a, b) => Number(b.item.isMostRecent) - Number(a.item.isMostRecent));
+    const animatedIndexSet = new Set(activeIndices.slice(0, 24).map(({ index }) => index));
+
+    return withActivity.map(({ edge, isActive, isMostRecent, branchLabel }, index) => {
+      const animated = motionActive && animatedIndexSet.has(index);
       return {
         ...edge,
         type: 'deletable',
-        animated: isActiveInSimulation || (isActiveInTrace && isTraceRunning),
-        style: edgeStyle,
-        markerEnd,
+        data: {
+          ...edge.data,
+          isActive,
+          branchLabel,
+          animated,
+          isMostRecent: isMostRecent && animated,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: isActive ? 'var(--accent)' : 'var(--border)',
+        },
       };
     });
   }, [
@@ -282,17 +349,17 @@ export function FlowCanvas() {
     isSimulating,
     executionPath,
     isShowingTrace,
+    traceExecutionPath,
     nodeTraceStates,
     nodeTypeById,
     isTraceRunning,
-    selectedNodeId,
-    isDarkMode,
+    motionActive,
   ]);
 
   return (
     <div className="h-full w-full" ref={reactFlowWrapper}>
       <ReactFlow
-        colorMode={isDarkMode ? 'dark' : 'light'}
+        colorMode={mode}
         nodes={nodes}
         edges={styledEdges}
         onNodesChange={onNodesChange}
@@ -303,16 +370,19 @@ export function FlowCanvas() {
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onMoveStart={() => setInteracting(true)}
+        onMoveEnd={() => setInteracting(false)}
+        onNodeDragStart={() => setInteracting(true)}
+        onNodeDragStop={() => setInteracting(false)}
         panOnScroll={isMacOS()}
+        nodesDraggable={interactive}
+        nodesConnectable={interactive}
+        elementsSelectable={interactive}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{
           type: 'deletable',
-          style: { strokeWidth: 2, stroke: isDarkMode ? '#94a3b8' : '#64748b' },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: isDarkMode ? '#94a3b8' : '#64748b',
-          },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--border)' },
         }}
         defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
         maxZoom={2}
@@ -322,38 +392,52 @@ export function FlowCanvas() {
         snapToGrid
         snapGrid={[15, 15]}
         deleteKeyCode={null}
-        className={isDarkMode ? 'dark bg-background' : 'bg-muted/30'}
+        className={isArranging ? 'flow-arranging' : undefined}
         proOptions={{ hideAttribution: true }}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={20}
+          gap={24}
           size={1}
-          color={isDarkMode ? '#475569' : '#cbd5e1'}
+          color="color-mix(in srgb, var(--text) 6%, transparent)"
         />
-        <Controls />
+        <Controls showInteractive={false}>
+          <ControlButton
+            onClick={handleAutoArrange}
+            title={t('debug:canvas.autoArrange', { defaultValue: 'Auto-arrange' })}
+            disabled={nodes.length === 0 || isArranging}
+          >
+            <LayoutGrid />
+          </ControlButton>
+          <ControlButton
+            onClick={() => setInteractive((prev) => !prev)}
+            title={t('debug:canvas.toggleLock', { defaultValue: 'Toggle interactivity' })}
+          >
+            {interactive ? <LockOpen /> : <Lock />}
+          </ControlButton>
+        </Controls>
         <MiniMap
-          nodeStrokeWidth={3}
+          nodeStrokeWidth={2}
           zoomable
           pannable
-          nodeClassName={(node) => {
+          nodeColor={(node) => {
             switch (node.type) {
               case 'trigger':
-                return 'fill-amber-50 stroke-amber-400';
+                return 'var(--node-trigger)';
               case 'condition':
-                return 'fill-blue-50 stroke-blue-400';
+                return 'var(--node-condition)';
               case 'action':
-                return 'fill-green-50 stroke-green-400';
+                return 'var(--node-action)';
               case 'delay':
-                return 'fill-purple-50 stroke-purple-400';
               case 'wait':
-                return 'fill-orange-50 stroke-orange-400';
+                return 'var(--node-timing)';
               case 'set_variables':
-                return 'fill-cyan-50 stroke-cyan-400';
+                return 'var(--node-data)';
               default:
-                return 'fill-slate-100 stroke-slate-400';
+                return 'var(--node-unknown)';
             }
           }}
+          maskColor="color-mix(in srgb, var(--bg) 65%, transparent)"
         />
 
         <NodeToolbar />
@@ -361,24 +445,20 @@ export function FlowCanvas() {
         {isSimulating && (
           <Panel
             position="top-left"
-            className="rounded-lg border border-green-300 bg-green-100 px-4 py-2 dark:border-green-700 dark:bg-green-950"
+            className="!m-3 flex items-center gap-2 rounded-flow-control border border-flow-accent bg-flow-elevated px-3 py-1.5 font-mono text-flow-text text-xs shadow-flow-pop"
           >
-            <div className="flex items-center gap-2 font-medium text-green-800 text-sm dark:text-green-200">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-              {t('debug:simulation.simulatingExecution')}
-            </div>
+            <span className="h-2 w-2 animate-pulse rounded-full bg-flow-accent" />
+            {t('debug:simulation.simulatingExecution')}
           </Panel>
         )}
 
         {isShowingTrace && !isSimulating && (
           <Panel
             position="top-left"
-            className="rounded-lg border border-orange-300 bg-orange-100 px-4 py-2 dark:border-orange-700 dark:bg-orange-950"
+            className="!m-3 flex items-center gap-2 rounded-flow-control border border-flow-warn bg-flow-elevated px-3 py-1.5 font-mono text-flow-text text-xs shadow-flow-pop"
           >
-            <div className="flex items-center gap-2 font-medium text-orange-800 text-sm dark:text-orange-200">
-              <div className="h-2 w-2 rounded-full bg-orange-500" />
-              {t('debug:simulation.showingTraceExecution', { steps: traceExecutionPath.length })}
-            </div>
+            <span className="h-2 w-2 rounded-full bg-flow-warn" />
+            {t('debug:simulation.showingTraceExecution', { steps: traceExecutionPath.length })}
           </Panel>
         )}
       </ReactFlow>

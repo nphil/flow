@@ -1,4 +1,4 @@
-import type { ConditionType } from '@cafe/shared';
+import type { ConditionType } from '@flow/shared';
 import { Plus, Trash2 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';

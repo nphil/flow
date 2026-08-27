@@ -36,6 +36,7 @@ interface DeviceRegistryEntry {
   manufacturer: string | null;
   model: string | null;
   area_id: string | null;
+  labels?: string[];
 }
 
 /**
@@ -47,6 +48,17 @@ interface EntityRegistryEntry {
   area_id: string | null;
   name: string | null;
   original_name: string | null;
+  labels?: string[];
+}
+
+/**
+ * Label registry entry from Home Assistant
+ */
+interface LabelRegistryEntry {
+  label_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
 }
 
 /**
@@ -57,29 +69,42 @@ export interface HassConfig {
   token: string;
 }
 
-const STORAGE_KEY = 'cafe_hass_config';
+/** Design doc §12: standalone connection config, two flat keys (not one JSON blob) to match
+ * the rest of the app's `flow.<namespace>.<key>` localStorage convention. */
+const STORAGE_KEY_URL = 'flow.standalone.url';
+const STORAGE_KEY_TOKEN = 'flow.standalone.token';
 
 /**
  * Load config from localStorage
  */
 function loadConfig(): HassConfig {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
+    return {
+      url: localStorage.getItem(STORAGE_KEY_URL) ?? '',
+      token: localStorage.getItem(STORAGE_KEY_TOKEN) ?? '',
+    };
   } catch {
-    // Ignore parse errors
+    return { url: '', token: '' };
   }
-  return { url: '', token: '' };
 }
 
 /**
- * Save config to localStorage
+ * Save config to localStorage. An empty url/token removes that key instead of persisting an
+ * empty string, so `setConfig({ url: '', token: '' })` (design doc §12's Disconnect action)
+ * leaves nothing behind for the next boot's `loadConfig()` to pick back up.
  */
 function saveConfig(config: HassConfig): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    if (config.url) {
+      localStorage.setItem(STORAGE_KEY_URL, config.url);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_URL);
+    }
+    if (config.token) {
+      localStorage.setItem(STORAGE_KEY_TOKEN, config.token);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+    }
   } catch {
     // Ignore storage errors
   }
@@ -100,6 +125,14 @@ interface HassContextProps {
   getServiceDefinition: (fullServiceName: string) => HassService | null;
   getDeviceNameForEntity: (entityId: string) => string | null;
   getAreaNameForEntity: (entityId: string) => string | null;
+  /** Raw area registry (id + name), for pickers that list/count by area. */
+  areas: AreaRegistryEntry[];
+  /** Raw device registry (id, name, area_id, labels), for pickers that list/count by device. */
+  devices: DeviceRegistryEntry[];
+  /** Raw label registry (config/label_registry/list), for label pickers/target pills. */
+  labels: LabelRegistryEntry[];
+  /** Raw entity registry entries (device_id/area_id/labels per entity_id), for target pill counts. */
+  entityRegistryEntries: EntityRegistryEntry[];
 }
 
 const HassContext = createContext<HassContextProps | undefined>(undefined);
@@ -115,6 +148,7 @@ export const HassProvider: FC<
   const [areaRegistry, setAreaRegistry] = useState<Map<string, AreaRegistryEntry>>(new Map());
   const [deviceRegistry, setDeviceRegistry] = useState<Map<string, DeviceRegistryEntry>>(new Map());
   const [entityRegistry, setEntityRegistry] = useState<Map<string, EntityRegistryEntry>>(new Map());
+  const [labelRegistry, setLabelRegistry] = useState<Map<string, LabelRegistryEntry>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [wsConnection, setWsConnection] = useState<Connection | null>(null);
@@ -134,12 +168,13 @@ export const HassProvider: FC<
     setAreaRegistry(new Map());
     setDeviceRegistry(new Map());
     setEntityRegistry(new Map());
+    setLabelRegistry(new Map());
     setConnectionError(null);
   }, []);
 
   // Fetch data from remote HA instance using WebSocket
   useEffect(() => {
-    if (!shouldUseRemote) return;
+    if (!shouldUseRemote || !hasRemoteConfig) return;
 
     const establishConnection = async () => {
       setIsLoading(true);
@@ -163,7 +198,7 @@ export const HassProvider: FC<
         });
 
         connection.addEventListener('reconnect-error', (err: unknown) => {
-          console.error('C.A.F.E.: WebSocket reconnection failed:', err);
+          console.error('Flow: WebSocket reconnection failed:', err);
           setConnectionError('Reconnection failed');
         });
 
@@ -220,8 +255,18 @@ export const HassProvider: FC<
               entityMap.set(entity.entity_id, entity);
             }
             setEntityRegistry(entityMap);
+
+            // Fetch label registry
+            const labels = (await connection.sendMessagePromise({
+              type: 'config/label_registry/list',
+            })) as LabelRegistryEntry[];
+            const labelMap = new Map<string, LabelRegistryEntry>();
+            for (const label of labels) {
+              labelMap.set(label.label_id, label);
+            }
+            setLabelRegistry(labelMap);
           } catch (error) {
-            console.error('C.A.F.E.: Failed to fetch registries:', error);
+            console.error('Flow: Failed to fetch registries:', error);
           }
         };
         fetchRegistries();
@@ -234,7 +279,7 @@ export const HassProvider: FC<
           setWsConnection(null);
         };
       } catch (error) {
-        console.error('C.A.F.E.: Failed to establish WebSocket connection:', error);
+        console.error('Flow: Failed to establish WebSocket connection:', error);
         const errorMessage = error instanceof Error ? error.message : 'Connection failed';
         setConnectionError(errorMessage);
         setIsLoading(false);
@@ -249,7 +294,7 @@ export const HassProvider: FC<
         cleanup.then((cleanupFn) => cleanupFn?.());
       }
     };
-  }, [shouldUseRemote, config.url, config.token]);
+  }, [shouldUseRemote, hasRemoteConfig, config.url, config.token]);
 
   // Fetch registries when using externalHass (panel mode)
   useEffect(() => {
@@ -286,8 +331,18 @@ export const HassProvider: FC<
           entityMap.set(entity.entity_id, entity);
         }
         setEntityRegistry(entityMap);
+
+        // Fetch label registry
+        const labels = (await externalHass.connection.sendMessagePromise({
+          type: 'config/label_registry/list',
+        })) as LabelRegistryEntry[];
+        const labelMap = new Map<string, LabelRegistryEntry>();
+        for (const label of labels) {
+          labelMap.set(label.label_id, label);
+        }
+        setLabelRegistry(labelMap);
       } catch (error) {
-        console.error('C.A.F.E.: Failed to fetch registries from externalHass:', error);
+        console.error('Flow: Failed to fetch registries from externalHass:', error);
       }
     };
 
@@ -488,6 +543,17 @@ export const HassProvider: FC<
     [entityRegistry, deviceRegistry, areaRegistry]
   );
 
+  // Array views of the registries for pickers that list/count entries rather
+  // than looking a single one up by id (EntityPicker/DevicePicker/AreaPicker/
+  // LabelPicker/TargetEditor, components/forms).
+  const areas = useMemo(() => Array.from(areaRegistry.values()), [areaRegistry]);
+  const devices = useMemo(() => Array.from(deviceRegistry.values()), [deviceRegistry]);
+  const labels = useMemo(() => Array.from(labelRegistry.values()), [labelRegistry]);
+  const entityRegistryEntries = useMemo(
+    () => Array.from(entityRegistry.values()),
+    [entityRegistry]
+  );
+
   const value: HassContextProps = {
     hass,
     connection,
@@ -503,6 +569,10 @@ export const HassProvider: FC<
     getServiceDefinition,
     getDeviceNameForEntity,
     getAreaNameForEntity,
+    areas,
+    devices,
+    labels,
+    entityRegistryEntries,
   };
 
   return <HassContext.Provider value={value}>{children}</HassContext.Provider>;

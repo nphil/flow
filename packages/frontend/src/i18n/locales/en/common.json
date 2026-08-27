@@ -8,6 +8,7 @@
     "update": "Update",
     "refresh": "Refresh",
     "copy": "Copy",
+    "copied": "Copied!",
     "use": "Use",
     "add": "Add",
     "addTrigger": "Add Trigger",
@@ -63,6 +64,8 @@
   },
   "placeholders": {
     "automationName": "Automation name",
+    "searchNodes": "Search nodes…",
+    "noNodesFound": "No nodes found",
     "optionalDisplayName": "Optional display name",
     "optionalUniqueId": "Optional unique ID",
     "enterAutomationName": "Enter automation name...",
@@ -86,8 +89,8 @@
     "backspaceDeleteKey": "Backspace/Delete key"
   },
   "titles": {
-    "appName": "C.A.F.E.",
-    "appFullName": "Complex Automation Flow Editor",
+    "appName": "Flow",
+    "appFullName": "Flow",
     "settings": "Settings",
     "updateAutomation": "Update automation in Home Assistant",
     "saveAutomation": "Save automation to Home Assistant",
@@ -96,7 +99,9 @@
     "clickToConfigure": "Click to configure Home Assistant connection",
     "openDetached": "Open detached window",
     "removeSource": "Remove source from merged workspace",
-    "backToHA": "Back to Home Assistant"
+    "backToHA": "Back to Home Assistant",
+    "collapsePalette": "Collapse palette",
+    "expandPalette": "Expand palette"
   },
   "strategy": {
     "auto": "Auto",
@@ -124,10 +129,6 @@
     "selectZone": "Select zone...",
     "formatHMS": "Format: HH:MM:SS",
     "enterValue": "Enter {{name}}..."
-  },
-  "deviceSelector": {
-    "enterId": "Enter device ID manually",
-    "noDevices": "No devices found. Enter device ID manually or check your Home Assistant connection."
   },
   "automationSettings": {
     "title": "Automation Settings",
@@ -189,5 +190,19 @@
   },
   "stateTrigger": {
     "useValue": "Use value"
+  },
+  "theme": {
+    "auto": "Auto",
+    "light": "Light",
+    "dark": "Dark",
+    "haHint": "Blends into your Home Assistant theme. Hidden in standalone mode."
+  },
+  "pickers": {
+    "noEntities": "No entities found.",
+    "noDevices": "No devices found.",
+    "recent": "Recent",
+    "moreKeepTyping": "{{count}} more — keep typing",
+    "deviceIdPlaceholder": "Enter device ID...",
+    "deviceIdManualHint": "No devices found. Enter a device ID manually."
   }
 }

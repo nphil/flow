@@ -1,3 +1,7 @@
+import '@fontsource/source-serif-4/600.css';
+import '@fontsource/source-serif-4/700.css';
+import '@fontsource-variable/noto-sans-mono';
+import './theme/tokens.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -48,7 +52,7 @@ function renderApp() {
   }
 
   const inHaIframe = isInHaIframe();
-  logger.info('C.A.F.E. starting', { inHaIframe });
+  logger.info('Flow starting', { inHaIframe });
 
   if (inHaIframe) {
     // Running inside HA iframe - use parent's hass object

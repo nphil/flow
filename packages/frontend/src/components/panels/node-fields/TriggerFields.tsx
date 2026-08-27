@@ -1,4 +1,4 @@
-import type { FlowNode, TriggerPlatform } from '@cafe/shared';
+import type { FlowNode, TriggerPlatform } from '@flow/shared';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '@/components/forms/FormField';

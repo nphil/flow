@@ -4,11 +4,10 @@ import type {
   FlowMetadata,
   FlowNode,
   NodeValidationError,
-} from '@cafe/shared';
-import { validateNodeData } from '@cafe/shared';
-import type { TracePathMap } from '@cafe/transpiler';
-import { FlowTranspiler, resolveTracePath } from '@cafe/transpiler';
-import { dump as yamlDump } from 'js-yaml';
+} from '@flow/shared';
+import { validateNodeData } from '@flow/shared';
+import type { TracePathMap } from '@flow/transpiler';
+import { applyHeuristicLayout, FlowTranspiler, resolveTracePath } from '@flow/transpiler';
 import {
   addEdge,
   applyEdgeChanges,
@@ -19,6 +18,7 @@ import {
   type Node,
   type NodeChange,
 } from '@xyflow/react';
+import { dump as yamlDump } from 'js-yaml';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -27,7 +27,7 @@ import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { generateNodeId, generateUUID } from '@/lib/utils';
 import type { HomeAssistant } from '@/types/hass';
-import { cafeIndexedDBStorage } from '@/utils/indexeddb-storage';
+import { flowIndexedDBStorage } from '@/utils/indexeddb-storage';
 
 /**
  * Node data types for React Flow
@@ -144,6 +144,13 @@ export interface NodeTraceState {
   visitCount: number;
   /** The trace path this node was resolved from */
   path: string;
+  /**
+   * Elapsed ms from this step's timestamp to the next step's (or the run's
+   * finish time, for the last step) — HA traces don't carry a per-step
+   * duration directly, so this is the closest proxy. Undefined while the
+   * step is still the active/last one in a running trace.
+   */
+  durationMs?: number;
 }
 
 /**
@@ -201,6 +208,19 @@ export interface FlowState {
   // Shared simulation/trace state
   simulationSpeed: number;
 
+  // Layout state (auto-arrange in flight — see `autoArrange` below)
+  isArranging: boolean;
+
+  /**
+   * Live-flow animation toggle (design doc §13): dash-flow + packet-dot on
+   * the executed path. A UI preference, not graph data — persisted directly
+   * to localStorage (`flow.animations`), independent of undo/redo history
+   * and the IndexedDB graph-state persist middleware. Single shared source
+   * for both the Debug tab header switch and the header overflow menu switch.
+   */
+  animationsEnabled: boolean;
+  setAnimationsEnabled: (enabled: boolean) => void;
+
   // Toolbar state
   clipboard: string | null;
   pasteCount: number;
@@ -234,6 +254,8 @@ export interface FlowState {
   saveAutomation: (hassApi: HomeAssistant) => Promise<string>;
   updateAutomation: (hassApi: HomeAssistant) => Promise<void>;
   hasRealChanges: () => boolean; // Compare current state to original snapshot
+  /** Same comparison as `hasRealChanges`, exposed as the canonical dirty-state selector. */
+  isDirty: () => boolean;
 
   // Simulation
   startSimulation: () => void;
@@ -260,7 +282,20 @@ export interface FlowState {
   // Import/Export
   toFlowGraph: () => FlowGraph;
   fromFlowGraph: (graph: FlowGraph) => void;
+  /** Loads an existing HA automation by id via the ha-api + YamlParser path, replacing the canvas. */
+  openAutomationById: (id: string) => Promise<void>;
   reset: () => void;
+
+  // Layout
+  /**
+   * Re-lays out the current graph with elkjs (via the transpiler's
+   * `applyHeuristicLayout`) and animates positions in — see index.css's
+   * `.flow-arranging` rule, toggled by `isArranging` while this runs.
+   * `direction` defaults to 'RIGHT' when the caller has no viewport to judge
+   * aspect ratio from (e.g. a header button); the canvas's own auto-arrange
+   * control computes it from its own bounds instead.
+   */
+  autoArrange: (direction?: 'RIGHT' | 'DOWN') => Promise<void>;
 
   // Node validation
   nodeErrors: Map<string, NodeValidationError[]>;
@@ -361,6 +396,19 @@ const defaultFlowMetadata: FlowMetadata = {
   initial_state: true,
 };
 
+const ANIMATIONS_STORAGE_KEY = 'flow.animations';
+
+/** Mirrors useFlowTheme.ts's localStorage-read pattern for a plain UI preference. */
+function readStoredAnimationsEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const raw = window.localStorage.getItem(ANIMATIONS_STORAGE_KEY);
+    return raw === null ? true : raw === 'true';
+  } catch {
+    return true;
+  }
+}
+
 const initialState = {
   flowId: generateUUID(),
   flowName: 'Untitled Automation',
@@ -388,6 +436,8 @@ const initialState = {
   traceRunsVersion: 0,
   tracePathMap: null as TracePathMap | null,
   simulationSpeed: 800,
+  isArranging: false,
+  animationsEnabled: readStoredAnimationsEnabled(),
   nodeErrors: new Map<string, NodeValidationError[]>(),
   clipboard: null,
   pasteCount: 0,
@@ -652,6 +702,10 @@ export const useFlowStore = create<FlowState>()(
           });
           return currentSnapshot !== state.originalSnapshot;
         },
+        // `isDirty` is the canonical selector per the FlowShell/FlowParity
+        // contract; kept as a delegate rather than folding `hasRealChanges`
+        // into it so existing callers of the older name are untouched.
+        isDirty: () => get().hasRealChanges(),
 
         saveAutomation: async (hassApi: HomeAssistant) => {
           const state = get();
@@ -704,7 +758,7 @@ export const useFlowStore = create<FlowState>()(
             const validation = transpiler.validate(graph);
 
             if (validation.errors.length > 0) {
-              console.error('C.A.F.E.: Validation errors:', validation.errors);
+              console.error('Flow: Validation errors:', validation.errors);
               throw new Error(
                 `Validation failed: ${validation.errors.map((e) => e.message).join(', ')}`
               );
@@ -769,7 +823,7 @@ export const useFlowStore = create<FlowState>()(
             throw new Error('No automation ID set. Use saveAutomation() for new automations.');
           }
 
-          console.log('C.A.F.E.: Updating automation with ID from store:', state.automationId);
+          console.log('Flow: Updating automation with ID from store:', state.automationId);
 
           set({ isSaving: true });
 
@@ -887,7 +941,8 @@ export const useFlowStore = create<FlowState>()(
             .flat()
             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-          for (const step of sortedSteps) {
+          for (let i = 0; i < sortedSteps.length; i++) {
+            const step = sortedSteps[i];
             const nodeId = pathMap ? resolveTracePath(pathMap, step.path) : null;
             if (!nodeId) continue;
 
@@ -895,6 +950,17 @@ export const useFlowStore = create<FlowState>()(
               traceExecutionPath.push(nodeId);
               traceTimestamps[nodeId] = step.timestamp;
             }
+
+            // HA traces carry no per-step duration directly — approximate it
+            // as the gap to the next step's timestamp (or the run's finish
+            // time, for the last step). Left undefined while this step is
+            // still the active/last one in a running trace.
+            const nextTimestamp =
+              sortedSteps[i + 1]?.timestamp ??
+              (traceData.state === 'stopped' ? traceData.timestamp.finish : null);
+            const durationMs = nextTimestamp
+              ? Math.max(0, new Date(nextTimestamp).getTime() - new Date(step.timestamp).getTime())
+              : undefined;
 
             const previous = nodeTraceStates[nodeId];
             nodeTraceStates[nodeId] = {
@@ -904,6 +970,7 @@ export const useFlowStore = create<FlowState>()(
               error: step.error ?? step.template_errors?.[0],
               visitCount: (previous?.visitCount ?? 0) + 1,
               path: previous?.path ?? step.path,
+              durationMs: durationMs ?? previous?.durationMs,
             };
           }
 
@@ -938,6 +1005,14 @@ export const useFlowStore = create<FlowState>()(
         setTracePathMap: (map) => set({ tracePathMap: map }),
 
         setSimulationSpeed: (speed) => set({ simulationSpeed: speed }),
+        setAnimationsEnabled: (enabled) => {
+          try {
+            window.localStorage.setItem(ANIMATIONS_STORAGE_KEY, String(enabled));
+          } catch {
+            // localStorage unavailable (private browsing, etc.) — in-memory only.
+          }
+          set({ animationsEnabled: enabled });
+        },
         getExecutionStepNumber: (nodeId) => {
           const state = get();
           // Check simulation execution path first
@@ -973,14 +1048,14 @@ export const useFlowStore = create<FlowState>()(
               // Add missing required fields for different node types
               if (n.type === 'trigger' && !nodeData.trigger) {
                 console.warn(
-                  `C.A.F.E.: Trigger node ${n.id} missing trigger type, adding default 'state'`
+                  `Flow: Trigger node ${n.id} missing trigger type, adding default 'state'`
                 );
                 nodeData.trigger = 'state';
               }
 
               if (n.type === 'action' && !nodeData.service) {
                 console.warn(
-                  `C.A.F.E.: Action node ${n.id} missing service, adding default 'light.turn_on'`
+                  `Flow: Action node ${n.id} missing service, adding default 'light.turn_on'`
                 );
                 nodeData.service = 'light.turn_on';
               }
@@ -1077,6 +1152,33 @@ export const useFlowStore = create<FlowState>()(
           useFlowStore.temporal.getState().clear();
         },
 
+        openAutomationById: async (id) => {
+          const api = getHomeAssistantAPI();
+          if (!api.isConnected()) {
+            throw new Error('Not connected to Home Assistant');
+          }
+          const config = await api.getAutomationConfigWithFallback(id);
+          get().reset();
+          if (config) {
+            const yamlString = yamlDump(config, {
+              indent: 2,
+              lineWidth: -1,
+              quotingType: '"',
+              forceQuotes: false,
+            });
+            const transpiler = new FlowTranspiler();
+            const result = await transpiler.fromYaml(yamlString);
+            if (!result.success || !result.graph) {
+              throw new Error(result.errors?.join('\n') || 'Failed to parse automation YAML');
+            }
+            get().fromFlowGraph(result.graph);
+            get().setTracePathMap(result.nodePathMap ?? null);
+          }
+          const alias = typeof config?.alias === 'string' && config.alias ? config.alias : id;
+          get().setFlowName(alias);
+          get().setAutomationId(id);
+        },
+
         reset: () => {
           set({
             ...initialState,
@@ -1087,6 +1189,40 @@ export const useFlowStore = create<FlowState>()(
           });
           cancelPendingHistoryCommit();
           useFlowStore.temporal.getState().clear();
+        },
+
+        autoArrange: async (direction) => {
+          const state = get();
+          if (state.nodes.length === 0) return;
+          set({ isArranging: true });
+          try {
+            const graph = state.toFlowGraph();
+            const positioned = await applyHeuristicLayout(graph.nodes, graph.edges, {
+              direction: direction ?? 'RIGHT',
+              spacing: { rank: 48, inRank: 24 },
+            });
+            const positionById: Record<string, { x: number; y: number }> = Object.fromEntries(
+              positioned.map((n) => [n.id, n.position])
+            );
+            set((s) => ({
+              nodes: s.nodes.map((n) => {
+                const pos = positionById[n.id];
+                return pos && (pos.x !== n.position.x || pos.y !== n.position.y)
+                  ? { ...n, position: pos }
+                  : n;
+              }),
+              hasUnsavedChanges: true,
+            }));
+          } finally {
+            const reducedMotion =
+              typeof window !== 'undefined' &&
+              window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            if (reducedMotion) {
+              set({ isArranging: false });
+            } else {
+              setTimeout(() => set({ isArranging: false }), 220);
+            }
+          }
         },
 
         // Node validation
@@ -1182,8 +1318,8 @@ export const useFlowStore = create<FlowState>()(
       }
     ),
     {
-      name: 'cafe-flow-storage',
-      storage: cafeIndexedDBStorage,
+      name: 'flow-editor-storage',
+      storage: flowIndexedDBStorage,
       partialize: persistSelector,
       version: 1,
       onRehydrateStorage: () => (state) => {

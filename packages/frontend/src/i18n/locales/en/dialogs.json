@@ -65,7 +65,7 @@
     "warnings": "Warnings",
     "successLoading": "Successfully imported! Loading flow...",
     "tipLabel": "Tip:",
-    "tipText": "If your automation was created with C.A.F.E., node positions will be preserved. Otherwise, nodes will be automatically arranged in a readable layout.",
+    "tipText": "If your automation was created with Flow, node positions will be preserved. Otherwise, nodes will be automatically arranged in a readable layout.",
     "importing": "Importing...",
     "import": "Import",
     "errors": {
@@ -87,7 +87,7 @@
     "connected": "Connected!",
     "disconnect": "Disconnect",
     "corsNote": "CORS Note",
-    "corsDescription": "To connect from a browser, you may need to add CORS headers to your HA config. If you are connecting from https://fezvrasta.github.io/hass-cafe, you need your HA instance to be under HTTPS.",
+    "corsDescription": "To connect from a browser, you may need to add CORS headers to your HA config. If you are connecting from https://nphil.github.io/haflow, you need your HA instance to be under HTTPS.",
     "tokenGuideLink": "How to create a Long-Lived Access Token",
     "apiRunning": "API running.",
     "errors": {
@@ -126,5 +126,60 @@
       "not_triggered": "Not triggered",
       "disallowed_recursion_detected": "Recursion blocked"
     }
+  },
+  "connect": {
+    "title": "Connect to Home Assistant",
+    "subtitle": "Flow needs a URL and a long-lived access token to run standalone.",
+    "urlLabel": "Home Assistant URL",
+    "urlPlaceholder": "http://homeassistant.local:8123",
+    "tokenLabel": "Long-Lived Access Token",
+    "tokenPlaceholder": "eyJ0eXAiOiJKV1QiLCJhbGci...",
+    "tokenHelp": "Create one in HA: Profile → Security → Long-Lived Access Tokens",
+    "connect": "Test & Connect",
+    "testing": "Testing…",
+    "securityNote": "This token grants full admin access — only use Flow standalone on a network you trust.",
+    "errors": {
+      "missingFields": "Please provide both a URL and a token.",
+      "invalidToken": "Invalid token — authentication failed.",
+      "httpError": "HTTP {{status}}: {{statusText}}",
+      "unexpectedResponse": "Unexpected response from the server.",
+      "mixedContent": "This page is served over HTTPS but the Home Assistant URL is HTTP — browsers block that. Use HTTPS for both, or open Flow over HTTP.",
+      "corsHint": "Could not reach the server. If Home Assistant is up, this is likely CORS — add to configuration.yaml:\nhttp:\n  cors_allowed_origins:\n    - {{origin}}",
+      "connectionFailed": "Connection failed."
+    }
+  },
+  "dirtyGuard": {
+    "title": "Unsaved changes",
+    "description": "This automation has unsaved changes. Save them first, or discard and continue?",
+    "discard": "Discard"
+  },
+  "deleteAutomation": {
+    "title": "Delete automation?",
+    "description": "\"{{name}}\" will be permanently removed from Home Assistant. This cannot be undone.",
+    "deleting": "Deleting…"
+  },
+  "importExport": {
+    "title": "Import / Export",
+    "description": "Bring in an automation's YAML, or copy/download the one you're editing.",
+    "importTab": "Import",
+    "exportTab": "Export",
+    "pasteYaml": "Paste YAML",
+    "uploadYaml": "Upload .yaml",
+    "pastePlaceholder": "Paste Home Assistant automation YAML…",
+    "uploadPrompt": "Click to choose a .yaml file",
+    "fileLoaded": "File loaded — see preview below",
+    "parsing": "Parsing…",
+    "nodeCount": "{{count}} node parsed",
+    "nodeCount_other": "{{count}} nodes parsed",
+    "replaceCurrent": "Replace Current",
+    "applyAsNew": "Apply as New",
+    "download": "Download",
+    "nothingToExport": "Add nodes to the canvas to export YAML."
+  },
+  "about": {
+    "tagline": "A visual, Node-RED-style editor for Home Assistant automations.",
+    "version": "Version {{version}}",
+    "attribution": "Flow is a rebrand and rebuild of C.A.F.E. by Federico Zivolo, MIT licensed.",
+    "originalProject": "Original project"
   }
 }

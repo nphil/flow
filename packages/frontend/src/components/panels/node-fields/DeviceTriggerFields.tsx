@@ -1,8 +1,8 @@
-import type { FlowNode } from '@cafe/shared';
+import type { FlowNode } from '@flow/shared';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DevicePicker } from '@/components/forms/DevicePicker';
 import { FormField } from '@/components/forms/FormField';
-import { DeviceSelector } from '@/components/ui/DeviceSelector';
 import { DynamicFieldRenderer } from '@/components/ui/DynamicFieldRenderer';
 import {
   Select,
@@ -142,13 +142,13 @@ export function DeviceTriggerFields({ node, onChange, entities }: DeviceTriggerF
   return (
     <>
       {/* Device selector */}
-      <DeviceSelector
-        value={deviceId}
-        onChange={(val) => onChange('device_id', val)}
-        label={t('labels.device')}
-        required
-        placeholder={t('placeholders.selectDevice')}
-      />
+      <FormField label={t('labels.device')} required>
+        <DevicePicker
+          value={deviceId}
+          onChange={(val) => onChange('device_id', val)}
+          placeholder={t('placeholders.selectDevice')}
+        />
+      </FormField>
 
       {/* Trigger type selector - show dropdown if API data available, otherwise show as text */}
       {deviceId && availableDeviceTriggers.length > 0 ? (

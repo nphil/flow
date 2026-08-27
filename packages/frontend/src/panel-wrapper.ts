@@ -10,7 +10,7 @@ declare const window: Window & {
   hass?: HomeAssistant;
 };
 
-class CafePanelWrapper extends HTMLElement {
+class FlowPanelWrapper extends HTMLElement {
   private _messageHandler?: (event: MessageEvent) => void;
   private _resizeHandler?: () => void;
   private iframe: HTMLIFrameElement | null = null;
@@ -71,7 +71,7 @@ class CafePanelWrapper extends HTMLElement {
 
     // Create iframe pointing to the app
     this.iframe = document.createElement('iframe');
-    this.iframe.src = '/cafe-hass/index.html';
+    this.iframe.src = '/flow-static/index.html';
     this.iframe.style.width = '100%';
     this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
@@ -86,7 +86,7 @@ class CafePanelWrapper extends HTMLElement {
     this._messageHandler = (event: MessageEvent) => {
       // Only accept messages from our iframe
       if (event.source !== this.iframe?.contentWindow) return;
-      if (event.data && event.data.type === 'CAFE_TOGGLE_SIDEBAR') {
+      if (event.data && event.data.type === 'FLOW_TOGGLE_SIDEBAR') {
         this.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true }));
       }
     };
@@ -118,6 +118,6 @@ class CafePanelWrapper extends HTMLElement {
 }
 
 // Register the custom element
-if (!customElements.get('cafe-panel')) {
-  customElements.define('cafe-panel', CafePanelWrapper);
+if (!customElements.get('flow-panel')) {
+  customElements.define('flow-panel', FlowPanelWrapper);
 }

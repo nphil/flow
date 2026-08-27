@@ -4,7 +4,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/cafe-hass/',
+  // Relative base: the same bundle is served at /flow-static/ inside Home Assistant
+  // and at the domain root in standalone mode (design doc §12) — both must resolve assets.
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

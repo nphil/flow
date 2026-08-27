@@ -1,10 +1,10 @@
-import type { FlowNode } from '@cafe/shared';
+import type { FlowNode } from '@flow/shared';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MultiEntityPicker } from '@/components/forms/EntityPicker';
 import { FieldError } from '@/components/forms/FieldError';
 import { FormField } from '@/components/forms/FormField';
-import { DynamicFieldRenderer } from '@/components/ui/DynamicFieldRenderer';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -14,7 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { MultiEntitySelector } from '@/components/ui/MultiEntitySelector';
+import { DynamicFieldRenderer } from '@/components/ui/DynamicFieldRenderer';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getTriggerFields } from '@/config/triggerFields';
 import { useHass } from '@/contexts/HassContext';
@@ -146,7 +146,7 @@ function StateValueCombobox({
             {showCustomEntry && (
               <CommandGroup>
                 <CommandItem value={query} onSelect={handleSelect}>
-                  <span className="text-muted-foreground text-xs mr-2">
+                  <span className="mr-2 text-muted-foreground text-xs">
                     {t('stateTrigger.useValue')}
                   </span>
                   <span className="font-mono">{query}</span>
@@ -224,7 +224,7 @@ export function StateTriggerFields({ node, onChange, entities }: StateTriggerFie
     <>
       {/* Entity selector */}
       <FormField label={t('nodes:triggers.fields.entityId')} required>
-        <MultiEntitySelector
+        <MultiEntityPicker
           value={entityIds}
           onChange={(value) => onChange('entity_id', value)}
           entities={allEntities}

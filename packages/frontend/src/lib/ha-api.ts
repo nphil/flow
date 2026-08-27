@@ -1,6 +1,6 @@
 import type { AutomationConfig, HassEntity, HomeAssistant } from '@/types/hass';
 
-export interface CafeMetadata {
+export interface FlowMetadata {
   version: number;
   strategy: 'native' | 'state-machine';
   nodes: Record<string, unknown>;
@@ -17,6 +17,14 @@ export interface AreaRegistryEntry {
 export interface EntityRegistryEntry {
   entity_id: string;
   area_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface LabelRegistryEntry {
+  label_id: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
   [key: string]: unknown;
 }
 
@@ -301,7 +309,7 @@ export class HomeAssistantAPI {
 
     // Remote/standalone mode - use fetch
     if (!this.baseUrl || !this.token) {
-      console.error('C.A.F.E.: No authentication configured', {
+      console.error('Flow: No authentication configured', {
         baseUrl: this.baseUrl,
         hasToken: !!this.token,
       });
@@ -321,7 +329,7 @@ export class HomeAssistantAPI {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('C.A.F.E.: REST API error response:', errorText);
+      console.error('Flow: REST API error response:', errorText);
       throw new Error(`REST API error: ${response.status} ${response.statusText}`);
     }
 
@@ -408,7 +416,7 @@ export class HomeAssistantAPI {
         ) || null
       );
     } catch (error) {
-      console.error('C.A.F.E.: Failed to get automation config:', error);
+      console.error('Flow: Failed to get automation config:', error);
       return null;
     }
   }
@@ -428,7 +436,7 @@ export class HomeAssistantAPI {
       const traceDetails = await this.getAutomationTraceDetails(automationId, traces[0].run_id);
       return traceDetails?.config || null;
     } catch (error) {
-      console.error('C.A.F.E.: Failed to get automation config from trace:', error);
+      console.error('Flow: Failed to get automation config from trace:', error);
       return null;
     }
   }
@@ -451,7 +459,7 @@ export class HomeAssistantAPI {
       const fromTrace = await this.getAutomationConfigFromTrace(automationId);
       return (fromTrace as AutomationConfig | null) ?? null;
     } catch (error) {
-      console.error('C.A.F.E.: Failed to get automation config with fallback:', error);
+      console.error('Flow: Failed to get automation config with fallback:', error);
       return null;
     }
   }
@@ -470,7 +478,7 @@ export class HomeAssistantAPI {
       const configWithId = {
         ...rest,
         id: automationId,
-        alias: config.alias || `C.A.F.E. Automation ${automationId}`,
+        alias: config.alias || `Flow Automation ${automationId}`,
         description: config.description || '',
         triggers: trigger || config.triggers || [],
         conditions: condition || config.conditions || [],
@@ -483,7 +491,7 @@ export class HomeAssistantAPI {
       try {
         await this.fetchRestAPI(`config/automation/config/${automationId}`, 'POST', configWithId);
       } catch (saveError) {
-        console.error('C.A.F.E.: Failed to save automation config:', saveError);
+        console.error('Flow: Failed to save automation config:', saveError);
         throw new Error(
           `Failed to save automation config: ${saveError instanceof Error ? saveError.message : 'Unknown error'}`
         );
@@ -506,7 +514,7 @@ export class HomeAssistantAPI {
 
       throw new Error('No working Home Assistant connection method found');
     } catch (error) {
-      console.error('C.A.F.E.: Failed to create automation:', error);
+      console.error('Flow: Failed to create automation:', error);
       throw new Error(
         `Failed to create automation: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -518,8 +526,8 @@ export class HomeAssistantAPI {
    */
   async updateAutomation(automationId: string, config: AutomationConfig): Promise<void> {
     try {
-      console.log('C.A.F.E.: Updating automation with ID:', automationId);
-      console.log('C.A.F.E.: Update config:', config);
+      console.log('Flow: Updating automation with ID:', automationId);
+      console.log('Flow: Update config:', config);
 
       // Spread all fields from config so nothing is accidentally stripped,
       // then normalise the keys HA requires (plural trigger/condition/action forms).
@@ -527,7 +535,7 @@ export class HomeAssistantAPI {
       const configWithId = {
         ...rest,
         id: automationId,
-        alias: config.alias || `C.A.F.E. Automation ${automationId}`,
+        alias: config.alias || `Flow Automation ${automationId}`,
         description: config.description || '',
         triggers: trigger || config.triggers || [],
         conditions: condition || config.conditions || [],
@@ -536,14 +544,14 @@ export class HomeAssistantAPI {
         variables: config.variables || {},
       };
 
-      console.log('C.A.F.E.: Final update payload:', configWithId);
+      console.log('Flow: Final update payload:', configWithId);
 
       // Use POST method for updates (HA doesn't support PUT for automation config updates)
       await this.fetchRestAPI(`config/automation/config/${automationId}`, 'POST', configWithId);
 
-      console.log('C.A.F.E.: Successfully updated automation:', automationId);
+      console.log('Flow: Successfully updated automation:', automationId);
     } catch (error) {
-      console.error('C.A.F.E.: Failed to update automation:', error);
+      console.error('Flow: Failed to update automation:', error);
       throw new Error(
         `Failed to update automation: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -558,7 +566,7 @@ export class HomeAssistantAPI {
       // Use the automation config DELETE endpoint
       await this.fetchRestAPI(`config/automation/config/${automationId}`, 'DELETE');
     } catch (error) {
-      console.error('C.A.F.E.: Failed to delete automation:', error);
+      console.error('Flow: Failed to delete automation:', error);
       throw new Error(
         `Failed to delete automation: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -575,7 +583,7 @@ export class HomeAssistantAPI {
 
       return exists;
     } catch (error) {
-      console.error('C.A.F.E.: Failed to check automation existence:', error);
+      console.error('Flow: Failed to check automation existence:', error);
       return false;
     }
   }
@@ -595,7 +603,7 @@ export class HomeAssistantAPI {
 
       return alias;
     } catch (error) {
-      console.error('C.A.F.E.: Failed to get unique automation alias:', error);
+      console.error('Flow: Failed to get unique automation alias:', error);
       return baseAlias;
     }
   }
@@ -652,6 +660,18 @@ export class HomeAssistantAPI {
       return await this.sendMessage({ type: 'config/entity_registry/list' });
     } catch (error) {
       console.error('Failed to get entities:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get labels registry
+   */
+  async getLabels(): Promise<unknown | []> {
+    try {
+      return await this.sendMessage({ type: 'config/label_registry/list' });
+    } catch (error) {
+      console.error('Failed to get labels:', error);
       return [];
     }
   }

@@ -28,28 +28,28 @@ jobs:
         run: yarn install --immutable
 
       - name: Build shared package
-        run: yarn workspace @cafe/shared build
+        run: yarn workspace @flow/shared build
 
       - name: Build transpiler package
-        run: yarn workspace @cafe/transpiler build
+        run: yarn workspace @flow/transpiler build
 
       - name: Build frontend
-        run: yarn workspace @cafe/frontend build
+        run: yarn workspace @flow/frontend build
 
       - name: Verify www directory was created
         run: |
-          ls -la custom_components/cafe/
-          ls -la custom_components/cafe/www/ || echo "www directory missing!"
-          ls -la custom_components/cafe/www/assets/ || echo "assets directory missing!"
+          ls -la custom_components/flow/
+          ls -la custom_components/flow/www/ || echo "www directory missing!"
+          ls -la custom_components/flow/www/assets/ || echo "assets directory missing!"
 
       - name: Create release archives
         run: |
           # Create zip with files at root (for HACS)
-          cd custom_components/cafe
-          zip -r ../../cafe.zip . -x "*.DS_Store" "*/.DS_Store"
+          cd custom_components/flow
+          zip -r ../../flow.zip . -x "*.DS_Store" "*/.DS_Store"
 
           # Create alternative tar.gz
-          tar -czf ../../cafe.tar.gz --exclude="*.DS_Store" .
+          tar -czf ../../flow.tar.gz --exclude="*.DS_Store" .
           cd ../..
 
           echo "Created archives:"
@@ -59,7 +59,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            cafe.zip
-            cafe.tar.gz
+            flow.zip
+            flow.tar.gz
           tag_name: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push standalone image
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          docker build -t "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}" \
+                       -t "ghcr.io/${{ github.repository_owner }}/flow:latest" .
+          docker push "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}"
+          docker push "ghcr.io/${{ github.repository_owner }}/flow:latest"

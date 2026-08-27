@@ -1,10 +1,10 @@
 # State Machine Format Documentation
 
-This document describes the state-machine format used by C.A.F.E. for complex automations and the converter implementation.
+This document describes the state-machine format used by Flow for complex automations and the converter implementation.
 
 ## Overview
 
-C.A.F.E. supports two transpilation strategies:
+Flow supports two transpilation strategies:
 
 1. **Native Strategy** - Generates standard Home Assistant YAML with `if/then/else` and `choose` blocks
 2. **State Machine Strategy** - Generates a virtual CPU pattern for complex flows with cycles or cross-links
@@ -177,7 +177,7 @@ The converter determines node types from the choose block sequence:
 
 ## Metadata Structure
 
-The state-machine format stores C.A.F.E. metadata in `variables._cafe_metadata`:
+The state-machine format stores Flow's own metadata in `variables._cafe_metadata` (the key name is a legacy wire-format identifier, preserved for backward compatibility with automations saved before the Flow rebrand):
 
 ```yaml
 variables:

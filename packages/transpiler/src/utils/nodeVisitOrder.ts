@@ -1,4 +1,4 @@
-import type { FlowEdge, FlowGraph } from '@cafe/shared';
+import type { FlowEdge, FlowGraph } from '@flow/shared';
 
 /**
  * Rank used to order a node's outgoing edges before walking them, so the
