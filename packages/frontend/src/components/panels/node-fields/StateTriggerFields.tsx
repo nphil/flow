@@ -2,6 +2,7 @@ import type { FlowNode } from '@flow/shared';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MultiEntityPicker } from '@/components/forms/EntityPicker';
 import { FieldError } from '@/components/forms/FieldError';
 import { FormField } from '@/components/forms/FormField';
 import { DynamicFieldRenderer } from '@/components/ui/DynamicFieldRenderer';
@@ -14,7 +15,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { MultiEntitySelector } from '@/components/ui/MultiEntitySelector';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getTriggerFields } from '@/config/triggerFields';
 import { useHass } from '@/contexts/HassContext';
@@ -224,7 +224,7 @@ export function StateTriggerFields({ node, onChange, entities }: StateTriggerFie
     <>
       {/* Entity selector */}
       <FormField label={t('nodes:triggers.fields.entityId')} required>
-        <MultiEntitySelector
+        <MultiEntityPicker
           value={entityIds}
           onChange={(value) => onChange('entity_id', value)}
           entities={allEntities}

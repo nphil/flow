@@ -1,6 +1,10 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { AreaPicker } from '@/components/forms/AreaPicker';
+import { DevicePicker, MultiDevicePicker } from '@/components/forms/DevicePicker';
+import { EntityPicker, MultiEntityPicker } from '@/components/forms/EntityPicker';
 import { FieldError } from '@/components/forms/FieldError';
+import { TargetEditor, type TargetIds } from '@/components/forms/TargetEditor';
 import { DurationInput, type DurationValue } from '@/components/panels/node-fields/DurationField';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,11 +13,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EntitySelector } from '@/components/ui/EntitySelector';
 import { IdList } from '@/components/ui/IdList';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MultiEntitySelector } from '@/components/ui/MultiEntitySelector';
 import {
   Select,
   SelectContent,
@@ -24,6 +26,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { FieldConfig } from '@/config/triggerFields';
+import { useHass } from '@/contexts/HassContext';
 import type { TriggerField } from '@/hooks/useDeviceAutomation';
 import type { HassEntity } from '@/types/hass';
 
@@ -44,8 +47,8 @@ interface DynamicFieldRendererProps {
   onChange: (value: unknown) => void;
 
   /**
-   * Available entities (for entity selector).
-   * Optional - EntitySelector will auto-fetch from useHass() if not provided.
+   * Available entities (for entity/zone pickers).
+   * Optional - EntityPicker will auto-fetch from useHass() if not provided.
    */
   entities?: HassEntity[];
 
@@ -63,6 +66,44 @@ interface DynamicFieldRendererProps {
    * Validation error message to display below the field
    */
   error?: string;
+}
+
+/** Minor case: HA area selectors are typically single, but `multiple: true` is possible.
+ * No MultiAreaPicker exists in the picker contract, so this is a lightweight local
+ * chip-row mirroring MultiEntityPicker's shape, built on the single-select AreaPicker. */
+function MultiAreaChips({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+  const { areas } = useHass();
+  const areaById = new Map(areas.map((area) => [area.area_id, area]));
+  const handleRemove = (id: string) => onChange(value.filter((existing) => existing !== id));
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {value.map((id) => (
+        <span
+          key={id}
+          className="inline-flex items-center gap-1.5 rounded-flow-control border border-flow-border bg-flow-elevated py-0.5 pr-1 pl-2 text-flow-text-secondary text-xs"
+        >
+          {areaById.get(id)?.name ?? id}
+          <button
+            type="button"
+            onClick={() => handleRemove(id)}
+            aria-label={`Remove ${id}`}
+            className="shrink-0 rounded-full p-0.5 text-flow-text-muted hover:bg-flow-panel hover:text-flow-danger"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <AreaPicker
+        value=""
+        onChange={(id) => {
+          if (id && !value.includes(id)) onChange([...value, id]);
+        }}
+        placeholder="+ Area"
+        className="w-32"
+      />
+    </div>
+  );
 }
 
 /**
@@ -316,7 +357,7 @@ export function DynamicFieldRenderer({
               : [];
 
           return (
-            <MultiEntitySelector
+            <MultiEntityPicker
               value={values}
               onChange={onChange}
               entities={entities}
@@ -326,7 +367,7 @@ export function DynamicFieldRenderer({
         }
 
         return (
-          <EntitySelector
+          <EntityPicker
             value={stringValue}
             onChange={onChange}
             entities={entities}
@@ -338,7 +379,7 @@ export function DynamicFieldRenderer({
       // Zone picker
       case 'zone':
         return (
-          <EntitySelector
+          <EntityPicker
             value={stringValue}
             onChange={onChange}
             entities={entities}
@@ -346,6 +387,50 @@ export function DynamicFieldRenderer({
             placeholder={placeholder || t('dynamicField.selectZone')}
           />
         );
+
+      // Device picker
+      case 'device': {
+        const isMultiple =
+          ('multiple' in field && field.multiple) || selectorConfig.multiple === true;
+
+        if (isMultiple) {
+          const values = Array.isArray(value)
+            ? value
+            : typeof value === 'string' && value
+              ? value.split(',').map((s) => s.trim())
+              : [];
+
+          return (
+            <MultiDevicePicker value={values} onChange={onChange} placeholder={placeholder || 'Select devices...'} />
+          );
+        }
+
+        return (
+          <DevicePicker value={stringValue} onChange={onChange} placeholder={placeholder || 'Select device...'} />
+        );
+      }
+
+      // Area picker
+      case 'area': {
+        const isMultiple =
+          ('multiple' in field && field.multiple) || selectorConfig.multiple === true;
+
+        if (isMultiple) {
+          const values = Array.isArray(value)
+            ? value
+            : typeof value === 'string' && value
+              ? value.split(',').map((s) => s.trim())
+              : [];
+
+          return <MultiAreaChips value={values} onChange={onChange} />;
+        }
+
+        return <AreaPicker value={stringValue} onChange={onChange} placeholder={placeholder || 'Select area...'} />;
+      }
+
+      // Target editor (entity_id/device_id/area_id/label_id)
+      case 'target':
+        return <TargetEditor target={value as TargetIds | undefined} onChange={onChange} />;
 
       // Template editor
       case 'template':

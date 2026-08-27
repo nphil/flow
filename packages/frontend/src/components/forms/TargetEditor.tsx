@@ -8,7 +8,7 @@ import { DevicePicker } from './DevicePicker';
 import { EntityPicker } from './EntityPicker';
 import { LabelPicker } from './LabelPicker';
 
-type TargetIds = {
+export type TargetIds = {
   entity_id?: string | string[];
   device_id?: string | string[];
   area_id?: string | string[];
