@@ -39,7 +39,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
           <p>{t('dialogs:about.attribution')}</p>
           <div className="flex justify-center gap-4">
             <a
-              href="https://github.com/nphil/haflow"
+              href="https://github.com/nphil/flow"
               target="_blank"
               rel="noopener noreferrer"
               className="ui-focus-ring rounded-flow-control text-flow-accent hover:text-flow-accent-hover hover:underline"

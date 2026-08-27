@@ -14,7 +14,7 @@
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Stars](https://img.shields.io/github/stars/nphil/haflow?style=flat&color=gold)](https://github.com/nphil/haflow)
+[![Stars](https://img.shields.io/github/stars/nphil/flow?style=flat&color=gold)](https://github.com/nphil/flow)
 
 Flow is a visual flow editor that brings Node-RED-style clarity to Home Assistant automations **without a second execution engine**: you build on a canvas, and Flow transpiles the diagram into 100% standard Home Assistant YAML stored directly in HA's own automation config, so the logic that runs is native HA logic, not something Flow has to keep alive itself.
 
@@ -73,7 +73,7 @@ Flow is architected with strict engineering principles to ensure your home remai
 2. **Add Custom Repository**:
    - Go to **HACS** → **Integrations**
    - Click the **⋮** menu → **Custom repositories**
-   - Add: `https://github.com/nphil/haflow` as an **Integration**.
+   - Add: `https://github.com/nphil/flow` as an **Integration**.
 3. **Install & Restart**: Find **Flow** in HACS, download it, and restart Home Assistant.
 4. **Enable**: Go to **Settings** → **Devices & Services** → **Add Integration** → Search for **Flow**.
 

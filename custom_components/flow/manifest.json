@@ -6,10 +6,10 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["frontend", "http"],
-  "documentation": "https://github.com/nphil/haflow",
-  "documentation_url": "https://github.com/nphil/haflow",
+  "documentation": "https://github.com/nphil/flow",
+  "documentation_url": "https://github.com/nphil/flow",
   "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/nphil/haflow/issues",
+  "issue_tracker": "https://github.com/nphil/flow/issues",
   "requirements": []
 }
