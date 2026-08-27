@@ -1,8 +1,6 @@
 > [!WARNING]
-> The project is still in beta. While it is designed to be non-destructive, please make sure to backup your automations before editing them with Flow!
-
-> [!TIP]
-> Looking for a Role Based Access Control system for HA? [ha-rbac](https://github.com/fezvrasta/ha-rbac) is now available!
+> Back up your automations before editing them with Flow. It is designed to be
+> non-destructive (unknown YAML keys round-trip untouched), but it is young software.
 
 <p>
   <img src="assets/logo.svg" alt="Flow logo" width="64" height="64" />
@@ -20,8 +18,13 @@ Flow is a visual flow editor that brings Node-RED-style clarity to Home Assistan
 
 ---
 
-<!-- Screenshot placeholder: canvas view of an automation open in Flow, light + dark theme side by side. -->
-<!-- Screenshot placeholder: live trace view mid-run, next to the equivalent native Home Assistant trace. -->
+<p align="center">
+  <img src="docs/screenshots/flow-hero-dark.png" alt="Flow editing a Home Assistant automation (dark theme)" width="100%" />
+</p>
+
+| Light theme | Live trace / debug | Node editor |
+| --- | --- | --- |
+| ![Light theme](docs/screenshots/flow-hero-light.png) | ![Debug tab with run history](docs/screenshots/flow-debug-dark.png) | ![Property panel](docs/screenshots/flow-properties-dark.png) |
 
 ---
 
