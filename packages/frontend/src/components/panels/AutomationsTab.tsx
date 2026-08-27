@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Search,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -25,6 +25,7 @@ import {
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { useNow } from '@/hooks/useNow';
+import { useScrollFade } from '@/hooks/useScrollFade';
 import type { AutomationCatalogItem } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,15 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
   const { hass, config: hassConfig, entities, isRemote, connectionError } = useHass();
   const [chip, setChip] = useState<AutomationFilterChip>('all');
   const now = useNow();
+  const { ref: chipRowRef, isOverflowing: chipsOverflowing } = useScrollFade<HTMLDivElement>();
+
+  // Design doc §5 "scrollable filter-chip row": keep the active chip in view -- mirrors
+  // RightPanel.tsx's tab strip treatment.
+  useEffect(() => {
+    chipRowRef.current
+      ?.querySelector<HTMLElement>('[data-state="active"]')
+      ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [chip, chipRowRef]);
 
   const {
     catalogItems,
@@ -177,14 +187,21 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
           />
         </div>
 
-        <div className="flex gap-1">
+        <div
+          ref={chipRowRef}
+          className={cn(
+            'flow-scroll-strip flex gap-1 overflow-x-auto',
+            chipsOverflowing && 'flow-scroll-fade'
+          )}
+        >
           {CHIPS.map((chipOption) => (
             <button
               key={chipOption}
               type="button"
+              data-state={chip === chipOption ? 'active' : 'inactive'}
               onClick={() => setChip(chipOption)}
               className={cn(
-                'ui-focus-ring flex-1 rounded-flow-control px-1.5 py-1 font-mono text-[11px] transition-colors duration-flow-fast',
+                'ui-focus-ring shrink-0 whitespace-nowrap rounded-flow-control px-1.5 py-1 font-mono text-[11px] transition-colors duration-flow-fast',
                 chip === chipOption
                   ? 'bg-flow-accent text-flow-on-accent'
                   : 'bg-flow-elevated text-flow-text-muted hover:text-flow-text'

@@ -270,7 +270,7 @@ export function DevicePicker({
   }
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative min-w-0', className)}>
       <DevicePopover
         devices={devices}
         areaById={areaById}
@@ -288,7 +288,7 @@ export function DevicePicker({
             type="button"
             disabled={disabled}
             className={cn(
-              'flex w-full items-center gap-2 rounded-flow-control border border-flow-border bg-flow-elevated px-3 py-2 text-left text-sm transition-colors duration-flow-fast hover:border-flow-accent disabled:cursor-not-allowed disabled:opacity-50',
+              'flex w-full min-w-0 items-center gap-2 rounded-flow-control border border-flow-border bg-flow-elevated px-3 py-2 text-left text-sm transition-colors duration-flow-fast hover:border-flow-accent disabled:cursor-not-allowed disabled:opacity-50',
               !selected && 'text-flow-text-muted'
             )}
           >
@@ -298,7 +298,7 @@ export function DevicePicker({
                 <span className="min-w-0 flex-1 truncate text-flow-text">
                   {getDeviceName(selected)}
                 </span>
-                <span className="shrink-0 truncate text-flow-text-muted text-xs">
+                <span className="min-w-0 shrink truncate text-flow-text-muted text-xs">
                   {[
                     selected.area_id ? areaById.get(selected.area_id)?.name : undefined,
                     [selected.manufacturer, selected.model].filter(Boolean).join(' '),

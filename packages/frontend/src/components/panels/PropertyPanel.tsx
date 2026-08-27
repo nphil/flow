@@ -167,7 +167,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
                 t(`nodes:types.${selectedNode.type}`)
               : t('nodes:types.node')}
           </span>
-          <span className="truncate font-mono text-[10px] text-flow-text-muted">
+          <span className="min-w-0 truncate font-mono text-[10px] text-flow-text-muted">
             {t('nodes:panel.nodeId', { id: selectedNode.id })}
           </span>
         </div>
@@ -251,7 +251,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
 
       {/* Footer: duplicate/delete + per-node YAML foldout */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleDuplicate} className="gap-2">
             <CopyPlus className="h-3.5 w-3.5" />
             {t('toolbar.duplicateNode')}
@@ -260,7 +260,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
             variant="outline"
             size="sm"
             onClick={handleDelete}
-            className="gap-2 text-flow-danger hover:bg-flow-danger/10 hover:text-flow-danger"
+            className="gap-2 text-flow-danger"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {t('toolbar.deleteNode')}

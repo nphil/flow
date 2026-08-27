@@ -237,7 +237,7 @@ export function NodeToolbar() {
           className={cn(
             'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-flow-control text-flow-text-secondary transition-colors duration-flow-fast ease-flow-warm sm:h-9 sm:w-9',
             'hover:bg-flow-elevated hover:text-flow-text disabled:pointer-events-none disabled:opacity-40',
-            action.variant === 'destructive' && 'hover:bg-flow-danger/10 hover:text-flow-danger'
+            action.variant === 'destructive' && 'hover:text-flow-danger'
           )}
           title={
             action.shortcut
