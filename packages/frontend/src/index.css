@@ -191,22 +191,142 @@
   }
 }
 
-/* Save button animation for unsaved changes */
+/* Save button pulse for unsaved changes -- token-driven so every palette/mode just works. */
 @keyframes save-pulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-subtle);
   }
   50% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    box-shadow: 0 0 0 6px transparent;
   }
 }
 
 .save-button-unsaved {
-  animation: save-pulse 2s infinite;
+  animation: save-pulse 2s ease-in-out infinite;
 }
 
-.save-button-unsaved-dark {
-  animation: save-pulse 2s infinite;
+@media (prefers-reduced-motion: reduce) {
+  .save-button-unsaved {
+    animation: none;
+  }
+}
+
+/* Cody §4 -- keyboard-only focus ring (design doc §2 motion/shape language). */
+.ui-focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Cody §4 -- entrance animation utilities. Durations reference the shared --dur-* tokens so
+   prefers-reduced-motion (theme/tokens.css, which zeroes --dur-* under that media query)
+   silences them for free without each usage needing its own override. */
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ui-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes ui-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ui-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ui-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes ui-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: ui-fade-in var(--dur-fast) var(--ease-out-warm) both;
+}
+.animate-scale-in {
+  animation: ui-scale-in var(--dur-med) var(--ease-out-warm) both;
+}
+.animate-slide-down {
+  animation: ui-slide-down var(--dur-med) var(--ease-out-warm) both;
+}
+.animate-slide-up {
+  animation: ui-slide-up var(--dur-med) var(--ease-out-warm) both;
+}
+.animate-slide-in-left {
+  animation: ui-slide-in-left var(--dur-slow) var(--ease-out-warm) both;
+}
+.animate-slide-in-right {
+  animation: ui-slide-in-right var(--dur-slow) var(--ease-out-warm) both;
+}
+
+/* Mobile drawer scrim (design doc §4): Cody's overlay-backdrop formula. */
+.flow-scrim {
+  background: color-mix(in srgb, var(--text) 24%, transparent);
+}
+
+/* Cody §7 -- scrollbar styling, theme-mixed via --text-muted (Cody's --text-dim tier). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 45%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--text-muted) 45%, transparent);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--text-muted) 75%, transparent);
+  background-clip: content-box;
 }

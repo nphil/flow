@@ -1,28 +1,22 @@
-import Fuse from 'fuse.js';
 import { useEffect, useMemo, useState } from 'react';
-import type { AreaRegistryEntry, AutomationCatalogItem, EntityRegistryEntry } from '@/lib/ha-api';
+import type {
+  AreaRegistryEntry,
+  AutomationCatalogItem,
+  EntityRegistryEntry,
+  HomeAssistantAPI,
+} from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import type { HassEntity, HomeAssistant } from '@/types/hass';
 
-export type AutomationCatalogSortColumn = 'name' | 'lastTriggered' | 'enabled';
-export type AutomationCatalogSortDirection = 'asc' | 'desc';
+export type AutomationFilterChip = 'all' | 'enabled' | 'disabled' | 'recent';
+
+/** Design doc §4: "Recent" filter chip window. */
+const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface UseAutomationCatalogOptions {
-  isOpen: boolean;
   hass: HomeAssistant | undefined;
   hassConfig?: { url?: string; token?: string };
   entities: HassEntity[];
-  searchTerm: string;
-  sortColumn: AutomationCatalogSortColumn | null;
-  sortDirection: AutomationCatalogSortDirection;
-  labels: {
-    noArea: string;
-    otherArea: string;
-  };
-}
-
-interface SearchableCatalogItem extends AutomationCatalogItem {
-  searchText: string;
 }
 
 export function normalizeAutomationTags(tags: unknown): string[] {
@@ -81,101 +75,81 @@ export function buildAutomationSearchText(item: AutomationCatalogItem): string {
     .join(' ');
 }
 
-export function sortAutomationCatalogItems(
+/**
+ * Applies one of the Automations tab's filter chips (design doc §4). "Recent" both filters to
+ * automations triggered within the last 24h *and* sorts most-recent-first, since that ordering
+ * is the entire point of the chip; the other chips sort alphabetically for a stable list.
+ */
+export function filterAutomationCatalogItemsByChip(
   items: AutomationCatalogItem[],
-  sortColumn: AutomationCatalogSortColumn | null,
-  sortDirection: AutomationCatalogSortDirection
+  chip: AutomationFilterChip,
+  now: number = Date.now()
 ): AutomationCatalogItem[] {
-  if (!sortColumn) {
-    return [...items];
+  switch (chip) {
+    case 'enabled':
+      return items
+        .filter((item) => item.enabled)
+        .sort((a, b) => a.friendly_name.localeCompare(b.friendly_name));
+    case 'disabled':
+      return items
+        .filter((item) => !item.enabled)
+        .sort((a, b) => a.friendly_name.localeCompare(b.friendly_name));
+    case 'recent':
+      return items
+        .filter(
+          (item) =>
+            !!item.last_triggered &&
+            now - new Date(item.last_triggered).getTime() <= RECENT_WINDOW_MS
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.last_triggered as string).getTime() -
+            new Date(a.last_triggered as string).getTime()
+        );
+    default:
+      return [...items].sort((a, b) => a.friendly_name.localeCompare(b.friendly_name));
   }
-
-  return [...items].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sortColumn) {
-      case 'name': {
-        comparison = a.friendly_name.toLowerCase().localeCompare(b.friendly_name.toLowerCase());
-        break;
-      }
-      case 'lastTriggered': {
-        const dateA = a.last_triggered ? new Date(a.last_triggered).getTime() : 0;
-        const dateB = b.last_triggered ? new Date(b.last_triggered).getTime() : 0;
-        comparison = dateA - dateB;
-        break;
-      }
-      case 'enabled': {
-        comparison = Number(a.enabled) - Number(b.enabled);
-        break;
-      }
-    }
-
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
 }
 
-export function fuzzyFilterAutomationCatalogItems(
-  items: AutomationCatalogItem[],
-  query: string
-): AutomationCatalogItem[] {
-  if (!query.trim()) {
-    return [...items];
-  }
-
-  const searchableItems: SearchableCatalogItem[] = items.map((item) => ({
-    ...item,
-    searchText: buildAutomationSearchText(item),
-  }));
-
-  const fuse = new Fuse(searchableItems, {
-    keys: ['searchText', 'entity_id', 'friendly_name', 'description'],
-    threshold: 0.4,
-    ignoreLocation: true,
-    includeScore: true,
-    minMatchCharLength: 2,
-  });
-
-  return fuse.search(query).map((entry) => {
-    const { searchText: _searchText, ...item } = entry.item;
-    return item;
-  });
+/**
+ * Calls the same `automation.turn_on`/`turn_off` service the row's Switch represents. Takes
+ * the API as a narrow, injectable dependency so it's testable without mocking the ha-api module.
+ */
+export async function setAutomationEnabled(
+  api: Pick<HomeAssistantAPI, 'setAutomationState'>,
+  item: Pick<AutomationCatalogItem, 'entity_id'>,
+  enabled: boolean
+): Promise<void> {
+  await api.setAutomationState(item.entity_id, enabled);
 }
 
-export function groupAutomationCatalogByArea(
-  items: AutomationCatalogItem[],
-  areaIdToName: Record<string, string>,
-  labels: { noArea: string; otherArea: string }
-): Record<string, AutomationCatalogItem[]> {
-  const groups: Record<string, AutomationCatalogItem[]> = {};
+export type AutomationOpenPlan =
+  | { action: 'open'; automationId: string }
+  | { action: 'confirm'; automationId: string };
 
-  for (const item of items) {
-    const areaName = item.area_id ? areaIdToName[item.area_id] || labels.otherArea : labels.noArea;
-
-    if (!groups[areaName]) {
-      groups[areaName] = [];
-    }
-
-    groups[areaName].push(item);
-  }
-
-  return groups;
+/**
+ * Design doc §0/§4: switching the open automation while the canvas has unsaved changes must
+ * be confirmed first. Pure so the branch is directly testable; `AutomationsTab` wires the
+ * 'confirm' outcome to `useDirtyGuard`.
+ */
+export function planAutomationOpen(automationId: string, isDirty: boolean): AutomationOpenPlan {
+  return { action: isDirty ? 'confirm' : 'open', automationId };
 }
 
-export function useAutomationCatalog({
-  isOpen,
-  hass,
-  hassConfig,
-  entities,
-  searchTerm,
-  sortColumn,
-  sortDirection,
-  labels,
-}: UseAutomationCatalogOptions) {
+/**
+ * Data layer for the Automations tab (design doc §4, the new primary workflow). Fetches the
+ * area/entity registries once and maps the *live* `entities` array (already pushed reactively
+ * by HassContext -- panel mode re-renders with a fresh `hass` on every state change, remote
+ * mode via `subscribeEntities`) into the catalog shape, so enabled state and last_triggered
+ * stay current without any polling in here.
+ */
+export function useAutomationCatalog({ hass, hassConfig, entities }: UseAutomationCatalogOptions) {
   const [areas, setAreas] = useState<AreaRegistryEntry[]>([]);
   const [entityRegistry, setEntityRegistry] = useState<EntityRegistryEntry[]>([]);
+  const [registriesLoaded, setRegistriesLoaded] = useState(false);
 
   useEffect(() => {
-    if (!isOpen || !hass) return;
+    if (!hass) return;
 
     const api = getHomeAssistantAPI(hass, hassConfig);
     let cancelled = false;
@@ -197,13 +171,15 @@ export function useAutomationCatalog({
           setAreas([]);
           setEntityRegistry([]);
         }
+      } finally {
+        if (!cancelled) setRegistriesLoaded(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isOpen, hass, hassConfig]);
+  }, [hass, hassConfig]);
 
   const entityIdToAreaId = useMemo(() => {
     const map: Record<string, string | undefined> = {};
@@ -231,25 +207,9 @@ export function useAutomationCatalog({
       .filter((item): item is AutomationCatalogItem => item !== null);
   }, [entities, entityIdToAreaId]);
 
-  const filteredCatalogItems = useMemo(() => {
-    return fuzzyFilterAutomationCatalogItems(catalogItems, searchTerm);
-  }, [catalogItems, searchTerm]);
-
-  const sortedCatalogItems = useMemo(() => {
-    return sortAutomationCatalogItems(filteredCatalogItems, sortColumn, sortDirection);
-  }, [filteredCatalogItems, sortColumn, sortDirection]);
-
-  const catalogByArea = useMemo(() => {
-    return groupAutomationCatalogByArea(sortedCatalogItems, areaIdToName, labels);
-  }, [sortedCatalogItems, areaIdToName, labels]);
-
   return {
-    areas,
-    entityRegistry,
     areaIdToName,
     catalogItems,
-    filteredCatalogItems,
-    sortedCatalogItems,
-    catalogByArea,
+    isLoading: !!hass && !registriesLoaded,
   };
 }
