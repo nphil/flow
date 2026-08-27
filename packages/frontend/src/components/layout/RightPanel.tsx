@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import { useScrollFade } from '@/hooks/useScrollFade';
 import { cn } from '@/lib/utils';
+
 type RightPanelTab = 'automations' | 'properties' | 'yaml' | 'debug';
 
 interface RightPanelProps {
