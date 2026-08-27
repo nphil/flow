@@ -77,6 +77,25 @@ Flow is architected with strict engineering principles to ensure your home remai
 3. **Install & Restart**: Find **Flow** in HACS, download it, and restart Home Assistant.
 4. **Enable**: Go to **Settings** → **Devices & Services** → **Add Integration** → Search for **Flow**.
 
+### Standalone / Add-on
+
+Prefer Flow outside the Home Assistant frontend entirely — its own hostname, a kiosk tab, behind your own reverse proxy? Flow Web packages the exact same app as a standalone service, independent of the HACS integration/panel above.
+
+**Home Assistant OS / Supervisor** — install it as an add-on:
+
+1. **Settings** → **Add-ons** → **Add-on Store** → **⋮** (top-right) → **Repositories**.
+2. Add `https://github.com/nphil/flow` and close the dialog.
+3. Find **Flow Web** in the store, install it, and start it.
+4. Open it via **OPEN WEB UI** (or `http://homeassistant.local:8099`, remappable in the add-on's *Network* settings) and connect it to your Home Assistant instance — see [flow_web/DOCS.md](./flow_web/DOCS.md) for the URL/token/CORS setup.
+
+**Plain Docker** (no Supervisor) — run the prebuilt image instead:
+
+```bash
+docker run -d -p 8099:80 --name flow-web ghcr.io/nphil/flow:latest
+```
+
+Same app, same [connect flow](./flow_web/DOCS.md); just without Supervisor managing the container for you.
+
 ---
 
 ## 🤖 AI / MCP

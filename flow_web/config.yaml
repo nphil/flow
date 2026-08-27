@@ -1,0 +1,18 @@
+# https://developers.home-assistant.io/docs/apps/configuration#app-configuration
+name: Flow Web
+version: "1.0.0"
+slug: flow_web
+description: Flow automation editor as a standalone web app
+url: https://github.com/nphil/flow/tree/main/flow_web
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ingress: false
+ports:
+  80/tcp: 8099
+ports_description:
+  80/tcp: Flow web UI
+webui: http://[HOST]:[PORT:80]/
