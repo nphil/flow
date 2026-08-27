@@ -7,9 +7,22 @@ const elk = new ELK();
  * Apply heuristic layout to nodes when metadata is missing
  * Uses ELK (Eclipse Layout Kernel) for automatic graph layout
  */
+export interface HeuristicLayoutOptions {
+  /** Layout direction. Defaults to 'RIGHT' (matches historical hardcoded behavior). */
+  direction?: 'RIGHT' | 'DOWN';
+  /** Spacing overrides in px. Defaults match historical hardcoded values (rank 100 / inRank 80). */
+  spacing?: {
+    /** Spacing between ranks (elk.layered.spacing.nodeNodeBetweenLayers). Default 100. */
+    rank?: number;
+    /** Spacing within a rank (elk.spacing.nodeNode). Default 80. */
+    inRank?: number;
+  };
+}
+
 export async function applyHeuristicLayout(
   nodes: FlowNode[],
-  edges: FlowEdge[]
+  edges: FlowEdge[],
+  options?: HeuristicLayoutOptions
 ): Promise<FlowNode[]> {
   try {
     // Convert to ELK graph format
@@ -29,9 +42,9 @@ export async function applyHeuristicLayout(
       id: 'root',
       layoutOptions: {
         'elk.algorithm': 'layered',
-        'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': '80',
-        'elk.layered.spacing.nodeNodeBetweenLayers': '100',
+        'elk.direction': options?.direction ?? 'RIGHT',
+        'elk.spacing.nodeNode': String(options?.spacing?.inRank ?? 80),
+        'elk.layered.spacing.nodeNodeBetweenLayers': String(options?.spacing?.rank ?? 100),
         'elk.spacing.edgeNode': '40',
         'elk.layered.nodePlacement.strategy': 'SIMPLE',
       },

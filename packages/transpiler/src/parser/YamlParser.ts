@@ -295,9 +295,10 @@ export interface ParseResult {
 }
 
 /**
- * Valid condition types for Home Assistant
+ * Legacy/structural Home Assistant condition types (pre-2026 schema) — the
+ * ones with dedicated FieldConfig-driven editors in conditionFields.ts.
  */
-const VALID_CONDITIONS = [
+const LEGACY_CONDITIONS = [
   'state',
   'numeric_state',
   'template',
@@ -310,6 +311,221 @@ const VALID_CONDITIONS = [
   'device',
   'trigger',
 ] as const;
+
+/**
+ * Purpose-specific ("integration") condition types introduced in HA 2026.x
+ * (parity fix A3 — see local://parity-audit.md and design doc §6). Each one
+ * speaks the domain's own language (e.g. `battery.is_level`) with
+ * `target:`/`options:` instead of entity_id/above/below, and is rendered by
+ * a single generic "integration condition" editor (type badge + key/value
+ * list + YAML foldout) rather than a bespoke per-type UI — so there is no
+ * per-type field-config cost to listing the complete catalog here, only
+ * upside: every one becomes round-trip-safe (see the "kill the
+ * fallback-to-template path" note below) instead of just a curated subset.
+ * Sourced from the official catalog at https://www.home-assistant.io/conditions/
+ * (HA 2026.6.4, fetched 2026-08-27), organized by integration exactly as
+ * that page groups them.
+ */
+const PURPOSE_SPECIFIC_CONDITIONS = [
+  // Air quality
+  'air_quality.is_co2_value',
+  'air_quality.is_co_cleared',
+  'air_quality.is_co_detected',
+  'air_quality.is_co_value',
+  'air_quality.is_gas_cleared',
+  'air_quality.is_gas_detected',
+  'air_quality.is_n2o_value',
+  'air_quality.is_no2_value',
+  'air_quality.is_no_value',
+  'air_quality.is_ozone_value',
+  'air_quality.is_pm10_value',
+  'air_quality.is_pm1_value',
+  'air_quality.is_pm25_value',
+  'air_quality.is_pm4_value',
+  'air_quality.is_smoke_cleared',
+  'air_quality.is_smoke_detected',
+  'air_quality.is_so2_value',
+  'air_quality.is_voc_ratio_value',
+  'air_quality.is_voc_value',
+  // Alarm control panel
+  'alarm_control_panel.is_armed',
+  'alarm_control_panel.is_armed_away',
+  'alarm_control_panel.is_armed_home',
+  'alarm_control_panel.is_armed_night',
+  'alarm_control_panel.is_armed_vacation',
+  'alarm_control_panel.is_disarmed',
+  'alarm_control_panel.is_triggered',
+  // Assist Satellite
+  'assist_satellite.is_idle',
+  'assist_satellite.is_listening',
+  'assist_satellite.is_processing',
+  'assist_satellite.is_responding',
+  // Battery
+  'battery.is_charging',
+  'battery.is_level',
+  'battery.is_low',
+  'battery.is_not_charging',
+  'battery.is_not_low',
+  // Calendar
+  'calendar.is_event_active',
+  // Climate
+  'climate.is_cooling',
+  'climate.is_drying',
+  'climate.is_heating',
+  'climate.is_hvac_mode',
+  'climate.is_off',
+  'climate.is_on',
+  'climate.is_target_humidity',
+  'climate.is_target_temperature',
+  // Counter
+  'counter.is_value',
+  // Cover
+  'cover.awning_is_closed',
+  'cover.awning_is_open',
+  'cover.blind_is_closed',
+  'cover.blind_is_open',
+  'cover.curtain_is_closed',
+  'cover.curtain_is_open',
+  'cover.shade_is_closed',
+  'cover.shade_is_open',
+  'cover.shutter_is_closed',
+  'cover.shutter_is_open',
+  // Door
+  'door.is_closed',
+  'door.is_open',
+  // Fan
+  'fan.is_off',
+  'fan.is_on',
+  // Garage door
+  'garage_door.is_closed',
+  'garage_door.is_open',
+  // Gate
+  'gate.is_closed',
+  'gate.is_open',
+  // Humidifier
+  'humidifier.is_drying',
+  'humidifier.is_humidifying',
+  'humidifier.is_mode',
+  'humidifier.is_off',
+  'humidifier.is_on',
+  'humidifier.is_target_humidity',
+  // Humidity
+  'humidity.is_value',
+  // Illuminance
+  'illuminance.is_detected',
+  'illuminance.is_not_detected',
+  'illuminance.is_value',
+  // Lawn mower
+  'lawn_mower.is_docked',
+  'lawn_mower.is_encountering_an_error',
+  'lawn_mower.is_mowing',
+  'lawn_mower.is_paused',
+  'lawn_mower.is_returning',
+  // Light
+  'light.is_brightness',
+  'light.is_off',
+  'light.is_on',
+  // Lock
+  'lock.is_jammed',
+  'lock.is_locked',
+  'lock.is_open',
+  'lock.is_unlocked',
+  // Media player
+  'media_player.is_muted',
+  'media_player.is_not_playing',
+  'media_player.is_off',
+  'media_player.is_on',
+  'media_player.is_paused',
+  'media_player.is_playing',
+  'media_player.is_unmuted',
+  'media_player.is_volume',
+  // Moisture
+  'moisture.is_detected',
+  'moisture.is_not_detected',
+  'moisture.is_value',
+  // Moon
+  'moon.is_phase',
+  'moon.is_waning',
+  'moon.is_waxing',
+  // Motion
+  'motion.is_detected',
+  'motion.is_not_detected',
+  // Occupancy
+  'occupancy.is_detected',
+  'occupancy.is_not_detected',
+  // Power
+  'power.is_value',
+  // Remote
+  'remote.is_off',
+  'remote.is_on',
+  // Schedule
+  'schedule.is_off',
+  'schedule.is_on',
+  // Select
+  'select.is_option_selected',
+  // Siren
+  'siren.is_off',
+  'siren.is_on',
+  // Sun (additive alongside the legacy bare 'sun' condition above)
+  'sun.elevation',
+  'sun.is_ascending',
+  'sun.is_descending',
+  'sun.is_evening_twilight',
+  'sun.is_morning_twilight',
+  'sun.is_night',
+  'sun.is_set',
+  'sun.is_up',
+  // Switch
+  'switch.is_off',
+  'switch.is_on',
+  // Temperature
+  'temperature.is_value',
+  // Text
+  'text.is_equal_to',
+  // Timer
+  'timer.is_active',
+  'timer.is_idle',
+  'timer.is_paused',
+  // To-do list
+  'todo.all_completed',
+  'todo.incomplete',
+  // Update
+  'update.is_available',
+  'update.is_not_available',
+  // Vacuum
+  'vacuum.is_cleaning',
+  'vacuum.is_docked',
+  'vacuum.is_encountering_an_error',
+  'vacuum.is_paused',
+  'vacuum.is_returning',
+  // Valve
+  'valve.is_closed',
+  'valve.is_open',
+  // Vibration
+  'vibration.is_detected',
+  'vibration.is_not_detected',
+  // Water heater
+  'water_heater.is_off',
+  'water_heater.is_on',
+  'water_heater.is_operation_mode',
+  'water_heater.is_target_temperature',
+  // Window
+  'window.is_closed',
+  'window.is_open',
+  // Zone (additive alongside the legacy bare 'zone' condition above)
+  'zone.in_zone',
+  'zone.not_in_zone',
+  'zone.occupancy_is_detected',
+  'zone.occupancy_is_not_detected',
+] as const;
+
+/**
+ * Valid condition types for Home Assistant. Anything in this list survives
+ * parsing with its real `condition` value intact (A3: "kill the
+ * fallback-to-template path for known-listed types") — everything else
+ * still falls back to a template condition, same as before.
+ */
+const VALID_CONDITIONS = [...LEGACY_CONDITIONS, ...PURPOSE_SPECIFIC_CONDITIONS] as const;
 
 type ValidConditionType = (typeof VALID_CONDITIONS)[number];
 
@@ -2406,6 +2622,33 @@ export class YamlParser {
           // Output continues from condition's FALSE path
           currentNodeIds = [condId];
           falsePathConditionIds.add(condId);
+        } else if (Array.isArray(repeat.for_each)) {
+          // ── repeat.for_each ──
+          // Represented as a single opaque action node (not exploded into a
+          // loop-back subgraph like while/until/count): the per-iteration
+          // item binding (`repeat.item`/`repeat.index`) doesn't map onto a
+          // static CFG the way a boolean loop condition does, and the design
+          // spec calls for a dedicated items list editor + YAML foldout for
+          // the nested `sequence`, not a fully exploded canvas subgraph.
+          // `sequence` stays intact and opaque, same shape as the existing
+          // "unknown repeat type" fallback just below — but recorded under
+          // its own trace path instead of falling through to that generic,
+          // warning-free bucket.
+          const nodeId = getNextNodeId('action');
+          const actionNode: ActionNode = {
+            id: nodeId,
+            type: 'action',
+            position: { x: 0, y: 0 },
+            data: {
+              alias: blockAlias,
+              repeat: repeat as ActionNode['data']['repeat'],
+              enabled: blockEnabled,
+            },
+          };
+          nodes.push(actionNode);
+          recorder.record(nodeId, actionPath);
+          createEdgesFromCurrent(nodeId);
+          currentNodeIds = [nodeId];
         } else {
           // Unknown repeat type - create opaque action node as fallback
           const nodeId = getNextNodeId('action');

@@ -287,6 +287,96 @@ export const TRIGGER_PLATFORM_FIELDS: Record<TriggerPlatform, FieldConfig[]> = {
   // Device trigger: uses dynamic fields from API
   // This is handled separately with device automation API
   device: [],
+
+  // geo_location trigger: fires when a geo_location entity enters/leaves a zone (A1)
+  geo_location: [
+    {
+      name: 'source',
+      label: 'Source',
+      type: 'text',
+      required: true,
+      description: "The geo_location platform that creates the entities (e.g. 'nsw_rural_fire_service_feed')",
+      placeholder: 'nsw_rural_fire_service_feed',
+    },
+    {
+      name: 'zone',
+      label: 'Zone',
+      type: 'zone',
+      required: true,
+      description: 'The zone to watch for entry/exit',
+    },
+    {
+      name: 'event',
+      label: 'Event',
+      type: 'select',
+      required: true,
+      description: 'Whether to fire on entering or leaving the zone',
+      options: [
+        { value: 'enter', label: 'Enter' },
+        { value: 'leave', label: 'Leave' },
+      ],
+      default: 'enter',
+    },
+  ],
+
+  // conversation trigger: fires when Assist matches a sentence (A1)
+  conversation: [
+    {
+      name: 'command',
+      label: 'Sentences',
+      type: 'text',
+      required: true,
+      multiple: true,
+      description:
+        'One or more sentence templates (square brackets = optional words, parentheses = alternatives)',
+      placeholder: "party time, or [it's ]party time",
+    },
+  ],
+
+  // persistent_notification trigger: fires when a persistent notification is added/removed/updated (A1)
+  persistent_notification: [
+    {
+      name: 'update_type',
+      label: 'Update type',
+      type: 'select',
+      required: false,
+      multiple: true,
+      description: 'Which update types to trigger on (any, if omitted)',
+      options: [
+        { value: 'added', label: 'Added' },
+        { value: 'removed', label: 'Removed' },
+        { value: 'updated', label: 'Updated' },
+        { value: 'current', label: 'Current' },
+      ],
+    },
+    {
+      name: 'notification_id',
+      label: 'Notification ID',
+      type: 'text',
+      required: false,
+      description: 'Limit to a specific notification (any notification, if omitted)',
+    },
+  ],
+
+  // tag trigger: fires when a tag is scanned (A1)
+  tag: [
+    {
+      name: 'tag_id',
+      label: 'Tag',
+      type: 'text',
+      required: true,
+      multiple: true,
+      description: 'One or more tag IDs to watch for',
+    },
+    {
+      name: 'device_id',
+      label: 'Scanner device',
+      type: 'device',
+      required: false,
+      multiple: true,
+      description: 'Limit to specific scanner device(s) (any scanner, if omitted)',
+    },
+  ],
 };
 
 /**

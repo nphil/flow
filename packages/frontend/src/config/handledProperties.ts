@@ -10,6 +10,7 @@ export const HANDLED_PROPERTIES = {
     'id', // User-defined ID for referencing in templates
     'alias', // Always handled by common alias field
     'enabled', // Handled by common enabled switch
+    'note', // A2: per-step notes (HA's own `note:` field)
     '_conditionId', // Internal property
   ],
 
@@ -42,6 +43,12 @@ export const HANDLED_PROPERTIES = {
     'domain',
     'type',
     'subtype',
+    // New platform fields (A1): conversation, geo_location, persistent_notification, tag
+    'command',
+    'source',
+    'update_type',
+    'notification_id',
+    'tag_id',
   ],
 
   // Condition properties handled by ConditionFields component

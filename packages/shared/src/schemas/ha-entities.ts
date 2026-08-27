@@ -17,6 +17,11 @@ export const TriggerPlatformSchema = z.enum([
   'template',
   'homeassistant',
   'device',
+  // Parity fix A1 (2026.x)
+  'geo_location',
+  'conversation',
+  'persistent_notification',
+  'tag',
 ]);
 export type TriggerPlatform = z.infer<typeof TriggerPlatformSchema>;
 

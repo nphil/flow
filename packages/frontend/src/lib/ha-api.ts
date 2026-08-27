@@ -20,6 +20,14 @@ export interface EntityRegistryEntry {
   [key: string]: unknown;
 }
 
+export interface LabelRegistryEntry {
+  label_id: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+  [key: string]: unknown;
+}
+
 export interface ZoneCatalogItem {
   entity_id: string;
   zone_id: string;
@@ -652,6 +660,18 @@ export class HomeAssistantAPI {
       return await this.sendMessage({ type: 'config/entity_registry/list' });
     } catch (error) {
       console.error('Failed to get entities:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get labels registry
+   */
+  async getLabels(): Promise<unknown | []> {
+    try {
+      return await this.sendMessage({ type: 'config/label_registry/list' });
+    } catch (error) {
+      console.error('Failed to get labels:', error);
       return [];
     }
   }

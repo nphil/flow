@@ -1,4 +1,4 @@
-import type { ConditionType } from '@flow/shared';
+import { ConditionTypeSchema, type ConditionType } from '@flow/shared';
 import type { FieldConfig } from './triggerFields';
 
 /**
@@ -263,4 +263,20 @@ export function usesDeviceAutomationForCondition(conditionType: ConditionType): 
  */
 export function isLogicalGroupType(conditionType: ConditionType): boolean {
   return conditionType === 'and' || conditionType === 'or' || conditionType === 'not';
+}
+
+/**
+ * A3 (purpose-specific / "integration" conditions, HA 2026.x — e.g.
+ * `battery.is_level`, `climate.is_heating`, `motion.is_detected`): true for
+ * any condition type that is NOT one of the legacy/structural types this
+ * file has a bespoke FieldConfig[] for. Reuses ConditionTypeSchema's own
+ * enum values as the source of truth instead of a second hardcoded list.
+ * The PropertyPanel condition editor should route these to a generic
+ * "integration condition" UI (type badge + key/value field list + YAML
+ * foldout) instead of ConditionFields/ConditionGroupEditor/DeviceConditionFields.
+ */
+const LEGACY_CONDITION_TYPES: readonly string[] = ConditionTypeSchema.options;
+
+export function isPurposeSpecificCondition(conditionType: string): boolean {
+  return !LEGACY_CONDITION_TYPES.includes(conditionType);
 }

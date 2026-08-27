@@ -39,13 +39,28 @@ export const ActionNodeValidationSchema = z
   .object({
     service: z.string().optional(),
     event: z.string().optional(),
+    // Stop action ("halt automation") — `data.stop` is a string (possibly
+    // empty) message, never undefined, once the node is a stop action.
+    stop: z.string().optional(),
+    // Opaque repeat block (count/while/until/for_each variants the parser
+    // couldn't explode into a subgraph, or the additive for_each node —
+    // see YamlParser.ts isRepeatAction / native.ts+state-machine.ts
+    // buildActionCall's "opaque repeat block" branch).
+    repeat: z.object({}).passthrough().optional(),
   })
   .passthrough()
   .superRefine((data, ctx) => {
     const hasEvent = typeof data.event === 'string' && data.event.trim() !== '';
     const hasService = typeof data.service === 'string' && data.service.trim() !== '';
+    // Stop actions store their message in `stop` (possibly '') instead of
+    // `service`/`event`; repeat.for_each (and any other opaque repeat block)
+    // stores its config in `repeat` instead. Neither is a service/event call,
+    // so without this check every stop or repeat.for_each action would show a
+    // permanent false "service or event required" error and block saving.
+    const hasStop = data.stop !== undefined;
+    const hasRepeat = data.repeat !== undefined;
 
-    if (!hasEvent && !hasService) {
+    if (!hasEvent && !hasService && !hasStop && !hasRepeat) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Either a service (e.g. light.turn_on) or an event name is required',
@@ -100,10 +115,18 @@ export const TriggerNodeValidationSchema = z
     at: z.unknown().optional(),
     topic: z.string().optional(),
     webhook_id: z.string().optional(),
-    device_id: z.string().optional(),
+    // `device_id` is a single string for the 'device' trigger, but a
+    // string-or-array for the 'tag' trigger (A1) — widen to accommodate both.
+    device_id: z.union([z.string(), z.array(z.string())]).optional(),
     zone: z.string().optional(),
     event: z.string().optional(),
     value_template: z.string().optional(),
+    // geo_location trigger (A1)
+    source: z.string().optional(),
+    // conversation/sentence trigger (A1)
+    command: z.unknown().optional(),
+    // tag trigger (A1)
+    tag_id: z.unknown().optional(),
   })
   .passthrough()
   .superRefine((data, ctx) => {
@@ -179,7 +202,7 @@ export const TriggerNodeValidationSchema = z
         break;
 
       case 'device':
-        if (!data.device_id || data.device_id.trim() === '') {
+        if (!hasEntityId(data.device_id)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'Device is required',
@@ -228,6 +251,53 @@ export const TriggerNodeValidationSchema = z
           });
         }
         break;
+
+      case 'geo_location':
+        if (!data.source || data.source.trim() === '') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Source is required for geo_location triggers',
+            path: ['source'],
+          });
+        }
+        if (!data.zone || data.zone.trim() === '') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Zone is required for geo_location triggers',
+            path: ['zone'],
+          });
+        }
+        if (!data.event || data.event.trim() === '') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Event (enter/leave) is required for geo_location triggers',
+            path: ['event'],
+          });
+        }
+        break;
+
+      case 'conversation':
+        if (!hasValidTriggerId(data.command)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'At least one sentence is required for conversation triggers',
+            path: ['command'],
+          });
+        }
+        break;
+
+      case 'tag':
+        if (!hasValidTriggerId(data.tag_id)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Tag ID is required for tag triggers',
+            path: ['tag_id'],
+          });
+        }
+        break;
+
+      // persistent_notification: every field (update_type, notification_id)
+      // is optional per HA docs — nothing to require.
     }
   });
 

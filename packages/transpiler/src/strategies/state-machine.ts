@@ -534,6 +534,10 @@ export class StateMachineStrategy extends BaseStrategy {
         action.enabled = false;
       }
 
+      if (typeof node.data.note === 'string') {
+        action.note = node.data.note;
+      }
+
       return action;
     }
 
@@ -545,11 +549,13 @@ export class StateMachineStrategy extends BaseStrategy {
           ...(repeatData.count !== undefined ? { count: repeatData.count } : {}),
           ...(repeatData.while ? { while: repeatData.while } : {}),
           ...(repeatData.until ? { until: repeatData.until } : {}),
+          ...(repeatData.for_each ? { for_each: repeatData.for_each } : {}),
           sequence: repeatData.sequence ?? [],
         },
       };
       if (node.data.alias) actionCall.alias = node.data.alias;
       if (node.data.enabled === false) actionCall.enabled = false;
+      if (typeof node.data.note === 'string') actionCall.note = node.data.note;
       return actionCall;
     }
 
@@ -561,6 +567,7 @@ export class StateMachineStrategy extends BaseStrategy {
         actionCall.event_data = node.data.event_data;
       }
       if (node.data.enabled === false) actionCall.enabled = false;
+      if (typeof node.data.note === 'string') actionCall.note = node.data.note;
       return actionCall;
     }
 
