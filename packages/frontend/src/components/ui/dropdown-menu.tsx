@@ -44,7 +44,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      'animate-scale-in z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] overflow-hidden rounded-flow-card border border-flow-border bg-flow-panel p-1 text-flow-text shadow-flow-pop',
+      'z-50 min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] animate-scale-in overflow-hidden rounded-flow-card border border-flow-border bg-flow-panel p-1 text-flow-text shadow-flow-pop',
       className
     )}
     {...props}
@@ -64,7 +64,7 @@ const DropdownMenuContent = React.forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          'animate-scale-in z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-flow-card border border-flow-border bg-flow-panel p-1 text-flow-text shadow-flow-pop origin-[--radix-dropdown-menu-content-transform-origin]',
+          'z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] origin-[--radix-dropdown-menu-content-transform-origin] animate-scale-in overflow-y-auto overflow-x-hidden rounded-flow-card border border-flow-border bg-flow-panel p-1 text-flow-text shadow-flow-pop',
           className
         )}
         {...props}

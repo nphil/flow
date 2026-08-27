@@ -96,7 +96,7 @@ export function YamlPreview() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-flow-border p-3">
+      <div className="flex items-center justify-between border-flow-border border-b p-3">
         <h3 className="font-semibold text-flow-text text-sm">{t('labels.yamlOutput')}</h3>
         <div className="flex items-center gap-2">
           <Select
@@ -128,7 +128,7 @@ export function YamlPreview() {
       </div>
 
       {strategy && (
-        <div className="flex items-center gap-2 border-b border-flow-border bg-flow-elevated px-3 py-1.5">
+        <div className="flex items-center gap-2 border-flow-border border-b bg-flow-elevated px-3 py-1.5">
           <span className="text-flow-text-muted text-xs">{t('labels.strategy')}</span>
           <Badge variant="secondary" className="text-xs">
             {strategy}

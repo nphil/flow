@@ -68,7 +68,7 @@ const SelectContent = React.forwardRef<
       <SelectPrimitive.Content
         ref={ref}
         className={cn(
-          'animate-scale-in relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-flow-card border border-flow-border bg-flow-panel text-flow-text shadow-flow-pop',
+          'relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] animate-scale-in overflow-y-auto overflow-x-hidden rounded-flow-card border border-flow-border bg-flow-panel text-flow-text shadow-flow-pop',
           position === 'popper' &&
             'data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
           className

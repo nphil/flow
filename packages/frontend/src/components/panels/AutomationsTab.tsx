@@ -78,7 +78,8 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
   const { ref: chipRowRef, isOverflowing: chipsOverflowing } = useScrollFade<HTMLDivElement>();
 
   // Design doc §5 "scrollable filter-chip row": keep the active chip in view -- mirrors
-  // RightPanel.tsx's tab strip treatment.
+  // RightPanel.tsx's tab strip treatment. `chip` is the intentional re-run trigger.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   useEffect(() => {
     chipRowRef.current
       ?.querySelector<HTMLElement>('[data-state="active"]')
