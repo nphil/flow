@@ -1,4 +1,10 @@
-import { BaseEdge, type EdgeProps, EdgeLabelRenderer, getBezierPath, useReactFlow } from '@xyflow/react';
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  getBezierPath,
+  useReactFlow,
+} from '@xyflow/react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';

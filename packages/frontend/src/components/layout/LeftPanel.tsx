@@ -76,7 +76,11 @@ export function LeftPanel() {
           title={collapsed ? t('titles.expandPalette') : t('titles.collapsePalette')}
           aria-label={collapsed ? t('titles.expandPalette') : t('titles.collapsePalette')}
         >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
         </button>
       </div>
 

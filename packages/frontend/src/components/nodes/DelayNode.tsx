@@ -29,7 +29,11 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
   const traceDelaySeconds = traceView.traceState?.result?.delay;
   const countdownTotalMs =
     typeof traceDelaySeconds === 'number' ? traceDelaySeconds * 1000 : durationToMs(data.delay);
-  const countdown = useTraceCountdown(isCounting, traceView.traceState?.timestamp, countdownTotalMs);
+  const countdown = useTraceCountdown(
+    isCounting,
+    traceView.traceState?.timestamp,
+    countdownTotalMs
+  );
 
   return (
     <NodeShell

@@ -15,7 +15,12 @@ interface ResizablePanelProps {
   className?: string;
 }
 
-function loadStoredWidth(storageKey: string, defaultWidth: number, minWidth: number, maxWidth: number) {
+function loadStoredWidth(
+  storageKey: string,
+  defaultWidth: number,
+  minWidth: number,
+  maxWidth: number
+) {
   try {
     const stored = window.localStorage.getItem(storageKey);
     const parsed = stored ? Number(stored) : Number.NaN;
@@ -74,6 +79,9 @@ export function ResizablePanel({
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
   };
 
+  // `width`/`commitWidth` intentionally excluded: dragState.startWidth already captures the
+  // width at drag-start, and re-running this effect mid-drag would drop the active listeners.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   React.useEffect(() => {
     if (!isDragging) return;
 
@@ -102,9 +110,7 @@ export function ResizablePanel({
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-    // `width`/`commitWidth` intentionally excluded: dragState.startWidth already captures the
-    // width at drag-start, and re-running this effect mid-drag would drop the active listeners.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
+    // (dependency rationale documented above the hook)
   }, [isDragging, side, minWidth, maxWidth]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -121,7 +127,10 @@ export function ResizablePanel({
     <div
       ref={panelRef}
       className={cn('relative flex h-full min-h-0 flex-shrink-0 flex-col', className)}
-      style={{ width: collapsed ? collapsedWidth : width, transition: isDragging ? 'none' : undefined }}
+      style={{
+        width: collapsed ? collapsedWidth : width,
+        transition: isDragging ? 'none' : undefined,
+      }}
     >
       {children}
 
@@ -142,7 +151,7 @@ export function ResizablePanel({
         >
           <span
             className={cn(
-              '-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 w-[3px] rounded-full transition-all duration-flow-fast',
+              'absolute top-1/2 left-1/2 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-flow-fast',
               isDragging
                 ? 'h-16 bg-flow-accent'
                 : 'h-8 bg-transparent group-hover:h-[52px] group-hover:bg-flow-accent'

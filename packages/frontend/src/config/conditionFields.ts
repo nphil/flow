@@ -1,4 +1,4 @@
-import { ConditionTypeSchema, type ConditionType } from '@flow/shared';
+import { type ConditionType, ConditionTypeSchema } from '@flow/shared';
 import type { FieldConfig } from './triggerFields';
 
 /**

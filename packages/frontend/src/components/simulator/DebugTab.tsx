@@ -43,7 +43,10 @@ function executionBadgeInfo(
     case 'not_triggered':
       return { label: t('dialogs:traceViewer.execution.not_triggered'), tone: 'muted' };
     case 'disallowed_recursion_detected':
-      return { label: t('dialogs:traceViewer.execution.disallowed_recursion_detected'), tone: 'danger' };
+      return {
+        label: t('dialogs:traceViewer.execution.disallowed_recursion_detected'),
+        tone: 'danger',
+      };
     case null:
       return { label: t('dialogs:traceViewer.execution.running'), tone: 'accent' };
     default:
@@ -442,7 +445,7 @@ export function DebugTab({ className }: DebugTabProps) {
                   {formatRelativeTime(run.timestamp.start)}
                 </span>
                 <span className="text-flow-text-muted">
-                  ({formatRunDuration(run.timestamp.start, run.timestamp.finish)})
+                  {`(${formatRunDuration(run.timestamp.start, run.timestamp.finish)})`}
                 </span>
                 <span className="ml-auto">
                   <ExecutionBadge value={run.script_execution} />
@@ -514,7 +517,9 @@ export function DebugTab({ className }: DebugTabProps) {
                       <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-flow-accent text-[9px] text-flow-on-accent">
                         {index + 1}
                       </span>
-                      <span className="truncate font-medium text-flow-text">{nodeLabel(nodeId)}</span>
+                      <span className="truncate font-medium text-flow-text">
+                        {nodeLabel(nodeId)}
+                      </span>
                       {conditionResult === true && (
                         <span className="shrink-0 rounded-full border border-flow-ok px-1 text-[9px] text-flow-ok">
                           {t('simulator:trace.true')}
@@ -561,7 +566,10 @@ export function DebugTab({ className }: DebugTabProps) {
         >
           <span>{t('simulator:trace.heading')}</span>
           <ChevronDown
-            className={cn('h-3.5 w-3.5 transition-transform duration-flow-fast', simulatorExpanded && 'rotate-180')}
+            className={cn(
+              'h-3.5 w-3.5 transition-transform duration-flow-fast',
+              simulatorExpanded && 'rotate-180'
+            )}
           />
         </button>
         {simulatorExpanded && (

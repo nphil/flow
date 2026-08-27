@@ -1,6 +1,6 @@
 import type { FlowGraph } from '@flow/shared';
-import { transpiler } from '@flow/transpiler';
 import type { ParseResult, TracePathMap } from '@flow/transpiler';
+import { transpiler } from '@flow/transpiler';
 import { AlertTriangle, Check, Copy, Download, FileCode, FileUp, Upload } from 'lucide-react';
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,12 @@ interface ImportExportDialogProps {
  * Unified Import/Export dialog (design doc §8), replacing the old AutomationImportDialog's
  * "open from HA" import path and the standalone ImportYamlDialog/YamlPreview export button.
  */
-export function ImportExportDialog({ open, onOpenChange, initialTab, onApply }: ImportExportDialogProps) {
+export function ImportExportDialog({
+  open,
+  onOpenChange,
+  initialTab,
+  onApply,
+}: ImportExportDialogProps) {
   const { t } = useTranslation(['dialogs', 'common', 'errors']);
   const [topTab, setTopTab] = useState<'import' | 'export'>(initialTab);
   const [importSource, setImportSource] = useState<ImportSource>('paste');
@@ -223,7 +228,12 @@ export function ImportExportDialog({ open, onOpenChange, initialTab, onApply }: 
                     ? t('dialogs:importExport.fileLoaded')
                     : t('dialogs:importExport.uploadPrompt')}
                 </span>
-                <input type="file" accept=".yaml,.yml" className="hidden" onChange={handleFileUpload} />
+                <input
+                  type="file"
+                  accept=".yaml,.yml"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
               </label>
             )}
 

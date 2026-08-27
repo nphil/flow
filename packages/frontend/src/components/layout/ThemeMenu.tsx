@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useHass } from '@/contexts/HassContext';
 import {
   PALETTE_LABELS,
-  type StaticPalette,
   STATIC_PALETTES,
+  type StaticPalette,
   useFlowTheme,
 } from '@/hooks/useFlowTheme';
 import { cn } from '@/lib/utils';
@@ -68,7 +68,9 @@ export function ThemeMenu() {
           key={palette}
           palette={palette}
           choice={choice}
-          onPick={(value) => setTheme(value as StaticPalette | `${StaticPalette}-${'light' | 'dark'}`)}
+          onPick={(value) =>
+            setTheme(value as StaticPalette | `${StaticPalette}-${'light' | 'dark'}`)
+          }
         />
       ))}
       {!isRemote && (

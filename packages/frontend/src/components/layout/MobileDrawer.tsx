@@ -28,7 +28,6 @@ export function MobileDrawer({ open, onClose, side, title, children }: MobileDra
 
   return (
     <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: scrim; Escape/X button cover keyboard users */}
       <div
         onClick={onClose}
         aria-hidden="true"

@@ -39,7 +39,11 @@ export function DirtyGuardDialog({ open, onCancel, onDiscard, onSave }: DirtyGua
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={onCancel} className="text-flow-text hover:bg-flow-elevated">
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            className="text-flow-text hover:bg-flow-elevated"
+          >
             {t('common:buttons.cancel')}
           </Button>
           <Button

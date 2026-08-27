@@ -200,5 +200,13 @@
     "light": "Clair",
     "dark": "Sombre",
     "haHint": "Se fond dans votre thème Home Assistant. Caché en mode autonome."
+  },
+  "pickers": {
+    "noEntities": "Aucune entité trouvée.",
+    "noDevices": "Aucun appareil trouvé.",
+    "recent": "Récents",
+    "moreKeepTyping": "{{count}} de plus — continuez à taper",
+    "deviceIdPlaceholder": "Saisir l'ID de l'appareil...",
+    "deviceIdManualHint": "Aucun appareil trouvé. Saisissez l'ID manuellement."
   }
 }

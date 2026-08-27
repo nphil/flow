@@ -37,7 +37,11 @@ describe('getNodeSummary', () => {
       subtitle: 'light.kitchen',
     });
     expect(
-      getNodeSummary('trigger', { trigger: 'state', entity_id: 'light.kitchen', alias: 'Kitchen on' })
+      getNodeSummary('trigger', {
+        trigger: 'state',
+        entity_id: 'light.kitchen',
+        alias: 'Kitchen on',
+      })
     ).toEqual({ title: 'Kitchen on', subtitle: 'light.kitchen' });
   });
 
@@ -48,9 +52,9 @@ describe('getNodeSummary', () => {
   });
 
   it('derives a condition subtitle from entity_id, falling back through template/zone/comparators', () => {
-    expect(getNodeSummary('condition', { condition: 'state', entity_id: 'binary_sensor.door' })).toEqual(
-      { title: 'State', subtitle: 'binary_sensor.door' }
-    );
+    expect(
+      getNodeSummary('condition', { condition: 'state', entity_id: 'binary_sensor.door' })
+    ).toEqual({ title: 'State', subtitle: 'binary_sensor.door' });
     expect(getNodeSummary('condition', { condition: 'numeric_state', above: 20 })).toEqual({
       title: 'Numeric',
       subtitle: '> 20',

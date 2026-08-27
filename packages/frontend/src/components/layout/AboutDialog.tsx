@@ -27,7 +27,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
             className="font-serif text-2xl text-flow-text"
             style={{ letterSpacing: '-0.01em', fontWeight: 600 }}
           >
-            Flow
+            {'Flow'}
           </DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
             {t('dialogs:about.tagline')}
@@ -44,7 +44,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
               rel="noopener noreferrer"
               className="ui-focus-ring rounded-flow-control text-flow-accent hover:text-flow-accent-hover hover:underline"
             >
-              GitHub
+              {'GitHub'}
             </a>
             <a
               href="https://github.com/FezVrasta/cafe-hass"

@@ -2,9 +2,9 @@ import { Search } from 'lucide-react';
 import { type DragEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  NODE_CATALOG,
   type NodeCatalogEntry,
   type NodeCatalogGroup,
-  NODE_CATALOG,
 } from '@/components/nodes/catalog';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { cn, generateNodeId } from '@/lib/utils';
@@ -78,19 +78,22 @@ export function NodePalette() {
     [addNode, nodes.length]
   );
 
-  const handleDragStart = useCallback((event: DragEvent<HTMLButtonElement>, entry: NodeCatalogEntry) => {
-    event.dataTransfer.setData(
-      'application/reactflow',
-      JSON.stringify({ type: entry.kind, defaultData: entry.defaultData })
-    );
-    event.dataTransfer.effectAllowed = 'move';
-  }, []);
+  const handleDragStart = useCallback(
+    (event: DragEvent<HTMLButtonElement>, entry: NodeCatalogEntry) => {
+      event.dataTransfer.setData(
+        'application/reactflow',
+        JSON.stringify({ type: entry.kind, defaultData: entry.defaultData })
+      );
+      event.dataTransfer.effectAllowed = 'move';
+    },
+    []
+  );
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-flow-border border-b p-2">
         <div className="relative">
-          <Search className="-translate-y-1/2 absolute top-1/2 left-2 h-3.5 w-3.5 text-flow-text-muted" />
+          <Search className="absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-flow-text-muted" />
           <input
             type="text"
             value={query}

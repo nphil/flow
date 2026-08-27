@@ -173,5 +173,13 @@
     "light": "Hell",
     "dark": "Dunkel",
     "haHint": "Passt sich Ihrem Home Assistant-Design an. Im Standalone-Modus verborgen."
+  },
+  "pickers": {
+    "noEntities": "Keine Entitäten gefunden.",
+    "noDevices": "Keine Geräte gefunden.",
+    "recent": "Zuletzt verwendet",
+    "moreKeepTyping": "{{count}} weitere — weiter tippen",
+    "deviceIdPlaceholder": "Geräte-ID eingeben...",
+    "deviceIdManualHint": "Keine Geräte gefunden. Geräte-ID manuell eingeben."
   }
 }

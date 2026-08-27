@@ -248,7 +248,7 @@ export function NodeToolbar() {
         >
           <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           {isPaste && clipboardNodeCount > 0 && (
-            <span className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center rounded-full bg-flow-accent font-bold text-[9px] text-flow-on-accent">
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-flow-accent font-bold text-[9px] text-flow-on-accent">
               {clipboardNodeCount}
             </span>
           )}

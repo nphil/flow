@@ -61,7 +61,9 @@ function App() {
   // Design doc §12: standalone mode (no parent hass) boots to a full-screen connect gate
   // instead of the app shell until a validated connection exists.
   if (isRemote && !hass) {
-    return <ConnectScreen config={config} connectionError={connectionError} onConnect={setConfig} />;
+    return (
+      <ConnectScreen config={config} connectionError={connectionError} onConnect={setConfig} />
+    );
   }
 
   return (
@@ -70,7 +72,9 @@ function App() {
         <Dialog open={true} onOpenChange={reloadApp}>
           <DialogContent className="flex w-[90vw] max-w-full flex-col border-flow-border bg-flow-panel text-flow-text">
             <DialogHeader>
-              <DialogTitle className="font-serif text-flow-text">{t('dialogs:error.title')}</DialogTitle>
+              <DialogTitle className="font-serif text-flow-text">
+                {t('dialogs:error.title')}
+              </DialogTitle>
             </DialogHeader>
             <DialogDescription className="text-flow-text-secondary">
               {t('dialogs:error.description')}
@@ -82,7 +86,10 @@ function App() {
                 {error.stack}
               </pre>
               <div className="text-flow-text-secondary">{t('dialogs:error.refreshPrompt')}</div>
-              <Button onClick={reloadApp} className="bg-flow-accent text-flow-on-accent hover:bg-flow-accent-hover">
+              <Button
+                onClick={reloadApp}
+                className="bg-flow-accent text-flow-on-accent hover:bg-flow-accent-hover"
+              >
                 {t('buttons.refresh')}
               </Button>
             </div>

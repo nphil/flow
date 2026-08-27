@@ -1,5 +1,5 @@
-import type { HassEntity } from '@/types/hass';
 import { describe, expect, it, vi } from 'vitest';
+import type { HassEntity } from '@/types/hass';
 import {
   filterAutomationCatalogItemsByChip,
   mapAutomationEntityToCatalogItem,
@@ -85,7 +85,11 @@ describe('useAutomationCatalog helpers', () => {
 
     it("'all' returns every item sorted alphabetically", () => {
       const result = filterAutomationCatalogItemsByChip(items, 'all', now);
-      expect(result.map((item) => item.friendly_name)).toEqual(['A Recent', 'B Disabled', 'C Stale']);
+      expect(result.map((item) => item.friendly_name)).toEqual([
+        'A Recent',
+        'B Disabled',
+        'C Stale',
+      ]);
     });
 
     it("'enabled' keeps only enabled automations", () => {

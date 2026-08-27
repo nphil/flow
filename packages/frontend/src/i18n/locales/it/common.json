@@ -173,5 +173,13 @@
     "light": "Chiaro",
     "dark": "Scuro",
     "haHint": "Si adatta al tuo tema Home Assistant. Nascosto in modalità standalone."
+  },
+  "pickers": {
+    "noEntities": "Nessuna entità trovata.",
+    "noDevices": "Nessun dispositivo trovato.",
+    "recent": "Recenti",
+    "moreKeepTyping": "{{count}} altri — continua a digitare",
+    "deviceIdPlaceholder": "Inserisci ID dispositivo...",
+    "deviceIdManualHint": "Nessun dispositivo trovato. Inserisci l'ID manualmente."
   }
 }

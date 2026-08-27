@@ -118,14 +118,14 @@ export function NodeShell({
 
       {hasErrors && (
         <span
-          className="-top-2 -right-2 absolute flex h-5 w-5 items-center justify-center rounded-full border border-flow-danger bg-flow-elevated text-flow-danger shadow-flow-card"
+          className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full border border-flow-danger bg-flow-elevated text-flow-danger shadow-flow-card"
           title={errorMessages?.join('\n')}
         >
           <AlertCircle className="h-3 w-3" />
         </span>
       )}
       {!hasErrors && disabled && (
-        <span className="-top-2 -right-2 absolute rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[9px] text-flow-text-muted uppercase tracking-wide shadow-flow-card">
+        <span className="absolute -top-2 -right-2 rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[9px] text-flow-text-muted uppercase tracking-wide shadow-flow-card">
           {disabledLabel}
         </span>
       )}

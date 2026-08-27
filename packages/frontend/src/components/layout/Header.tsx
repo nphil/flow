@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,6 @@ import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 import type { HassEntity } from '@/types/hass';
-import { toast } from 'sonner';
 import { AboutDialog } from './AboutDialog';
 import { DeleteAutomationDialog } from './DeleteAutomationDialog';
 import { FlowMark } from './FlowMark';
@@ -150,7 +150,9 @@ export function Header({
 
   const handleDuplicate = () => {
     setAutomationId(null);
-    setFlowName(t('panels:header.duplicateName', { name: flowName || t('common:defaults.newAutomation') }));
+    setFlowName(
+      t('panels:header.duplicateName', { name: flowName || t('common:defaults.newAutomation') })
+    );
     toast.success(t('panels:header.duplicated'));
   };
 
@@ -213,7 +215,7 @@ export function Header({
         value={flowName}
         onChange={(event) => setFlowName(event.target.value)}
         placeholder={t('common:placeholders.automationName')}
-        className="ui-focus-ring min-w-0 max-w-72 flex-1 truncate rounded-flow-control bg-transparent px-1 font-serif text-flow-text text-base placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
+        className="ui-focus-ring min-w-0 max-w-72 flex-1 truncate rounded-flow-control bg-transparent px-1 font-serif text-base text-flow-text placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
         style={{ letterSpacing: '-0.005em' }}
       />
 
@@ -253,7 +255,11 @@ export function Header({
             isDirty && !isSaving && 'save-button-unsaved'
           )}
         >
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
         </Button>
 
         <Button
@@ -297,7 +303,11 @@ export function Header({
           title={t('panels:header.autoArrange')}
           className="hidden h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text md:inline-flex"
         >
-          {isArranging ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutGrid className="h-4 w-4" />}
+          {isArranging ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <LayoutGrid className="h-4 w-4" />
+          )}
         </Button>
         <Button
           variant="ghost"
@@ -325,10 +335,18 @@ export function Header({
             className="w-56 border-flow-border bg-flow-panel text-flow-text"
           >
             <div className="md:hidden">
-              <DropdownMenuItem onClick={handleUndo} disabled={!canUndo} className="gap-2 font-mono text-xs">
+              <DropdownMenuItem
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className="gap-2 font-mono text-xs"
+              >
                 <Undo2 className="h-3.5 w-3.5" /> {t('panels:header.undo')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleRedo} disabled={!canRedo} className="gap-2 font-mono text-xs">
+              <DropdownMenuItem
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className="gap-2 font-mono text-xs"
+              >
                 <Redo2 className="h-3.5 w-3.5" /> {t('panels:header.redo')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => autoArrange()} className="gap-2 font-mono text-xs">
@@ -397,7 +415,10 @@ export function Header({
 
             <DropdownMenuSeparator className="bg-flow-border" />
 
-            <DropdownMenuItem onClick={() => setAboutOpen(true)} className="gap-2 font-mono text-xs">
+            <DropdownMenuItem
+              onClick={() => setAboutOpen(true)}
+              className="gap-2 font-mono text-xs"
+            >
               <Info className="h-3.5 w-3.5" /> {t('panels:header.about')}
             </DropdownMenuItem>
           </DropdownMenuContent>

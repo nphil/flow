@@ -63,7 +63,9 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
     try {
       const exists = await getHomeAssistantAPI(hass, hassConfig).automationExistsByAlias(name);
       if (exists && !isUpdate) {
-        const uniqueName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(name);
+        const uniqueName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+          name
+        );
         setSuggestedName(uniqueName);
       } else {
         setSuggestedName(null);
@@ -135,7 +137,9 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
 
     try {
       // Get a unique name for the copy
-      const copyName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(flowName);
+      const copyName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+        flowName
+      );
       setFlowName(copyName);
       setFlowDescription(localDescription.trim());
 
@@ -200,7 +204,10 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="automation-description" className="font-mono text-flow-text-muted text-xs">
+            <Label
+              htmlFor="automation-description"
+              className="font-mono text-flow-text-muted text-xs"
+            >
               {t('dialogs:save.descriptionLabel')}
             </Label>
             <Textarea

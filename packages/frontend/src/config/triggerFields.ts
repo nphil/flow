@@ -295,7 +295,8 @@ export const TRIGGER_PLATFORM_FIELDS: Record<TriggerPlatform, FieldConfig[]> = {
       label: 'Source',
       type: 'text',
       required: true,
-      description: "The geo_location platform that creates the entities (e.g. 'nsw_rural_fire_service_feed')",
+      description:
+        "The geo_location platform that creates the entities (e.g. 'nsw_rural_fire_service_feed')",
       placeholder: 'nsw_rural_fire_service_feed',
     },
     {

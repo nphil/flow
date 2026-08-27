@@ -196,5 +196,13 @@
     "light": "Light",
     "dark": "Dark",
     "haHint": "Blends into your Home Assistant theme. Hidden in standalone mode."
+  },
+  "pickers": {
+    "noEntities": "No entities found.",
+    "noDevices": "No devices found.",
+    "recent": "Recent",
+    "moreKeepTyping": "{{count}} more — keep typing",
+    "deviceIdPlaceholder": "Enter device ID...",
+    "deviceIdManualHint": "No devices found. Enter a device ID manually."
   }
 }

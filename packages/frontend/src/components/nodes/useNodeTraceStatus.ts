@@ -117,7 +117,8 @@ export function useNodeTraceStatus(nodeId: string): NodeTraceStatusView {
         traceState.status === 'ok' && traceState.durationMs != null
           ? formatElapsedMs(traceState.durationMs)
           : null,
-      conditionResult: typeof traceState.result?.result === 'boolean' ? traceState.result.result : null,
+      conditionResult:
+        typeof traceState.result?.result === 'boolean' ? traceState.result.result : null,
     };
   }, [isShowingTrace, traceState, isRunning, t]);
 }

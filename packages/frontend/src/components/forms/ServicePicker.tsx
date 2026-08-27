@@ -56,7 +56,9 @@ export function ServicePicker({
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="truncate font-mono">{option.label}</span>
             {option.descriptionLabel && (
-              <span className="truncate text-flow-text-muted text-xs">{option.descriptionLabel}</span>
+              <span className="truncate text-flow-text-muted text-xs">
+                {option.descriptionLabel}
+              </span>
             )}
           </div>
         )}

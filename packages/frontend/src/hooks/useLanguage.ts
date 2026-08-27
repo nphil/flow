@@ -35,9 +35,7 @@ export function useLanguage() {
         logger.debug('Changing language to:', targetLanguage);
         i18n.changeLanguage(targetLanguage);
       } else {
-        logger.debug(
-          `Language '${targetLanguage}' not available, keeping '${i18n.language}'`
-        );
+        logger.debug(`Language '${targetLanguage}' not available, keeping '${i18n.language}'`);
       }
     }
   }, [hass, i18n]);

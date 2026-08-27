@@ -211,8 +211,12 @@ function IntegrationYamlFoldout({
   // Re-sync the buffer when `data` changes for a reason other than this box's own edit (e.g. a
   // sibling key/value row above changed an option) — but never fight the user's own in-progress
   // typing: only overwrite `text` when it doesn't already represent the current upstream data.
+  // `text` intentionally excluded: reading it here must not re-trigger the effect on every keystroke.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   useEffect(() => {
-    const upstream = dump(Object.fromEntries(presentEntries)).trimEnd();
+    const upstream = dump(
+      Object.fromEntries(Object.entries(data).filter(([key]) => !COMMON_CONDITION_KEYS[key]))
+    ).trimEnd();
     let currentAsUpstream: string | null;
     try {
       const parsed = load(text);

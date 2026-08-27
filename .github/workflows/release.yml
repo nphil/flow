@@ -63,3 +63,18 @@ jobs:
             flow.tar.gz
           tag_name: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push standalone image
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          docker build -t "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}" \
+                       -t "ghcr.io/${{ github.repository_owner }}/flow:latest" .
+          docker push "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}"
+          docker push "ghcr.io/${{ github.repository_owner }}/flow:latest"

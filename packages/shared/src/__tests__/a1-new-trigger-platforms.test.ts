@@ -1,8 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { HAPlatformEnum } from '../schemas/ha-schemas';
 import { TriggerPlatformSchema } from '../schemas/ha-entities';
-import { HATriggerSchema } from '../schemas/ha-schemas';
+import { HAPlatformEnum, HATriggerSchema } from '../schemas/ha-schemas';
 import { TriggerNodeValidationSchema } from '../schemas/validation';
 
 describe('A1: new trigger platforms (geo_location, conversation, persistent_notification, tag)', () => {
@@ -133,7 +132,10 @@ describe('A1: new trigger platforms (geo_location, conversation, persistent_noti
     });
 
     it('passes validation with tag_id present (device_id omitted, per HA docs, means "any scanner")', () => {
-      const result = TriggerNodeValidationSchema.safeParse({ trigger: 'tag', tag_id: 'A7-6B-90-5F' });
+      const result = TriggerNodeValidationSchema.safeParse({
+        trigger: 'tag',
+        tag_id: 'A7-6B-90-5F',
+      });
       expect(result.success).toBe(true);
     });
   });

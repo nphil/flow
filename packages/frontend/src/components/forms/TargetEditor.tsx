@@ -1,4 +1,4 @@
-import { Activity, Cpu, MapPinned, Tag, X, type LucideIcon } from 'lucide-react';
+import { Activity, Cpu, type LucideIcon, MapPinned, Tag, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useHass } from '@/contexts/HassContext';
@@ -20,7 +20,15 @@ function normalizeToArray(value: string | string[] | undefined): string[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function TargetPill({ label, count, onRemove }: { label: string; count?: number; onRemove: () => void }) {
+function TargetPill({
+  label,
+  count,
+  onRemove,
+}: {
+  label: string;
+  count?: number;
+  onRemove: () => void;
+}) {
   return (
     <span className="inline-flex max-w-[12rem] items-center gap-1.5 rounded-flow-control border border-flow-border bg-flow-elevated py-0.5 pr-1 pl-2 text-flow-text-secondary text-xs">
       <span className="truncate">{label}</span>
@@ -41,7 +49,15 @@ function TargetPill({ label, count, onRemove }: { label: string; count?: number;
   );
 }
 
-function TargetRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: ReactNode }) {
+function TargetRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5 text-flow-text-muted text-xs">
@@ -72,10 +88,19 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
   const areaIds = normalizeToArray(target?.area_id);
   const labelIds = normalizeToArray(target?.label_id);
 
-  const entityById = useMemo(() => new Map(entities.map((entity) => [entity.entity_id, entity])), [entities]);
-  const deviceById = useMemo(() => new Map(devices.map((device) => [device.id, device])), [devices]);
+  const entityById = useMemo(
+    () => new Map(entities.map((entity) => [entity.entity_id, entity])),
+    [entities]
+  );
+  const deviceById = useMemo(
+    () => new Map(devices.map((device) => [device.id, device])),
+    [devices]
+  );
   const areaById = useMemo(() => new Map(areas.map((area) => [area.area_id, area])), [areas]);
-  const labelById = useMemo(() => new Map(labels.map((label) => [label.label_id, label])), [labels]);
+  const labelById = useMemo(
+    () => new Map(labels.map((label) => [label.label_id, label])),
+    [labels]
+  );
 
   const updateRow = (key: keyof TargetIds, values: string[]) => {
     const rows: Record<keyof TargetIds, string[]> = {
@@ -101,7 +126,12 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
             <TargetPill
               key={id}
               label={label}
-              onRemove={() => updateRow('entity_id', entityIds.filter((x) => x !== id))}
+              onRemove={() =>
+                updateRow(
+                  'entity_id',
+                  entityIds.filter((x) => x !== id)
+                )
+              }
             />
           );
         })}
@@ -125,7 +155,12 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
               key={id}
               label={label}
               count={count}
-              onRemove={() => updateRow('device_id', deviceIds.filter((x) => x !== id))}
+              onRemove={() =>
+                updateRow(
+                  'device_id',
+                  deviceIds.filter((x) => x !== id)
+                )
+              }
             />
           );
         })}
@@ -144,7 +179,8 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
           const area = areaById.get(id);
           const count = entityRegistryEntries.filter((entry) => {
             const effectiveArea =
-              entry.area_id ?? (entry.device_id ? deviceById.get(entry.device_id)?.area_id : undefined);
+              entry.area_id ??
+              (entry.device_id ? deviceById.get(entry.device_id)?.area_id : undefined);
             return effectiveArea === id;
           }).length;
           return (
@@ -152,7 +188,12 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
               key={id}
               label={area ? area.name : id}
               count={count}
-              onRemove={() => updateRow('area_id', areaIds.filter((x) => x !== id))}
+              onRemove={() =>
+                updateRow(
+                  'area_id',
+                  areaIds.filter((x) => x !== id)
+                )
+              }
             />
           );
         })}
@@ -169,14 +210,21 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
       <TargetRow icon={Tag} label="Labels">
         {labelIds.map((id) => {
           const label = labelById.get(id);
-          const entityCount = entityRegistryEntries.filter((entry) => entry.labels?.includes(id)).length;
+          const entityCount = entityRegistryEntries.filter((entry) =>
+            entry.labels?.includes(id)
+          ).length;
           const deviceCount = devices.filter((device) => device.labels?.includes(id)).length;
           return (
             <TargetPill
               key={id}
               label={label ? label.name : id}
               count={entityCount + deviceCount}
-              onRemove={() => updateRow('label_id', labelIds.filter((x) => x !== id))}
+              onRemove={() =>
+                updateRow(
+                  'label_id',
+                  labelIds.filter((x) => x !== id)
+                )
+              }
             />
           );
         })}

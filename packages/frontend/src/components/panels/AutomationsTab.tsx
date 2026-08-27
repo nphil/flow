@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import type { LucideIcon } from 'lucide-react';
 import {
   CircleSlash,
   Layers,
@@ -9,13 +10,11 @@ import {
   RotateCcw,
   Search,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { useHass } from '@/contexts/HassContext';
-import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import {
   type AutomationFilterChip,
   filterAutomationCatalogItemsByChip,
@@ -23,6 +22,7 @@ import {
   setAutomationEnabled,
   useAutomationCatalog,
 } from '@/hooks/useAutomationCatalog';
+import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { useNow } from '@/hooks/useNow';
 import type { AutomationCatalogItem } from '@/lib/ha-api';
@@ -71,17 +71,15 @@ function formatRelativeTime(
  */
 export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
   const { t } = useTranslation(['panels', 'common', 'dialogs']);
-  const {
-    hass,
-    config: hassConfig,
-    entities,
-    isRemote,
-    connectionError,
-  } = useHass();
+  const { hass, config: hassConfig, entities, isRemote, connectionError } = useHass();
   const [chip, setChip] = useState<AutomationFilterChip>('all');
   const now = useNow();
 
-  const { catalogItems, areaIdToName, isLoading: registriesLoading } = useAutomationCatalog({
+  const {
+    catalogItems,
+    areaIdToName,
+    isLoading: registriesLoading,
+  } = useAutomationCatalog({
     hass,
     hassConfig,
     entities,
@@ -169,7 +167,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
         </button>
 
         <div className="relative">
-          <Search className="-translate-y-1/2 absolute top-1/2 left-2 h-3.5 w-3.5 text-flow-text-muted" />
+          <Search className="absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-flow-text-muted" />
           <input
             type="text"
             value={query}
@@ -192,7 +190,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
                   : 'bg-flow-elevated text-flow-text-muted hover:text-flow-text'
               )}
             >
-              {t(`panels:automationsTab.chips.${chipOption}`)} ({counts[chipOption]})
+              {`${t(`panels:automationsTab.chips.${chipOption}`)} (${counts[chipOption]})`}
             </button>
           ))}
         </div>

@@ -96,7 +96,9 @@ export function ConnectScreen({ config, connectionError, onConnect }: ConnectScr
       ) {
         setErrorMessage(t('dialogs:connect.errors.corsHint', { origin: window.location.origin }));
       } else {
-        setErrorMessage(error instanceof Error ? error.message : t('dialogs:connect.errors.connectionFailed'));
+        setErrorMessage(
+          error instanceof Error ? error.message : t('dialogs:connect.errors.connectionFailed')
+        );
       }
     }
   };
@@ -114,7 +116,9 @@ export function ConnectScreen({ config, connectionError, onConnect }: ConnectScr
           >
             {t('dialogs:connect.title')}
           </h1>
-          <p className="font-mono text-flow-text-secondary text-xs">{t('dialogs:connect.subtitle')}</p>
+          <p className="font-mono text-flow-text-secondary text-xs">
+            {t('dialogs:connect.subtitle')}
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -152,7 +156,9 @@ export function ConnectScreen({ config, connectionError, onConnect }: ConnectScr
               placeholder={t('dialogs:connect.tokenPlaceholder')}
               className="border-flow-border bg-flow-bg font-mono text-flow-text text-sm placeholder:text-flow-text-muted focus-visible:ring-[var(--accent)]"
             />
-            <p className="font-mono text-[10px] text-flow-text-muted">{t('dialogs:connect.tokenHelp')}</p>
+            <p className="font-mono text-[10px] text-flow-text-muted">
+              {t('dialogs:connect.tokenHelp')}
+            </p>
           </div>
 
           {displayedError && (

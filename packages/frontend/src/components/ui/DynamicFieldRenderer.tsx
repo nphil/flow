@@ -71,7 +71,13 @@ interface DynamicFieldRendererProps {
 /** Minor case: HA area selectors are typically single, but `multiple: true` is possible.
  * No MultiAreaPicker exists in the picker contract, so this is a lightweight local
  * chip-row mirroring MultiEntityPicker's shape, built on the single-select AreaPicker. */
-function MultiAreaChips({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+function MultiAreaChips({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
   const { areas } = useHass();
   const areaById = new Map(areas.map((area) => [area.area_id, area]));
   const handleRemove = (id: string) => onChange(value.filter((existing) => existing !== id));
@@ -187,7 +193,9 @@ export function DynamicFieldRenderer({
   const numberValue = typeof value === 'number' ? value : Number(value) || undefined;
   const booleanValue = typeof value === 'boolean' ? value : Boolean(value);
 
-  // Render based on selector type
+  // Render based on selector type. A flat switch over every HA selector type is the clearest
+  // shape for this dispatch — splitting it into per-case functions would only scatter it.
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: exhaustive selector dispatch
   const renderField = () => {
     switch (selectorType) {
       // Text input
@@ -401,12 +409,20 @@ export function DynamicFieldRenderer({
               : [];
 
           return (
-            <MultiDevicePicker value={values} onChange={onChange} placeholder={placeholder || 'Select devices...'} />
+            <MultiDevicePicker
+              value={values}
+              onChange={onChange}
+              placeholder={placeholder || 'Select devices...'}
+            />
           );
         }
 
         return (
-          <DevicePicker value={stringValue} onChange={onChange} placeholder={placeholder || 'Select device...'} />
+          <DevicePicker
+            value={stringValue}
+            onChange={onChange}
+            placeholder={placeholder || 'Select device...'}
+          />
         );
       }
 
@@ -425,7 +441,13 @@ export function DynamicFieldRenderer({
           return <MultiAreaChips value={values} onChange={onChange} />;
         }
 
-        return <AreaPicker value={stringValue} onChange={onChange} placeholder={placeholder || 'Select area...'} />;
+        return (
+          <AreaPicker
+            value={stringValue}
+            onChange={onChange}
+            placeholder={placeholder || 'Select area...'}
+          />
+        );
       }
 
       // Target editor (entity_id/device_id/area_id/label_id)

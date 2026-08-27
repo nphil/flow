@@ -57,7 +57,13 @@ function fromYamlText(text: string): unknown {
 /** Minor case: HA area selectors are typically single, but `multiple: true` is possible.
  * No MultiAreaPicker exists in the picker contract, so this is a lightweight local
  * chip-row mirroring MultiEntityPicker's shape, built on the single-select AreaPicker. */
-function MultiAreaChips({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+function MultiAreaChips({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
   const { areas } = useHass();
   const areaById = new Map(areas.map((area) => [area.area_id, area]));
   const handleRemove = (id: string) => onChange(value.filter((existing) => existing !== id));
@@ -302,7 +308,10 @@ export function ServiceDataFields({
                 required={field.required}
                 description={field.description}
               >
-                <MultiAreaChips value={arrayValue} onChange={(value) => onChange(fieldName, value)} />
+                <MultiAreaChips
+                  value={arrayValue}
+                  onChange={(value) => onChange(fieldName, value)}
+                />
               </FormField>
             );
           }

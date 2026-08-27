@@ -1,4 +1,13 @@
-import { Clock, GitBranch, Hourglass, type LucideIcon, OctagonX, Play, Variable, Zap } from 'lucide-react';
+import {
+  Clock,
+  GitBranch,
+  Hourglass,
+  type LucideIcon,
+  OctagonX,
+  Play,
+  Variable,
+  Zap,
+} from 'lucide-react';
 
 /**
  * Left-palette groups (design doc §4): "Drag to canvas OR click-to-add".
@@ -6,7 +15,13 @@ import { Clock, GitBranch, Hourglass, type LucideIcon, OctagonX, Play, Variable,
  * plain service-call actions share the `action` node kind but sort into
  * different palette groups via their own entry here.
  */
-export type NodeCatalogGroup = 'Triggers' | 'Conditions' | 'Actions' | 'Timing' | 'Data' | 'Flow control';
+export type NodeCatalogGroup =
+  | 'Triggers'
+  | 'Conditions'
+  | 'Actions'
+  | 'Timing'
+  | 'Data'
+  | 'Flow control';
 
 export interface NodeCatalogEntry {
   /** The React Flow node `type` a new node gets when this entry is placed. */

@@ -177,7 +177,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
           value={typeof selectedNode.data.alias === 'string' ? selectedNode.data.alias : ''}
           onChange={(e) => handleChange('alias', e.target.value)}
           placeholder={t('placeholders.optionalDisplayName')}
-          className="h-auto border-none bg-transparent px-0 font-medium text-flow-text text-base shadow-none focus-visible:ring-0"
+          className="h-auto border-none bg-transparent px-0 font-medium text-base text-flow-text shadow-none focus-visible:ring-0"
         />
 
         {/* ID field — triggers only. Home Assistant's action-step schemas

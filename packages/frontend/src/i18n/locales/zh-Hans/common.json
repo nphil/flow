@@ -173,5 +173,13 @@
     "light": "浅色",
     "dark": "深色",
     "haHint": "混合到您的Home Assistant主题中。在独立模式下隐藏。"
+  },
+  "pickers": {
+    "noEntities": "未找到实体。",
+    "noDevices": "未找到设备。",
+    "recent": "最近使用",
+    "moreKeepTyping": "还有 {{count}} 个 — 继续输入",
+    "deviceIdPlaceholder": "输入设备 ID...",
+    "deviceIdManualHint": "未找到设备。请手动输入设备 ID。"
   }
 }

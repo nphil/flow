@@ -116,7 +116,8 @@ const HA_VAR_MAP: Record<string, string> = {
 /** Reads a CSS custom property off the parent HA frontend's <html> (we run in an iframe). */
 function readParentCustomProperty(name: string): string {
   try {
-    const parentDocument = window.parent && window.parent !== window ? window.parent.document : document;
+    const parentDocument =
+      window.parent && window.parent !== window ? window.parent.document : document;
     return getComputedStyle(parentDocument.documentElement).getPropertyValue(name).trim();
   } catch {
     // Cross-origin parent, or no parent at all (standalone/remote mode) -- caller falls back.
@@ -225,7 +226,9 @@ export function useFlowTheme(): UseFlowThemeResult {
   const mode: ThemeMode = explicitMode ?? (hassDarkMode ? 'dark' : 'light');
 
   // useLayoutEffect (not useEffect): apply before paint so switching themes never flashes
-  // the previous one.
+  // the previous one. `hass?.themes` is the intentional re-derivation trigger for the 'ha'
+  // chameleon palette; applyHaTheme reads the live values itself.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   useLayoutEffect(() => {
     const root = document.documentElement;
     if (palette === 'ha') {

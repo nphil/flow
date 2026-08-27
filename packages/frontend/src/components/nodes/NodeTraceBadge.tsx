@@ -1,4 +1,4 @@
-import { AlertCircle, Check, type LucideIcon, Loader2, X } from 'lucide-react';
+import { AlertCircle, Check, Loader2, type LucideIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NodeTraceBadgeKind, NodeTraceStatusView } from './useNodeTraceStatus';
 
@@ -31,7 +31,7 @@ export function NodeTraceBadge({ view }: { view: NodeTraceStatusView }) {
   const Icon = BADGE_ICON[badge];
 
   return (
-    <div className="-top-2 -left-2 absolute z-10 flex items-center gap-1" title={tooltip}>
+    <div className="absolute -top-2 -left-2 z-10 flex items-center gap-1" title={tooltip}>
       <div
         className={cn(
           'flex h-5 w-5 items-center justify-center rounded-full border bg-flow-elevated shadow-flow-card',

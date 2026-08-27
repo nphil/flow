@@ -8,7 +8,6 @@ import type {
 import { validateNodeData } from '@flow/shared';
 import type { TracePathMap } from '@flow/transpiler';
 import { applyHeuristicLayout, FlowTranspiler, resolveTracePath } from '@flow/transpiler';
-import { dump as yamlDump } from 'js-yaml';
 import {
   addEdge,
   applyEdgeChanges,
@@ -19,6 +18,7 @@ import {
   type Node,
   type NodeChange,
 } from '@xyflow/react';
+import { dump as yamlDump } from 'js-yaml';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';

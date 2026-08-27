@@ -39,12 +39,26 @@ import {
   X,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { useTranslation } from 'react-i18next';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { useHass } from '@/contexts/HassContext';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { cn } from '@/lib/utils';
 import type { HassEntity } from '@/types/hass';
-import { FilterChip, MAX_RESULTS, PickerPopoverShell, pushRecentPick, readRecentPicks } from './pickerPopover';
+import {
+  FilterChip,
+  MAX_RESULTS,
+  PickerPopoverShell,
+  pushRecentPick,
+  readRecentPicks,
+} from './pickerPopover';
 
 /** Domain -> icon for the entity picker. Mirrors HA's own domain iconography at a glance. */
 const DOMAIN_ICON: Record<string, LucideIcon> = {
@@ -103,7 +117,10 @@ type SearchableEntity = {
   domain: string;
 };
 
-function applyDomainFilter(entities: HassEntity[], domainFilter: string | string[] | undefined): HassEntity[] {
+function applyDomainFilter(
+  entities: HassEntity[],
+  domainFilter: string | string[] | undefined
+): HassEntity[] {
   if (!domainFilter) return entities;
   const filters = Array.isArray(domainFilter) ? domainFilter : [domainFilter];
   return entities.filter((entity) => filters.includes(entity.entity_id.split('.')[0]));
@@ -134,6 +151,7 @@ function EntityPopover({
   triggerTitle,
 }: EntityPopoverProps) {
   const { getAreaNameForEntity } = useHass();
+  const { t } = useTranslation('common');
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
   const [domainFilter, setDomainFilter] = useState<string | null>(preferredDomains?.[0] ?? null);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -166,11 +184,15 @@ function EntityPopover({
   }, [open, setQuery]);
 
   const byQueryAndDomain = useMemo(
-    () => (domainFilter ? filteredItems.filter((item) => item.domain === domainFilter) : filteredItems),
+    () =>
+      domainFilter ? filteredItems.filter((item) => item.domain === domainFilter) : filteredItems,
     [filteredItems, domainFilter]
   );
   const byQueryAndArea = useMemo(
-    () => (areaFilter ? filteredItems.filter((item) => (item.areaLabel || NO_AREA) === areaFilter) : filteredItems),
+    () =>
+      areaFilter
+        ? filteredItems.filter((item) => (item.areaLabel || NO_AREA) === areaFilter)
+        : filteredItems,
     [filteredItems, areaFilter]
   );
 
@@ -247,7 +269,10 @@ function EntityPopover({
         onSelect={() => handlePick(item.entity_id)}
         className="items-start gap-2"
       >
-        <DomainIcon entityId={item.entity_id} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-flow-text-muted" />
+        <DomainIcon
+          entityId={item.entity_id}
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-flow-text-muted"
+        />
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-flow-text">{item.friendlyName}</span>
           <span className="truncate font-mono text-flow-text-muted text-xs">{item.entity_id}</span>
@@ -255,24 +280,48 @@ function EntityPopover({
         {multiple && isSelected ? (
           <Check className="h-3.5 w-3.5 shrink-0 text-flow-accent" />
         ) : (
-          query.trim() !== '' && <span className="shrink-0 text-flow-text-muted text-xs">{item.entity.state}</span>
+          query.trim() !== '' && (
+            <span className="shrink-0 text-flow-text-muted text-xs">{item.entity.state}</span>
+          )
         )}
       </CommandItem>
     );
   };
 
   return (
-    <PickerPopoverShell open={open} onOpenChange={onOpenChange} trigger={trigger} title={triggerTitle}>
+    <PickerPopoverShell
+      open={open}
+      onOpenChange={onOpenChange}
+      trigger={trigger}
+      title={triggerTitle}
+    >
       <Command shouldFilter={false} className="h-full bg-transparent text-flow-text">
-        <CommandInput autoFocus placeholder="Search entities..." value={query} onValueChange={setQuery} />
+        <CommandInput
+          autoFocus
+          placeholder="Search entities..."
+          value={query}
+          onValueChange={setQuery}
+        />
         <div className="flex flex-wrap items-center gap-1.5 border-flow-border border-b px-3 py-1.5">
-          <FilterChip label="Area" options={areaOptions} value={areaFilter} onChange={setAreaFilter} />
-          <FilterChip label="Domain" options={domainOptions} value={domainFilter} onChange={setDomainFilter} />
+          <FilterChip
+            label="Area"
+            options={areaOptions}
+            value={areaFilter}
+            onChange={setAreaFilter}
+          />
+          <FilterChip
+            label="Domain"
+            options={domainOptions}
+            value={domainFilter}
+            onChange={setDomainFilter}
+          />
         </div>
         <CommandList className="max-h-[360px]">
-          <CommandEmpty>No entities found.</CommandEmpty>
+          <CommandEmpty>{t('pickers.noEntities')}</CommandEmpty>
           {recentEntities.length > 0 && (
-            <CommandGroup heading="Recent">{recentEntities.map(renderRow)}</CommandGroup>
+            <CommandGroup heading={t('pickers.recent')}>
+              {recentEntities.map(renderRow)}
+            </CommandGroup>
           )}
           {groups.map(({ key, items }) => (
             <CommandGroup
@@ -284,7 +333,9 @@ function EntityPopover({
             </CommandGroup>
           ))}
           {remaining > 0 && (
-            <div className="px-3 py-2 text-center text-flow-text-muted text-xs">{remaining} more — keep typing</div>
+            <div className="px-3 py-2 text-center text-flow-text-muted text-xs">
+              {t('pickers.moreKeepTyping', { count: remaining })}
+            </div>
           )}
         </CommandList>
       </Command>
@@ -322,7 +373,10 @@ export function EntityPicker({
 }: EntityPickerProps) {
   const { entities: contextEntities, getAreaNameForEntity } = useHass();
   const allEntities = entitiesProp ?? contextEntities;
-  const entities = useMemo(() => applyDomainFilter(allEntities, domainFilter), [allEntities, domainFilter]);
+  const entities = useMemo(
+    () => applyDomainFilter(allEntities, domainFilter),
+    [allEntities, domainFilter]
+  );
 
   const [open, setOpen] = useState(false);
   const selected = entities.find((entity) => entity.entity_id === value);
@@ -353,10 +407,17 @@ export function EntityPicker({
           >
             {selected ? (
               <>
-                <DomainIcon entityId={selected.entity_id} className="h-3.5 w-3.5 shrink-0 text-flow-text-muted" />
-                <span className="min-w-0 flex-1 truncate text-flow-text">{getEntityName(selected)}</span>
+                <DomainIcon
+                  entityId={selected.entity_id}
+                  className="h-3.5 w-3.5 shrink-0 text-flow-text-muted"
+                />
+                <span className="min-w-0 flex-1 truncate text-flow-text">
+                  {getEntityName(selected)}
+                </span>
                 <span className="shrink-0 truncate text-flow-text-muted text-xs">
-                  {[selected.entity_id, getAreaNameForEntity(selected.entity_id)].filter(Boolean).join(' · ')}
+                  {[selected.entity_id, getAreaNameForEntity(selected.entity_id)]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </>
             ) : (
@@ -391,8 +452,14 @@ export function MultiEntityPicker({
 }: MultiEntityPickerProps) {
   const { entities: contextEntities } = useHass();
   const allEntities = entitiesProp ?? contextEntities;
-  const entities = useMemo(() => applyDomainFilter(allEntities, domainFilter), [allEntities, domainFilter]);
-  const entityById = useMemo(() => new Map(entities.map((entity) => [entity.entity_id, entity])), [entities]);
+  const entities = useMemo(
+    () => applyDomainFilter(allEntities, domainFilter),
+    [allEntities, domainFilter]
+  );
+  const entityById = useMemo(
+    () => new Map(entities.map((entity) => [entity.entity_id, entity])),
+    [entities]
+  );
 
   const [open, setOpen] = useState(false);
   const handleRemove = (id: string) => onChange(value.filter((existing) => existing !== id));
@@ -406,7 +473,9 @@ export function MultiEntityPicker({
             key={id}
             className="inline-flex items-center gap-1.5 rounded-flow-control border border-flow-border bg-flow-elevated py-0.5 pr-1 pl-2 text-flow-text-secondary text-xs"
           >
-            {entity && <DomainIcon entityId={id} className="h-3 w-3 shrink-0 text-flow-text-muted" />}
+            {entity && (
+              <DomainIcon entityId={id} className="h-3 w-3 shrink-0 text-flow-text-muted" />
+            )}
             <span className="max-w-[10rem] truncate">{entity ? getEntityName(entity) : id}</span>
             <button
               type="button"

@@ -112,7 +112,14 @@ export function setNestedNodeData(
  * 'unknown.unknown'` — see YamlParser.ts's `getNextNodeId('unknown')` call
  * sites) gets 'unknown'.
  */
-export type NodeKind = 'trigger' | 'condition' | 'action' | 'timing' | 'data' | 'flowctl' | 'unknown';
+export type NodeKind =
+  | 'trigger'
+  | 'condition'
+  | 'action'
+  | 'timing'
+  | 'data'
+  | 'flowctl'
+  | 'unknown';
 
 export function getNodeKind(type: string | undefined, data: Record<string, unknown>): NodeKind {
   switch (type) {
@@ -127,7 +134,11 @@ export function getNodeKind(type: string | undefined, data: Record<string, unkno
       return 'data';
     case 'action':
       if (data.service === 'unknown.unknown') return 'unknown';
-      if (typeof data.stop === 'string' || data.repeat !== undefined || data.parallel !== undefined) {
+      if (
+        typeof data.stop === 'string' ||
+        data.repeat !== undefined ||
+        data.parallel !== undefined
+      ) {
         return 'flowctl';
       }
       return 'action';
@@ -252,7 +263,10 @@ function summarizeAction(data: Record<string, unknown>): NodeSummary {
  * entity/service/platform value; delay/wait/set_variables' subtitles are
  * trivial one-liners computed inline where they're used.
  */
-export function getNodeSummary(type: string | undefined, data: Record<string, unknown>): NodeSummary {
+export function getNodeSummary(
+  type: string | undefined,
+  data: Record<string, unknown>
+): NodeSummary {
   switch (type) {
     case 'trigger':
       return summarizeTrigger(data);

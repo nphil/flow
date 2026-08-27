@@ -18,7 +18,6 @@ import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from 'react-i18next';
 import { QuickAddMenu, type QuickAddPosition } from '@/components/canvas/QuickAddMenu';
 import { DeletableEdge } from '@/components/edges';
-import type { NodeCatalogEntry } from '@/components/nodes/catalog';
 import {
   ActionNode,
   ConditionNode,
@@ -27,6 +26,7 @@ import {
   TriggerNode,
   WaitNode,
 } from '@/components/nodes';
+import type { NodeCatalogEntry } from '@/components/nodes/catalog';
 import { NodeToolbar } from '@/components/toolbar/NodeToolbar';
 import { useFlowTheme } from '@/hooks/useFlowTheme';
 import { buildQuickAddConnection, type QuickAddDirection } from '@/lib/quick-add';

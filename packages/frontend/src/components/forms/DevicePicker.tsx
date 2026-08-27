@@ -1,11 +1,25 @@
 import { Check, Cpu, Plus, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { useTranslation } from 'react-i18next';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { useHass } from '@/contexts/HassContext';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { cn } from '@/lib/utils';
-import { FilterChip, MAX_RESULTS, PickerPopoverShell, pushRecentPick, readRecentPicks } from './pickerPopover';
+import {
+  FilterChip,
+  MAX_RESULTS,
+  PickerPopoverShell,
+  pushRecentPick,
+  readRecentPicks,
+} from './pickerPopover';
 import type { AreaRegistryEntry, DeviceRegistryEntry } from './registryTypes';
 
 function getDeviceName(device: DeviceRegistryEntry): string {
@@ -47,6 +61,7 @@ function DevicePopover({
   trigger,
   triggerTitle,
 }: DevicePopoverProps) {
+  const { t } = useTranslation('common');
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
   const [recentIds, setRecentIds] = useState<string[]>([]);
 
@@ -87,7 +102,10 @@ function DevicePopover({
   }, [filteredItems]);
 
   const matches = useMemo(
-    () => (areaFilter ? filteredItems.filter((item) => (item.areaLabel || NO_AREA) === areaFilter) : filteredItems),
+    () =>
+      areaFilter
+        ? filteredItems.filter((item) => (item.areaLabel || NO_AREA) === areaFilter)
+        : filteredItems,
     [filteredItems, areaFilter]
   );
 
@@ -148,16 +166,33 @@ function DevicePopover({
   };
 
   return (
-    <PickerPopoverShell open={open} onOpenChange={onOpenChange} trigger={trigger} title={triggerTitle}>
+    <PickerPopoverShell
+      open={open}
+      onOpenChange={onOpenChange}
+      trigger={trigger}
+      title={triggerTitle}
+    >
       <Command shouldFilter={false} className="h-full bg-transparent text-flow-text">
-        <CommandInput autoFocus placeholder="Search devices..." value={query} onValueChange={setQuery} />
+        <CommandInput
+          autoFocus
+          placeholder="Search devices..."
+          value={query}
+          onValueChange={setQuery}
+        />
         <div className="flex flex-wrap items-center gap-1.5 border-flow-border border-b px-3 py-1.5">
-          <FilterChip label="Area" options={areaOptions} value={areaFilter} onChange={setAreaFilter} />
+          <FilterChip
+            label="Area"
+            options={areaOptions}
+            value={areaFilter}
+            onChange={setAreaFilter}
+          />
         </div>
         <CommandList className="max-h-[360px]">
-          <CommandEmpty>No devices found.</CommandEmpty>
+          <CommandEmpty>{t('pickers.noDevices')}</CommandEmpty>
           {recentDevices.length > 0 && (
-            <CommandGroup heading="Recent">{recentDevices.map(renderRow)}</CommandGroup>
+            <CommandGroup heading={t('pickers.recent')}>
+              {recentDevices.map(renderRow)}
+            </CommandGroup>
           )}
           {groups.map(({ key, items }) => (
             <CommandGroup
@@ -169,7 +204,9 @@ function DevicePopover({
             </CommandGroup>
           ))}
           {remaining > 0 && (
-            <div className="px-3 py-2 text-center text-flow-text-muted text-xs">{remaining} more — keep typing</div>
+            <div className="px-3 py-2 text-center text-flow-text-muted text-xs">
+              {t('pickers.moreKeepTyping', { count: remaining })}
+            </div>
           )}
         </CommandList>
       </Command>
@@ -202,6 +239,7 @@ export function DevicePicker({
   className,
   disabled,
 }: DevicePickerProps) {
+  const { t } = useTranslation('common');
   const { devices: contextDevices, areas } = useHass();
   const allDevices = devicesProp ?? contextDevices;
   const hasDevices = allDevices.length > 0;
@@ -223,10 +261,10 @@ export function DevicePicker({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || 'Enter device ID...'}
+          placeholder={placeholder || t('pickers.deviceIdPlaceholder')}
           disabled={disabled}
         />
-        <p className="text-flow-text-muted text-xs">No devices found. Enter a device ID manually.</p>
+        <p className="text-flow-text-muted text-xs">{t('pickers.deviceIdManualHint')}</p>
       </div>
     );
   }
@@ -257,7 +295,9 @@ export function DevicePicker({
             {selected ? (
               <>
                 <Cpu className="h-3.5 w-3.5 shrink-0 text-flow-text-muted" />
-                <span className="min-w-0 flex-1 truncate text-flow-text">{getDeviceName(selected)}</span>
+                <span className="min-w-0 flex-1 truncate text-flow-text">
+                  {getDeviceName(selected)}
+                </span>
                 <span className="shrink-0 truncate text-flow-text-muted text-xs">
                   {[
                     selected.area_id ? areaById.get(selected.area_id)?.name : undefined,
@@ -303,7 +343,10 @@ export function MultiDevicePicker({
     [allDevices, areaFilter]
   );
   const areaById = useMemo(() => new Map(areas.map((area) => [area.area_id, area])), [areas]);
-  const deviceById = useMemo(() => new Map(devices.map((device) => [device.id, device])), [devices]);
+  const deviceById = useMemo(
+    () => new Map(devices.map((device) => [device.id, device])),
+    [devices]
+  );
 
   const [open, setOpen] = useState(false);
   const handleRemove = (id: string) => onChange(value.filter((existing) => existing !== id));

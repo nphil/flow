@@ -294,7 +294,7 @@ export const HassProvider: FC<
         cleanup.then((cleanupFn) => cleanupFn?.());
       }
     };
-  }, [shouldUseRemote, config.url, config.token]);
+  }, [shouldUseRemote, hasRemoteConfig, config.url, config.token]);
 
   // Fetch registries when using externalHass (panel mode)
   useEffect(() => {

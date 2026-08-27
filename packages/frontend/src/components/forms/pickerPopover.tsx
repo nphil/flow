@@ -1,11 +1,6 @@
 import { ChevronDown, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +55,13 @@ interface PickerPopoverShellProps {
   children: ReactNode;
 }
 
-export function PickerPopoverShell({ open, onOpenChange, trigger, title, children }: PickerPopoverShellProps) {
+export function PickerPopoverShell({
+  open,
+  onOpenChange,
+  trigger,
+  title,
+  children,
+}: PickerPopoverShellProps) {
   const isMobile = useIsMobile();
 
   if (isMobile) {
@@ -122,7 +123,7 @@ export function FilterChip({ label, options, value, onChange }: FilterChipProps)
             className="inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>{active ? `${label}: ${active.label}` : label}</span>
-            {active && <span className="font-mono">({active.count})</span>}
+            {active && <span className="font-mono">{`(${active.count})`}</span>}
             <ChevronDown className="h-3 w-3 opacity-60" />
           </button>
         </DropdownMenuTrigger>
@@ -131,7 +132,9 @@ export function FilterChip({ label, options, value, onChange }: FilterChipProps)
             {options.map((option) => (
               <DropdownMenuRadioItem key={option.value} value={option.value}>
                 {option.label}
-                <span className="ml-auto pl-2 font-mono text-flow-text-muted text-xs">{option.count}</span>
+                <span className="ml-auto pl-2 font-mono text-flow-text-muted text-xs">
+                  {option.count}
+                </span>
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

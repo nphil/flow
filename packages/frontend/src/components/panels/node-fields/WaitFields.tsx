@@ -16,8 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { getTriggerFields, TRIGGER_PLATFORM_FIELDS } from '@/config/triggerFields';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
-import { useFlowStore } from '@/store/flow-store';
 import type { TriggerNodeData } from '@/store/flow-store';
+import { useFlowStore } from '@/store/flow-store';
 import { getNodeData, getNodeDataString } from '@/utils/nodeData';
 import { DurationField } from './DurationField';
 
