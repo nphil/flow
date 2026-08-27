@@ -4,6 +4,13 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release tag to build assets for (e.g. v1.0.0)"
+        required: true
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 jobs:
   build-and-upload:
@@ -14,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,7 +70,7 @@ jobs:
           files: |
             flow.zip
             flow.tar.gz
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to GHCR
@@ -73,7 +82,7 @@ jobs:
 
       - name: Build and push standalone image
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           docker build -t "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}" \
                        -t "ghcr.io/${{ github.repository_owner }}/flow:latest" .
           docker push "ghcr.io/${{ github.repository_owner }}/flow:${VERSION}"
