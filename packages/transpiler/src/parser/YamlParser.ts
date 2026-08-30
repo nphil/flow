@@ -715,6 +715,27 @@ export class YamlParser {
             : undefined,
       };
 
+      // Safety net: an edge leaving a condition node without a boolean handle
+      // would fail structure validation below and block the automation from
+      // opening at all. Never hard-fail on this: label the edge (preferring
+      // the vacant handle) and surface a warning instead.
+      {
+        const conditionIds = new Set(
+          graph.nodes.filter((n) => n.type === 'condition').map((n) => n.id)
+        );
+        for (const edge of graph.edges) {
+          if (!conditionIds.has(edge.source)) continue;
+          if (edge.sourceHandle === 'true' || edge.sourceHandle === 'false') continue;
+          const siblings = graph.edges.filter((e) => e.source === edge.source && e !== edge);
+          const hasTrue = siblings.some((e) => e.sourceHandle === 'true');
+          const hasFalse = siblings.some((e) => e.sourceHandle === 'false');
+          edge.sourceHandle = hasTrue && !hasFalse ? 'false' : 'true';
+          warnings.push(
+            `Edge from condition node ${edge.source} had no true/false handle; assumed '${edge.sourceHandle}'.`
+          );
+        }
+      }
+
       // Step 7: Validate with Zod schema
       const validation = FlowGraphSchema.safeParse(graph);
 
@@ -1889,8 +1910,11 @@ export class YamlParser {
     let currentNodeIds = previousNodeIds;
     // Create a mutable copy so we can track condition nodes created during parsing
     const localConditionNodeIds = new Set(conditionNodeIds);
-    // Track condition nodes whose FALSE path should connect to next action
-    const falsePathConditionIds = new Set<string>();
+    // Track condition nodes whose FALSE path should connect to next action.
+    // Seeded from the caller: nested parses (repeat bodies, parallel branches)
+    // must know that an upstream if/choose condition continues via its FALSE
+    // handle, or they emit handle-less condition edges that fail validation.
+    const falsePathConditionIds = new Set<string>(options.falsePathConditionIds);
 
     // Helper to compute the enabled state for a node
     const getNodeEnabled = (nodeEnabled: boolean | undefined): boolean | undefined => {
@@ -2232,6 +2256,7 @@ export class YamlParser {
               previousNodeIds: parallelStartNodes,
               getNextNodeId,
               conditionNodeIds: localConditionNodeIds,
+              falsePathConditionIds,
               inheritedEnabled,
               recorder,
               pathPrefix: branchPathPrefix,
@@ -2253,6 +2278,7 @@ export class YamlParser {
                 previousNodeIds: parallelStartNodes,
                 getNextNodeId,
                 conditionNodeIds: localConditionNodeIds,
+                falsePathConditionIds,
                 inheritedEnabled,
                 recorder,
                 pathPrefix: branchPathPrefix,
@@ -2271,6 +2297,7 @@ export class YamlParser {
                 previousNodeIds: parallelStartNodes,
                 getNextNodeId,
                 conditionNodeIds: localConditionNodeIds,
+                falsePathConditionIds,
                 inheritedEnabled,
                 recorder,
                 pathPrefix: branchPathPrefix,
@@ -2375,6 +2402,7 @@ export class YamlParser {
             previousNodeIds: [lastCondId],
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
+            falsePathConditionIds,
             inheritedEnabled: blockEnabled,
             recorder,
             pathPrefix: `${actionPath}/repeat/sequence`,
@@ -2429,6 +2457,7 @@ export class YamlParser {
             previousNodeIds: currentNodeIds,
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
+            falsePathConditionIds,
             inheritedEnabled: blockEnabled,
             recorder,
             pathPrefix: `${actionPath}/repeat/sequence`,
@@ -2513,10 +2542,15 @@ export class YamlParser {
 
           const lastCondId = conditionNodes[conditionNodes.length - 1].id;
 
-          // Create back-edge from first condition →(false)→ first body node
+          // Create back-edges: EVERY until condition loops back on its FALSE
+          // path (until = AND of conditions; any failure repeats the body).
+          // Emitting all of them keeps the canvas semantics honest and gives
+          // the native strategy an unambiguous loop boundary — conditions
+          // *without* a false back-edge are past the loop, not part of it.
           if (firstBodyNodeId) {
-            const backEdge = this.createEdge(conditionNodes[0].id, firstBodyNodeId, 'false');
-            edges.push(backEdge);
+            for (const cn of conditionNodes) {
+              edges.push(this.createEdge(cn.id, firstBodyNodeId, 'false'));
+            }
           }
 
           // Output continues from last condition's TRUE path
@@ -2553,6 +2587,7 @@ export class YamlParser {
             previousNodeIds: [counterId],
             getNextNodeId,
             conditionNodeIds: localConditionNodeIds,
+            falsePathConditionIds,
             inheritedEnabled: blockEnabled,
             recorder,
             pathPrefix: `${actionPath}/repeat/sequence`,

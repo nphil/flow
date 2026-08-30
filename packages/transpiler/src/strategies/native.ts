@@ -277,22 +277,60 @@ export class NativeStrategy extends BaseStrategy {
         });
       } else if (sourceNode.type === 'condition' && edge.sourceHandle === 'false') {
         // ── until pattern ──
-        // Back-edge: condition →(false)→ first body node
+        // Back-edge: condition →(false)→ first body node. The parser emits one
+        // false back-edge per until condition, so loop membership is exactly
+        // "has a false back-edge to this loop's entry" — conditions that merely
+        // FOLLOW the loop (a trailing if/guard) lack one and stay outside.
         const firstBodyId = edge.target;
-        const firstCondId = edge.source;
 
+        // All conditions that loop back to this entry.
+        const untilSourceIds = new Set(
+          flow.edges
+            .filter(
+              (e) =>
+                this.backEdgeIds.has(e.id) &&
+                e.sourceHandle === 'false' &&
+                e.target === firstBodyId
+            )
+            .map((e) => e.source)
+        );
+
+        // Anchor at the chain head: the member no other member reaches via a
+        // true edge (multiple back-edges make us visit this loop more than
+        // once; anchoring makes every visit compute the identical pattern).
+        let headId = edge.source;
+        let moved = true;
+        while (moved) {
+          moved = false;
+          for (const e of flow.edges) {
+            if (
+              e.target === headId &&
+              e.sourceHandle === 'true' &&
+              untilSourceIds.has(e.source) &&
+              !this.backEdgeIds.has(e.id)
+            ) {
+              headId = e.source;
+              moved = true;
+              break;
+            }
+          }
+        }
+
+        // Walk the true-edge chain, keeping only loop members.
         const conditionNodeIds: string[] = [];
-        let condId: string | null = firstCondId;
+        let condId: string | null = headId;
         while (condId) {
           const node = this.getNode(flow, condId);
-          if (node?.type !== 'condition') break;
+          if (node?.type !== 'condition' || !untilSourceIds.has(condId)) break;
           conditionNodeIds.push(condId);
           const trueEdge = flow.edges.find(
             (e) => e.source === condId && e.sourceHandle === 'true' && !this.backEdgeIds.has(e.id)
           );
           if (!trueEdge) break;
-          const nextNode = this.getNode(flow, trueEdge.target);
-          if (nextNode?.type === 'condition' && conditionNodeIds.indexOf(trueEdge.target) === -1) {
+          if (
+            untilSourceIds.has(trueEdge.target) &&
+            conditionNodeIds.indexOf(trueEdge.target) === -1
+          ) {
             condId = trueEdge.target;
           } else {
             break;
@@ -313,7 +351,7 @@ export class NativeStrategy extends BaseStrategy {
           entryNodeId: firstBodyId,
           conditionNodeIds,
           bodyNodeIds,
-          backEdgeSourceId: firstCondId,
+          backEdgeSourceId: headId,
           exitNodeId: trueEdge?.target ?? null,
         });
       } else if (sourceNode.type === 'condition' && edge.sourceHandle === 'true') {
