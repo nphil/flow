@@ -53,7 +53,7 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
       stepNumber={getExecutionStepNumber(id)}
     >
       {countdown && (
-        <div className="mt-1 pl-1 font-mono font-semibold text-[11px] text-flow-accent tabular-nums">
+        <div className="mt-1 pl-1 font-mono font-semibold text-flow-accent text-xs tabular-nums">
           {timeoutTotalMs != null
             ? t('nodes:trace.remaining', { time: countdown })
             : t('nodes:trace.elapsed', { time: countdown })}

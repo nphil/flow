@@ -23,12 +23,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
       <DialogContent className="max-w-sm border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader className="items-center text-center">
           <FlowMark size={40} className="mb-1 text-flow-text" />
-          <DialogTitle
-            className="font-serif text-2xl text-flow-text"
-            style={{ letterSpacing: '-0.01em', fontWeight: 600 }}
-          >
-            {'Flow'}
-          </DialogTitle>
+          <DialogTitle className="font-semibold text-2xl text-flow-text">{'Flow'}</DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
             {t('dialogs:about.tagline')}
           </DialogDescription>

@@ -161,7 +161,7 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-serif text-flow-text">
+          <DialogTitle className="flex items-center gap-2 text-flow-text">
             <Save className="h-5 w-5" />
             {isUpdate ? t('dialogs:save.titleUpdate') : t('dialogs:save.title')}
           </DialogTitle>

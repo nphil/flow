@@ -45,6 +45,7 @@
     "disabled": "Disabled",
     "reconnecting": "Reconnecting…",
     "openPalette": "Open node palette",
-    "openPanel": "Open panel"
+    "openPanel": "Open panel",
+    "unsavedChanges": "Unsaved changes"
   }
 }

@@ -14,8 +14,18 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import { LayoutGrid, Lock, LockOpen } from 'lucide-react';
-import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { cloneNodesIntoCanvas } from '@/components/actions/clipboardHelpers';
+import { CanvasContextMenu } from '@/components/canvas/CanvasContextMenu';
 import { QuickAddMenu, type QuickAddPosition } from '@/components/canvas/QuickAddMenu';
 import { DeletableEdge } from '@/components/edges';
 import {
@@ -26,20 +36,45 @@ import {
   TriggerNode,
   WaitNode,
 } from '@/components/nodes';
-import type { NodeCatalogEntry } from '@/components/nodes/catalog';
-import { NodeToolbar } from '@/components/toolbar/NodeToolbar';
+import { NODE_CATALOG, type NodeCatalogEntry } from '@/components/nodes/catalog';
 import { useFlowTheme } from '@/hooks/useFlowTheme';
-import { buildQuickAddConnection, type QuickAddDirection } from '@/lib/quick-add';
+import { buildActionContext } from '@/hooks/useNodeActions';
+import {
+  buildQuickAddConnection,
+  getAvailableQuickAddTypes,
+  getInsertableTypes,
+  type QuickAddDirection,
+} from '@/lib/quick-add';
 import { generateNodeId } from '@/lib/utils';
+import { FIT_VIEW_MANUAL, FIT_VIEW_OPEN } from '@/lib/viewport';
 import { useFlowStore } from '@/store/flow-store';
 import { isMacOS } from '@/utils/useAgentPlatform';
 
-interface QuickAddState {
+/**
+ * Where the quick-add popover came from, and what to do with the picked node:
+ * - `connect`: a connection dragged from a handle was dropped on empty canvas
+ *   — wire the new node into that dangling connection.
+ * - `free`: double-click (or context menu "Add node") on empty canvas — just
+ *   place the node there.
+ * - `insert`: the "+" on an edge — splice the new node into that edge.
+ */
+type QuickAddState = {
   screenPosition: QuickAddPosition;
   flowPosition: { x: number; y: number };
-  fromNodeId: string;
-  fromHandleId: string | null;
-  direction: QuickAddDirection;
+} & (
+  | {
+      mode: 'connect';
+      fromNodeId: string;
+      fromHandleId: string | null;
+      direction: QuickAddDirection;
+    }
+  | { mode: 'free' }
+  | { mode: 'insert'; edgeId: string }
+);
+
+interface ContextMenuState {
+  screenPosition: QuickAddPosition;
+  flowPosition: { x: number; y: number };
 }
 
 // New node types should be added here as needed!
@@ -65,11 +100,14 @@ export function FlowCanvas() {
   const {
     nodes,
     edges,
+    clipboard,
     onNodesChange,
     onEdgesChange,
     onConnect,
     selectNode,
+    requestPropertiesFocus,
     addNode,
+    setEdges,
     isSimulating,
     executionPath,
     isShowingTrace,
@@ -83,8 +121,9 @@ export function FlowCanvas() {
   } = useFlowStore();
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, setViewport, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const [quickAdd, setQuickAdd] = useState<QuickAddState | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [interactive, setInteractive] = useState(true);
   // Live-flow motion pause conditions (design doc §13): tab hidden or
   // canvas being dragged/zoomed. Both are discrete start/end events, not a
@@ -122,6 +161,7 @@ export function FlowCanvas() {
       const flowPosition = screenToFlowPosition({ x: point.clientX, y: point.clientY });
 
       setQuickAdd({
+        mode: 'connect',
         screenPosition: { screenX: point.clientX, screenY: point.clientY },
         flowPosition,
         fromNodeId: connectionState.fromHandle.nodeId,
@@ -133,6 +173,19 @@ export function FlowCanvas() {
   );
 
   const closeQuickAdd = useCallback(() => setQuickAdd(null), []);
+
+  // Node-type choices depend on what the picked node must connect to.
+  const quickAddItems = useMemo<NodeCatalogEntry[]>(() => {
+    if (!quickAdd) return [];
+    switch (quickAdd.mode) {
+      case 'connect':
+        return getAvailableQuickAddTypes(quickAdd.direction);
+      case 'insert':
+        return getInsertableTypes();
+      default:
+        return NODE_CATALOG;
+    }
+  }, [quickAdd]);
 
   const handleQuickAddSelect = useCallback(
     (entry: NodeCatalogEntry) => {
@@ -147,23 +200,118 @@ export function FlowCanvas() {
         data: { ...entry.defaultData },
       };
       addNode(newNode);
-      onConnect(
-        buildQuickAddConnection(
-          quickAdd.direction,
-          quickAdd.fromNodeId,
-          quickAdd.fromHandleId,
-          newNode.id
-        )
-      );
+      if (quickAdd.mode === 'connect') {
+        onConnect(
+          buildQuickAddConnection(
+            quickAdd.direction,
+            quickAdd.fromNodeId,
+            quickAdd.fromHandleId,
+            newNode.id
+          )
+        );
+      } else if (quickAdd.mode === 'insert') {
+        const edge = edges.find((e) => e.id === quickAdd.edgeId);
+        if (edge) {
+          setEdges(edges.filter((e) => e.id !== quickAdd.edgeId));
+          onConnect({
+            source: edge.source,
+            sourceHandle: edge.sourceHandle ?? null,
+            target: newNode.id,
+            targetHandle: null,
+          });
+          onConnect({
+            source: newNode.id,
+            sourceHandle: null,
+            target: edge.target,
+            targetHandle: edge.targetHandle ?? null,
+          });
+        }
+      }
       setQuickAdd(null);
     },
-    [quickAdd, addNode, onConnect]
+    [quickAdd, addNode, onConnect, edges, setEdges]
   );
 
-  // Set initial zoom level
-  useEffect(() => {
-    setViewport({ x: 0, y: 0, zoom: 0.75 });
-  }, [setViewport]);
+  // The edge "+" button (DeletableEdge) requests a node spliced into itself.
+  const handleEdgeInsertRequest = useCallback(
+    (edgeId: string, screen: { x: number; y: number }, flow: { x: number; y: number }) => {
+      setQuickAdd({
+        mode: 'insert',
+        edgeId,
+        screenPosition: { screenX: screen.x, screenY: screen.y },
+        flowPosition: flow,
+      });
+    },
+    []
+  );
+
+  // Right-click on empty canvas: add-node / paste-here menu.
+  const onPaneContextMenu = useCallback(
+    (event: MouseEvent | ReactMouseEvent) => {
+      event.preventDefault();
+      setContextMenu({
+        screenPosition: { screenX: event.clientX, screenY: event.clientY },
+        flowPosition: screenToFlowPosition({ x: event.clientX, y: event.clientY }),
+      });
+    },
+    [screenToFlowPosition]
+  );
+
+  const handleContextAddNode = useCallback(() => {
+    if (!contextMenu) return;
+    setQuickAdd({
+      mode: 'free',
+      screenPosition: contextMenu.screenPosition,
+      flowPosition: contextMenu.flowPosition,
+    });
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleContextPasteHere = useCallback(() => {
+    if (!contextMenu) return;
+    const context = buildActionContext();
+    if (context.clipboard) {
+      try {
+        const parsed = JSON.parse(context.clipboard);
+        const clipboardNodes = parsed.nodes || [];
+        const clipboardEdges = parsed.edges || [];
+        if (Array.isArray(clipboardNodes) && clipboardNodes.length > 0) {
+          cloneNodesIntoCanvas(clipboardNodes, clipboardEdges, context, contextMenu.flowPosition);
+        }
+      } catch (e) {
+        console.warn('Invalid clipboard data, cannot paste.', e);
+      }
+    }
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleContextSelectAll = useCallback(() => {
+    const s = useFlowStore.getState();
+    s.setNodes(s.nodes.map((n) => ({ ...n, selected: true })));
+    s.setEdges(s.edges.map((e) => ({ ...e, selected: true })));
+    setContextMenu(null);
+  }, []);
+
+  const handleContextFitView = useCallback(() => {
+    fitView({ ...FIT_VIEW_MANUAL, duration: 220 });
+    setContextMenu(null);
+  }, [fitView]);
+
+  // Double-click on empty canvas opens the quick-add search at the cursor.
+  // Attached to the wrapper (not a ReactFlow prop) and filtered to the pane
+  // element itself so node/edge/control double-clicks never trigger it.
+  const onWrapperDoubleClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      if (!target.classList.contains('react-flow__pane')) return;
+      setQuickAdd({
+        mode: 'free',
+        screenPosition: { screenX: event.clientX, screenY: event.clientY },
+        flowPosition: screenToFlowPosition({ x: event.clientX, y: event.clientY }),
+      });
+    },
+    [screenToFlowPosition]
+  );
 
   // Auto-arrange (design doc §5): the store animates positions via CSS while
   // `isArranging` is true (see index.css's `.flow-arranging` rule below);
@@ -176,7 +324,7 @@ export function FlowCanvas() {
     wasArrangingRef.current = isArranging;
     if (wasArranging && !isArranging) {
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      fitView({ padding: 0.15, duration: reducedMotion ? 0 : 220 });
+      fitView({ ...FIT_VIEW_MANUAL, duration: reducedMotion ? 0 : 220 });
     }
   }, [isArranging, fitView]);
 
@@ -337,6 +485,7 @@ export function FlowCanvas() {
           branchLabel,
           animated,
           isMostRecent: isMostRecent && animated,
+          onInsertRequest: handleEdgeInsertRequest,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -354,10 +503,12 @@ export function FlowCanvas() {
     nodeTypeById,
     isTraceRunning,
     motionActive,
+    handleEdgeInsertRequest,
   ]);
 
   return (
-    <div className="h-full w-full" ref={reactFlowWrapper}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: double-click quick-add is a pointer affordance; keyboard users add nodes via the palette
+    <div className="h-full w-full" ref={reactFlowWrapper} onDoubleClick={onWrapperDoubleClick}>
       <ReactFlow
         colorMode={mode}
         nodes={nodes}
@@ -368,6 +519,8 @@ export function FlowCanvas() {
         onConnectEnd={onConnectEnd}
         onBeforeDelete={onBeforeDelete}
         onSelectionChange={onSelectionChange}
+        onNodeDoubleClick={(_, node) => requestPropertiesFocus(node.id)}
+        onPaneContextMenu={onPaneContextMenu}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onMoveStart={() => setInteracting(true)}
@@ -375,6 +528,7 @@ export function FlowCanvas() {
         onNodeDragStart={() => setInteracting(true)}
         onNodeDragStop={() => setInteracting(false)}
         panOnScroll={isMacOS()}
+        zoomOnDoubleClick={false}
         nodesDraggable={interactive}
         nodesConnectable={interactive}
         elementsSelectable={interactive}
@@ -384,11 +538,11 @@ export function FlowCanvas() {
           type: 'deletable',
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--border)' },
         }}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         maxZoom={2}
         minZoom={0.3}
         fitView
-        fitViewOptions={{ maxZoom: 0.75 }}
+        fitViewOptions={FIT_VIEW_OPEN}
         snapToGrid
         snapGrid={[15, 15]}
         deleteKeyCode={null}
@@ -440,8 +594,6 @@ export function FlowCanvas() {
           maskColor="color-mix(in srgb, var(--bg) 65%, transparent)"
         />
 
-        <NodeToolbar />
-
         {isSimulating && (
           <Panel
             position="top-left"
@@ -465,9 +617,20 @@ export function FlowCanvas() {
 
       <QuickAddMenu
         position={quickAdd?.screenPosition ?? null}
-        direction={quickAdd?.direction ?? 'forward'}
+        items={quickAddItems}
         onSelect={handleQuickAddSelect}
         onClose={closeQuickAdd}
+      />
+
+      <CanvasContextMenu
+        position={contextMenu?.screenPosition ?? null}
+        canPaste={!!clipboard}
+        hasNodes={nodes.length > 0}
+        onAddNode={handleContextAddNode}
+        onPasteHere={handleContextPasteHere}
+        onSelectAll={handleContextSelectAll}
+        onFitView={handleContextFitView}
+        onClose={() => setContextMenu(null)}
       />
     </div>
   );

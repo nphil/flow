@@ -45,6 +45,7 @@
     "disabled": "Disabilitata",
     "reconnecting": "Riconnessione in corso…",
     "openPalette": "Apri tavolozza nodi",
-    "openPanel": "Apri pannello"
+    "openPanel": "Apri pannello",
+    "unsavedChanges": "Modifiche non salvate"
   }
 }

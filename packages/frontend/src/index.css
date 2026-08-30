@@ -13,9 +13,7 @@
 
   /* Force Tailwind base styles to apply */
   flow-panel {
-    font-family:
-      ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-      'Segoe UI Symbol', 'Noto Color Emoji' !important;
+    font-family: Roboto, Noto, sans-serif !important;
     line-height: 1.5 !important;
     -webkit-text-size-adjust: 100% !important;
     -webkit-tap-highlight-color: transparent !important;
@@ -73,13 +71,13 @@
   @apply font-sans;
 }
 
-/* Handles: 10px, quiet border at rest, kind-colored ring on hover only.
+/* Handles: 12px, quiet border at rest, kind-colored ring on hover only.
    Position offsets are xyflow's own defaults -- only sizing/fill/border are
    overridden here. Per-kind hover classes assigned via handleKindClass()
    in components/nodes/nodeVisuals.tsx. */
 .react-flow__handle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 12px !important;
+  height: 12px !important;
   border-radius: 9999px;
   border: 1.5px solid var(--border);
   background: var(--bg);

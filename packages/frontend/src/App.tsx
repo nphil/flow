@@ -24,6 +24,7 @@ import {
 import { ResizablePanel } from '@/components/ui/resizable-panel';
 import { useDirtyGuard } from '@/hooks/useDirtyGuard';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { useFlowStore } from '@/store/flow-store';
 import { useHass } from './contexts/HassContext';
 import { useFlowTheme } from './hooks/useFlowTheme';
 import { useLanguage } from './hooks/useLanguage';
@@ -42,6 +43,7 @@ function App() {
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const propertiesFocusRequest = useFlowStore((s) => s.propertiesFocusRequest);
 
   // Bridges Flow's own theme onto the legacy shadcn `.dark` class every shared ui/* primitive
   // (Button, Dialog, Input, ...) still reads until Wave 3 deletes that HSL token system.
@@ -55,6 +57,14 @@ function App() {
       setRightDrawerOpen(false);
     }
   }, [isMobile]);
+
+  // Double-clicking a node requests the Properties tab (see flow-store); on
+  // mobile that tab lives in the right drawer, so open it too.
+  useEffect(() => {
+    if (isMobile && propertiesFocusRequest > 0) {
+      setRightDrawerOpen(true);
+    }
+  }, [isMobile, propertiesFocusRequest]);
 
   const reloadApp = () => window.location.reload();
 
@@ -72,9 +82,7 @@ function App() {
         <Dialog open={true} onOpenChange={reloadApp}>
           <DialogContent className="flex w-[90vw] max-w-full flex-col border-flow-border bg-flow-panel text-flow-text">
             <DialogHeader>
-              <DialogTitle className="font-serif text-flow-text">
-                {t('dialogs:error.title')}
-              </DialogTitle>
+              <DialogTitle className="text-flow-text">{t('dialogs:error.title')}</DialogTitle>
             </DialogHeader>
             <DialogDescription className="text-flow-text-secondary">
               {t('dialogs:error.description')}

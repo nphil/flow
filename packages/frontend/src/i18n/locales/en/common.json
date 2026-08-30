@@ -49,7 +49,8 @@
     "areas": "Areas",
     "zones": "Zones",
     "unassigned": "Unassigned",
-    "workspaceSources": "Merged Sources"
+    "workspaceSources": "Merged Sources",
+    "canvasTools": "Canvas tools"
   },
   "status": {
     "connecting": "Connecting...",
@@ -176,7 +177,9 @@
     "duplicateNode": "Duplicate Node",
     "selectAll": "Select All",
     "undo": "Undo",
-    "redo": "Redo"
+    "redo": "Redo",
+    "insertNode": "Insert node",
+    "deleteConnection": "Delete connection"
   },
   "shortcuts": {
     "cmd": "Cmd",
@@ -204,5 +207,9 @@
     "moreKeepTyping": "{{count}} more — keep typing",
     "deviceIdPlaceholder": "Enter device ID...",
     "deviceIdManualHint": "No devices found. Enter a device ID manually."
+  },
+  "canvasMenu": {
+    "addNode": "Add node…",
+    "pasteHere": "Paste here"
   }
 }

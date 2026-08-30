@@ -45,6 +45,7 @@
     "disabled": "已禁用",
     "reconnecting": "正在重新连接…",
     "openPalette": "打开节点调板",
-    "openPanel": "打开面板"
+    "openPanel": "打开面板",
+    "unsavedChanges": "未保存的更改"
   }
 }

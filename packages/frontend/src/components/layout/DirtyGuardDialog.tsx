@@ -31,9 +31,7 @@ export function DirtyGuardDialog({ open, onCancel, onDiscard, onSave }: DirtyGua
     >
       <DialogContent className="max-w-md border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="font-serif text-flow-text">
-            {t('dialogs:dirtyGuard.title')}
-          </DialogTitle>
+          <DialogTitle className="text-flow-text">{t('dialogs:dirtyGuard.title')}</DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
             {t('dialogs:dirtyGuard.description')}
           </DialogDescription>

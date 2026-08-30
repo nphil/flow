@@ -49,7 +49,8 @@
     "areas": "Bereiche",
     "zones": "Zonen",
     "unassigned": "Nicht zugeordnet",
-    "workspaceSources": "Zusammengeführte Quellen"
+    "workspaceSources": "Zusammengeführte Quellen",
+    "canvasTools": "Canvas-Werkzeuge"
   },
   "status": {
     "connecting": "Verbinde...",
@@ -153,7 +154,9 @@
     "duplicateNode": "Knoten duplizieren",
     "selectAll": "Alles auswählen",
     "undo": "Rückgängig",
-    "redo": "Wiederherstellen"
+    "redo": "Wiederherstellen",
+    "insertNode": "Knoten einfügen",
+    "deleteConnection": "Verbindung löschen"
   },
   "shortcuts": {
     "cmd": "Cmd",
@@ -181,5 +184,9 @@
     "moreKeepTyping": "{{count}} weitere — weiter tippen",
     "deviceIdPlaceholder": "Geräte-ID eingeben...",
     "deviceIdManualHint": "Keine Geräte gefunden. Geräte-ID manuell eingeben."
+  },
+  "canvasMenu": {
+    "addNode": "Knoten hinzufügen…",
+    "pasteHere": "Hier einfügen"
   }
 }

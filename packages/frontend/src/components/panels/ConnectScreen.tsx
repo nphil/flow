@@ -110,12 +110,7 @@ export function ConnectScreen({ config, connectionError, onConnect }: ConnectScr
       <div className="w-full max-w-md rounded-flow-modal border border-flow-border bg-flow-panel p-6 shadow-flow-modal">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <FlowMark size={40} className="text-flow-text" />
-          <h1
-            className="font-serif text-2xl text-flow-text"
-            style={{ letterSpacing: '-0.01em', fontWeight: 600 }}
-          >
-            {t('dialogs:connect.title')}
-          </h1>
+          <h1 className="font-semibold text-2xl text-flow-text">{t('dialogs:connect.title')}</h1>
           <p className="font-mono text-flow-text-secondary text-xs">
             {t('dialogs:connect.subtitle')}
           </p>

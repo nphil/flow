@@ -50,7 +50,7 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
       stepNumber={getExecutionStepNumber(id)}
     >
       {countdown && (
-        <div className="mt-1 pl-1 font-mono font-semibold text-[11px] text-flow-accent tabular-nums">
+        <div className="mt-1 pl-1 font-mono font-semibold text-flow-accent text-xs tabular-nums">
           {t('nodes:trace.remaining', { time: countdown })}
         </div>
       )}

@@ -719,8 +719,6 @@ __metadata:
   dependencies:
     "@flow/shared": "workspace:*"
     "@flow/transpiler": "workspace:*"
-    "@fontsource-variable/noto-sans-mono": "npm:^5.3.0"
-    "@fontsource/source-serif-4": "npm:^5.3.0"
     "@hookform/resolvers": "npm:^5.2.2"
     "@radix-ui/react-checkbox": "npm:^1.3.3"
     "@radix-ui/react-collapsible": "npm:^1.1.12"
@@ -800,20 +798,6 @@ __metadata:
     flow: ./dist/cli.js
   languageName: unknown
   linkType: soft
-
-"@fontsource-variable/noto-sans-mono@npm:^5.3.0":
-  version: 5.3.0
-  resolution: "@fontsource-variable/noto-sans-mono@npm:5.3.0"
-  checksum: 10c0/669712a78fef5d2adccbc5467338fa9c1775468eb3e166e33a44b9e22a1b3e8aaca1f61a475a13435bb0e988c024cba50cd93ba5ac3f61ce7d7f270694fd5004
-  languageName: node
-  linkType: hard
-
-"@fontsource/source-serif-4@npm:^5.3.0":
-  version: 5.3.0
-  resolution: "@fontsource/source-serif-4@npm:5.3.0"
-  checksum: 10c0/186d5bdb8bfd81dd2a532abd8b24a6f534c23493905d0dad084b3c375156491923ccc9ef5df4db2869f705d7a5e7ece8f5ce7c7196e767e36bc9b91783a6b421
-  languageName: node
-  linkType: hard
 
 "@formatjs/ecma402-abstract@npm:1.11.4":
   version: 1.11.4

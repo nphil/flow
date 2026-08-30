@@ -45,6 +45,7 @@
     "disabled": "Désactivée",
     "reconnecting": "Reconnexion…",
     "openPalette": "Ouvrir la palette de nœuds",
-    "openPanel": "Ouvrir le panneau"
+    "openPanel": "Ouvrir le panneau",
+    "unsavedChanges": "Modifications non enregistrées"
   }
 }

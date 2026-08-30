@@ -238,6 +238,14 @@ export interface FlowState {
   addWaitTimeoutBranch: (waitNodeId: string) => void;
 
   selectNode: (nodeId: string | null) => void;
+  /**
+   * Asks the right panel to show the Properties tab for a node (canvas
+   * double-click). `propertiesFocusRequest` is an ephemeral monotonic
+   * counter — neither persisted nor undo-tracked — that subscribers watch
+   * for edges; the node itself arrives via `selectedNodeId`.
+   */
+  propertiesFocusRequest: number;
+  requestPropertiesFocus: (nodeId: string) => void;
 
   setFlowName: (name: string) => void;
   setFlowDescription: (description: string) => void;
@@ -423,6 +431,7 @@ const initialState = {
   nodeErrors: new Map<string, NodeValidationError[]>(),
   clipboard: null,
   pasteCount: 0,
+  propertiesFocusRequest: 0,
 };
 
 /**
@@ -639,6 +648,12 @@ export const useFlowStore = create<FlowState>()(
         },
 
         selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+
+        requestPropertiesFocus: (nodeId) =>
+          set((state) => ({
+            selectedNodeId: nodeId,
+            propertiesFocusRequest: state.propertiesFocusRequest + 1,
+          })),
 
         setClipboard: (data: string | null) => set({ clipboard: data }),
         setPasteCount: (count: number) => set({ pasteCount: count }),

@@ -11,18 +11,16 @@ import {
   MoreVertical,
   PanelRight,
   Play,
-  Redo2,
   Save,
   Trash2,
-  Undo2,
   Unplug,
   WifiOff,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+import { EditorToolbar } from '@/components/toolbar/EditorToolbar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -38,8 +36,10 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useHass } from '@/contexts/HassContext';
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
+import { ACTION_GROUP_ORDER, useNodeActions } from '@/hooks/useNodeActions';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
+import { FIT_VIEW_MANUAL, FIT_VIEW_OPEN } from '@/lib/viewport';
 import { useFlowStore } from '@/store/flow-store';
 import type { HassEntity } from '@/types/hass';
 import { AboutDialog } from './AboutDialog';
@@ -68,9 +68,12 @@ function findOpenAutomationEntity(entities: HassEntity[], automationId: string |
 }
 
 /**
- * 48px app header (design doc §4): mark, inline-editable name, enabled/mode/connection status,
- * and the primary command cluster + overflow menu. Design doc §12 adds the standalone
- * disconnect action; §13 adds the shared Animations toggle.
+ * 48px app header (design doc §4), three zones: identity + inline-editable
+ * name + status chips on the left, the merged canvas command cluster
+ * (EditorToolbar — the former floating toolbar) in the center, and run/save +
+ * the overflow menu on the right. Below `lg` the center cluster folds into
+ * the overflow menu instead. Design doc §12 adds the standalone disconnect
+ * action; §13 adds the shared Animations toggle.
  */
 export function Header({
   dirtyGuard,
@@ -97,17 +100,25 @@ export function Header({
     setTracePathMap,
     autoArrange,
     setAnimationsEnabled,
-  } = useFlowStore();
-  const isDirty = useFlowStore((s) => s.isDirty());
-  const { undo, redo, canUndo, canRedo } = useStore(
-    useFlowStore.temporal,
-    useShallow((state) => ({
-      undo: state.undo,
-      redo: state.redo,
-      canUndo: state.pastStates.length > 0,
-      canRedo: state.futureStates.length > 0,
+  } = useFlowStore(
+    useShallow((s) => ({
+      flowName: s.flowName,
+      flowMetadata: s.flowMetadata,
+      automationId: s.automationId,
+      isSaving: s.isSaving,
+      isArranging: s.isArranging,
+      animationsEnabled: s.animationsEnabled,
+      setFlowName: s.setFlowName,
+      setAutomationId: s.setAutomationId,
+      reset: s.reset,
+      fromFlowGraph: s.fromFlowGraph,
+      setTracePathMap: s.setTracePathMap,
+      autoArrange: s.autoArrange,
+      setAnimationsEnabled: s.setAnimationsEnabled,
     }))
   );
+  const isDirty = useFlowStore((s) => s.isDirty());
+  const nodeActions = useNodeActions();
 
   const [importExportOpen, setImportExportOpen] = useState<'import' | 'export' | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -120,16 +131,7 @@ export function Header({
     [entities, automationId]
   );
 
-  const handleUndo = () => {
-    undo();
-    useFlowStore.getState().validateAllNodes();
-  };
-  const handleRedo = () => {
-    redo();
-    useFlowStore.getState().validateAllNodes();
-  };
-
-  const handleZoomFit = () => fitView({ padding: 0.15, duration: 220 });
+  const handleZoomFit = () => fitView({ ...FIT_VIEW_MANUAL, duration: 220 });
 
   const handleRun = async () => {
     if (!hass || !openEntity) return;
@@ -185,7 +187,7 @@ export function Header({
       if (payload.graph.name) {
         setFlowName(payload.graph.name);
       }
-      setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+      setTimeout(() => fitView({ ...FIT_VIEW_OPEN, duration: 300 }), 50);
     });
   };
 
@@ -194,62 +196,96 @@ export function Header({
   };
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-flow-border border-b bg-flow-panel px-3">
-      {isMobile && (
+    <header className="flex h-12 shrink-0 items-center gap-2 border-flow-border border-b bg-flow-panel px-3">
+      {/* Left zone: identity, editable name, status chips */}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleLeftDrawer}
+            className="h-8 w-8 shrink-0"
+            aria-label={t('panels:header.openPalette')}
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        )}
+
+        <FlowMark size={20} className="shrink-0 text-flow-text" />
+
+        <Separator orientation="vertical" className="h-5 shrink-0 bg-flow-border" />
+
+        <input
+          value={flowName}
+          onChange={(event) => setFlowName(event.target.value)}
+          placeholder={t('common:placeholders.automationName')}
+          title={flowName || undefined}
+          className="ui-focus-ring min-w-0 max-w-72 flex-1 truncate rounded-flow-control bg-transparent px-1.5 font-medium text-[15px] text-flow-text placeholder:font-normal placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
+        />
+
+        {/* Redundant with the pulsing save button for AT users — decorative for sighted scanning. */}
+        {isDirty && (
+          <span
+            aria-hidden
+            title={t('panels:header.unsavedChanges')}
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-flow-warn"
+          />
+        )}
+
+        {openEntity && (
+          <span
+            className={cn(
+              'hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide sm:flex',
+              openEntity.state === 'on'
+                ? 'bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]'
+                : 'bg-flow-elevated text-flow-text-muted'
+            )}
+          >
+            {openEntity.state === 'on' ? t('panels:header.enabled') : t('panels:header.disabled')}
+          </span>
+        )}
+
+        {flowMetadata.mode && flowMetadata.mode !== 'single' && (
+          <span className="hidden shrink-0 rounded-full bg-flow-elevated px-2 py-0.5 font-mono text-[10px] text-flow-text-muted uppercase tracking-wide sm:flex">
+            {flowMetadata.mode}
+          </span>
+        )}
+
+        {isRemote && hass && !hass.connected && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 font-mono text-[10px] text-[var(--warn)] uppercase tracking-wide">
+            <WifiOff className="h-2.5 w-2.5" />
+            {t('panels:header.reconnecting')}
+          </span>
+        )}
+      </div>
+
+      {/* Center zone: merged canvas command cluster (folds into the overflow menu below lg) */}
+      <EditorToolbar
+        actions={nodeActions}
+        isArranging={isArranging}
+        onAutoArrange={() => autoArrange()}
+        onZoomFit={handleZoomFit}
+        className="hidden shrink-0 lg:flex"
+      />
+
+      {/* Right zone: automation-level commands */}
+      <div className="flex min-w-0 flex-1 shrink-0 items-center justify-end gap-1">
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggleLeftDrawer}
-          className="h-8 w-8 shrink-0 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text"
-          aria-label={t('panels:header.openPalette')}
+          disabled={!openEntity || isRunning}
+          onClick={handleRun}
+          title={t('panels:header.run')}
+          className="h-8 w-8"
         >
-          <Menu className="h-4 w-4" />
+          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         </Button>
-      )}
 
-      <FlowMark size={20} className="shrink-0 text-flow-text" />
-
-      <Separator orientation="vertical" className="h-5 bg-flow-border" />
-
-      <input
-        value={flowName}
-        onChange={(event) => setFlowName(event.target.value)}
-        placeholder={t('common:placeholders.automationName')}
-        className="ui-focus-ring min-w-0 max-w-72 flex-1 truncate rounded-flow-control bg-transparent px-1 font-serif text-base text-flow-text placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
-        style={{ letterSpacing: '-0.005em' }}
-      />
-
-      {openEntity && (
-        <span
-          className={cn(
-            'hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide sm:flex',
-            openEntity.state === 'on'
-              ? 'bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]'
-              : 'bg-flow-elevated text-flow-text-muted'
-          )}
-        >
-          {openEntity.state === 'on' ? t('panels:header.enabled') : t('panels:header.disabled')}
-        </span>
-      )}
-
-      {flowMetadata.mode && flowMetadata.mode !== 'single' && (
-        <span className="hidden shrink-0 rounded-full bg-flow-elevated px-2 py-0.5 font-mono text-[10px] text-flow-text-muted uppercase tracking-wide sm:flex">
-          {flowMetadata.mode}
-        </span>
-      )}
-
-      {isRemote && hass && !hass.connected && (
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 font-mono text-[10px] text-[var(--warn)] uppercase tracking-wide">
-          <WifiOff className="h-2.5 w-2.5" />
-          {t('panels:header.reconnecting')}
-        </span>
-      )}
-
-      <div className="ml-auto flex shrink-0 items-center gap-1">
         <Button
           size="sm"
           disabled={!isDirty || isSaving}
           onClick={onRequestSave}
+          title={t('common:buttons.save')}
           className={cn(
             'h-8 bg-flow-accent px-3 text-flow-on-accent hover:bg-flow-accent-hover',
             isDirty && !isSaving && 'save-button-unsaved'
@@ -262,69 +298,12 @@ export function Header({
           )}
         </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={!openEntity || isRunning}
-          onClick={handleRun}
-          title={t('panels:header.run')}
-          className="h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text"
-        >
-          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-        </Button>
-
-        <Separator orientation="vertical" className="hidden h-5 bg-flow-border md:block" />
-
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={!canUndo}
-          onClick={handleUndo}
-          title={t('panels:header.undo')}
-          className="hidden h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text md:inline-flex"
-        >
-          <Undo2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={!canRedo}
-          onClick={handleRedo}
-          title={t('panels:header.redo')}
-          className="hidden h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text md:inline-flex"
-        >
-          <Redo2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={isArranging}
-          onClick={() => autoArrange()}
-          title={t('panels:header.autoArrange')}
-          className="hidden h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text md:inline-flex"
-        >
-          {isArranging ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <LayoutGrid className="h-4 w-4" />
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleZoomFit}
-          title={t('panels:header.zoomFit')}
-          className="hidden h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text md:inline-flex"
-        >
-          <Maximize2 className="h-4 w-4" />
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text"
+              className="h-8 w-8"
               aria-label={t('panels:header.moreActions')}
             >
               <MoreVertical className="h-4 w-4" />
@@ -332,24 +311,49 @@ export function Header({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-56 border-flow-border bg-flow-panel text-flow-text"
+            className="w-60 border-flow-border bg-flow-panel text-flow-text"
           >
-            <div className="md:hidden">
+            {/* Below lg the center cluster is hidden — every canvas action stays reachable here. */}
+            <div className="lg:hidden">
+              {ACTION_GROUP_ORDER.map((group) => {
+                const groupActions = nodeActions.actionsByGroup[group];
+                if (!groupActions || groupActions.length === 0) return null;
+                return (
+                  <Fragment key={group}>
+                    {groupActions.map((action) => {
+                      const Icon = action.getIcon
+                        ? action.getIcon(nodeActions.renderContext)
+                        : action.icon;
+                      const tooltip =
+                        typeof action.tooltip === 'function'
+                          ? action.tooltip(nodeActions.renderContext)
+                          : action.tooltip;
+                      const enabled = action.isEnabled
+                        ? action.isEnabled(nodeActions.renderContext)
+                        : true;
+                      return (
+                        <DropdownMenuItem
+                          key={action.name}
+                          disabled={!enabled}
+                          onClick={() => nodeActions.runAction(action)}
+                          className={cn(
+                            'gap-2 font-mono text-xs',
+                            action.variant === 'destructive' && 'text-[var(--danger)]'
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" /> {tooltip}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    <DropdownMenuSeparator className="bg-flow-border" />
+                  </Fragment>
+                );
+              })}
               <DropdownMenuItem
-                onClick={handleUndo}
-                disabled={!canUndo}
+                disabled={isArranging}
+                onClick={() => autoArrange()}
                 className="gap-2 font-mono text-xs"
               >
-                <Undo2 className="h-3.5 w-3.5" /> {t('panels:header.undo')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleRedo}
-                disabled={!canRedo}
-                className="gap-2 font-mono text-xs"
-              >
-                <Redo2 className="h-3.5 w-3.5" /> {t('panels:header.redo')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => autoArrange()} className="gap-2 font-mono text-xs">
                 <LayoutGrid className="h-3.5 w-3.5" /> {t('panels:header.autoArrange')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleZoomFit} className="gap-2 font-mono text-xs">
@@ -429,7 +433,7 @@ export function Header({
             variant="ghost"
             size="icon"
             onClick={onToggleRightDrawer}
-            className="h-8 w-8 text-flow-text-muted hover:bg-flow-elevated hover:text-flow-text"
+            className="h-8 w-8"
             aria-label={t('panels:header.openPanel')}
           >
             <PanelRight className="h-4 w-4" />

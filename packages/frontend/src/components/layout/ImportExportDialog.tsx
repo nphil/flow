@@ -155,9 +155,7 @@ export function ImportExportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="font-serif text-flow-text">
-            {t('dialogs:importExport.title')}
-          </DialogTitle>
+          <DialogTitle className="text-flow-text">{t('dialogs:importExport.title')}</DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
             {t('dialogs:importExport.description')}
           </DialogDescription>

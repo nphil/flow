@@ -50,7 +50,7 @@ const config: Config = {
         'flow-modal': 'var(--shadow-modal)',
       },
       fontFamily: {
-        serif: 'var(--font-serif)',
+        sans: 'var(--font-sans)',
         mono: 'var(--font-mono)',
       },
       transitionDuration: {

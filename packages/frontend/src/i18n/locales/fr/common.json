@@ -49,7 +49,8 @@
     "areas": "Zones",
     "zones": "Zones de présence",
     "unassigned": "Non assigné",
-    "workspaceSources": "Sources fusionnées"
+    "workspaceSources": "Sources fusionnées",
+    "canvasTools": "Outils du canevas"
   },
   "status": {
     "connecting": "Connexion en cours...",
@@ -153,7 +154,9 @@
     "duplicateNode": "Dupliquer le nœud",
     "selectAll": "Tout sélectionner",
     "undo": "Annuler",
-    "redo": "Rétablir"
+    "redo": "Rétablir",
+    "insertNode": "Insérer un nœud",
+    "deleteConnection": "Supprimer la connexion"
   },
   "shortcuts": {
     "cmd": "Cmd",
@@ -208,5 +211,9 @@
     "moreKeepTyping": "{{count}} de plus — continuez à taper",
     "deviceIdPlaceholder": "Saisir l'ID de l'appareil...",
     "deviceIdManualHint": "Aucun appareil trouvé. Saisissez l'ID manuellement."
+  },
+  "canvasMenu": {
+    "addNode": "Ajouter un nœud…",
+    "pasteHere": "Coller ici"
   }
 }

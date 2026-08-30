@@ -41,12 +41,12 @@ export function NodeTraceBadge({ view }: { view: NodeTraceStatusView }) {
         <Icon className={cn('h-3 w-3', badge === 'active' && isRunning && 'animate-spin')} />
       </div>
       {traceState.visitCount > 1 && (
-        <span className="rounded-full border border-flow-border bg-flow-elevated px-1 font-bold font-mono text-[9px] text-flow-text-secondary shadow-flow-card">
+        <span className="rounded-full border border-flow-border bg-flow-elevated px-1 font-bold font-mono text-[10px] text-flow-text-secondary shadow-flow-card">
           {`×${traceState.visitCount}`}
         </span>
       )}
       {durationLabel && (
-        <span className="rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[9px] text-flow-text-muted shadow-flow-card">
+        <span className="rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[10px] text-flow-text-muted shadow-flow-card">
           {durationLabel}
         </span>
       )}

@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NodeCatalogEntry } from '@/components/nodes/catalog';
 import {
@@ -11,7 +10,6 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
-import { getAvailableQuickAddTypes, type QuickAddDirection } from '@/lib/quick-add';
 
 export interface QuickAddPosition {
   screenX: number;
@@ -21,25 +19,22 @@ export interface QuickAddPosition {
 interface QuickAddMenuProps {
   /** Screen position to anchor the menu at, or `null` when closed. */
   position: QuickAddPosition | null;
-  direction: QuickAddDirection;
+  /** Node-type choices to offer — the caller filters NODE_CATALOG per context. */
+  items: NodeCatalogEntry[];
   onSelect: (entry: NodeCatalogEntry) => void;
   onClose: () => void;
 }
 
 /**
- * Searchable node-type picker shown when a connection dragged from a handle is
- * dropped on empty canvas (see FlowCanvas.tsx's `onConnectEnd`) — anchored to
- * the drop point via a zero-size `position: fixed` div rather than a real
- * trigger element, since there's no button to anchor to here. Node-type
- * choices come from the same NODE_CATALOG as the left palette.
+ * Searchable node-type picker anchored at an arbitrary canvas point via a
+ * zero-size `position: fixed` div (there's no trigger element to anchor to).
+ * Serves three flows in FlowCanvas.tsx: a connection dropped on empty canvas
+ * (`onConnectEnd`), double-click / context-menu add on empty canvas, and the
+ * edge "+" insert. Node-type choices come from the same NODE_CATALOG as the
+ * left palette, pre-filtered by the caller for what the spot can accept.
  */
-export function QuickAddMenu({ position, direction, onSelect, onClose }: QuickAddMenuProps) {
+export function QuickAddMenu({ position, items, onSelect, onClose }: QuickAddMenuProps) {
   const { t } = useTranslation(['common', 'nodes']);
-
-  const items = useMemo<NodeCatalogEntry[]>(() => {
-    if (!position) return [];
-    return getAvailableQuickAddTypes(direction);
-  }, [position, direction]);
 
   const { query, setQuery, filteredItems } = useFuzzySearch<NodeCatalogEntry>(items, {
     keys: ['label'],

@@ -15,8 +15,6 @@
   "dependencies": {
     "@flow/shared": "workspace:*",
     "@flow/transpiler": "workspace:*",
-    "@fontsource-variable/noto-sans-mono": "^5.3.0",
-    "@fontsource/source-serif-4": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-collapsible": "^1.1.12",

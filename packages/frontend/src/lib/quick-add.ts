@@ -30,6 +30,14 @@ export function getAvailableQuickAddTypes(direction: QuickAddDirection): NodeCat
 }
 
 /**
+ * Catalog entries that can be spliced into the middle of an existing edge:
+ * they need both an input (not a trigger) and an output (not a stop action).
+ */
+export function getInsertableTypes(): NodeCatalogEntry[] {
+  return NODE_CATALOG.filter((entry) => entry.kind !== 'trigger' && hasSourceHandle(entry));
+}
+
+/**
  * Builds the `Connection` to pass to the store's `onConnect` action to wire a
  * quick-added node into the dragged (but unfinished) connection.
  */

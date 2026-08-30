@@ -49,7 +49,8 @@
     "areas": "区域",
     "zones": "地理围栏",
     "unassigned": "未分配",
-    "workspaceSources": "合并来源"
+    "workspaceSources": "合并来源",
+    "canvasTools": "画布工具"
   },
   "status": {
     "connecting": "正在连接...",
@@ -153,7 +154,9 @@
     "duplicateNode": "复制节点",
     "selectAll": "全选",
     "undo": "撤销",
-    "redo": "重做"
+    "redo": "重做",
+    "insertNode": "插入节点",
+    "deleteConnection": "删除连接"
   },
   "shortcuts": {
     "cmd": "Cmd",
@@ -181,5 +184,9 @@
     "moreKeepTyping": "还有 {{count}} 个 — 继续输入",
     "deviceIdPlaceholder": "输入设备 ID...",
     "deviceIdManualHint": "未找到设备。请手动输入设备 ID。"
+  },
+  "canvasMenu": {
+    "addNode": "添加节点…",
+    "pasteHere": "粘贴到此处"
   }
 }

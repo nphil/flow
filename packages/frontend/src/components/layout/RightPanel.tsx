@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AutomationsTab } from '@/components/panels/AutomationsTab';
 import { PropertyPanel } from '@/components/panels/PropertyPanel';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import { useScrollFade } from '@/hooks/useScrollFade';
 import { cn } from '@/lib/utils';
+import { useFlowStore } from '@/store/flow-store';
 
 type RightPanelTab = 'automations' | 'properties' | 'yaml' | 'debug';
 
@@ -25,6 +26,21 @@ export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
   const { t } = useTranslation('common');
   const [tab, setTab] = useState<RightPanelTab>('automations');
   const { ref: tabsListRef, isOverflowing: tabsOverflowing } = useScrollFade<HTMLDivElement>();
+  const propertiesFocusRequest = useFlowStore((s) => s.propertiesFocusRequest);
+  const propertiesContentRef = useRef<HTMLDivElement>(null);
+
+  // Canvas double-click on a node (store's requestPropertiesFocus): jump to
+  // the Properties tab and move focus into the panel. Counter starts at 0
+  // every session (not persisted), so nothing fires on plain mounts; a
+  // mobile-drawer mount with a pending request > 0 SHOULD fire — the drawer
+  // opens because of that same request.
+  useEffect(() => {
+    if (propertiesFocusRequest === 0) return;
+    setTab('properties');
+    requestAnimationFrame(() => {
+      propertiesContentRef.current?.focus({ preventScroll: true });
+    });
+  }, [propertiesFocusRequest]);
 
   // Design doc §5 "scrollable tab strip": keep the active tab in view when it's selected
   // programmatically (e.g. opening a node jumps to Properties) rather than only on click.
@@ -79,7 +95,12 @@ export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
         <TabsContent value="automations" className="mt-0 h-full">
           <AutomationsTab dirtyGuard={dirtyGuard} className="h-full" />
         </TabsContent>
-        <TabsContent value="properties" className="mt-0 h-full overflow-y-auto">
+        <TabsContent
+          ref={propertiesContentRef}
+          tabIndex={-1}
+          value="properties"
+          className="mt-0 h-full overflow-y-auto outline-none"
+        >
           <PropertyPanel />
         </TabsContent>
         <TabsContent value="yaml" className="mt-0 h-full">

@@ -49,7 +49,8 @@
     "areas": "Aree",
     "zones": "Zone",
     "unassigned": "Non assegnate",
-    "workspaceSources": "Sorgenti unite"
+    "workspaceSources": "Sorgenti unite",
+    "canvasTools": "Strumenti canvas"
   },
   "status": {
     "connecting": "Connessione in corso...",
@@ -153,7 +154,9 @@
     "duplicateNode": "Duplica Nodo",
     "selectAll": "Seleziona Tutto",
     "undo": "Annulla",
-    "redo": "Ripristina"
+    "redo": "Ripristina",
+    "insertNode": "Inserisci nodo",
+    "deleteConnection": "Elimina connessione"
   },
   "shortcuts": {
     "cmd": "Cmd",
@@ -181,5 +184,9 @@
     "moreKeepTyping": "{{count}} altri — continua a digitare",
     "deviceIdPlaceholder": "Inserisci ID dispositivo...",
     "deviceIdManualHint": "Nessun dispositivo trovato. Inserisci l'ID manualmente."
+  },
+  "canvasMenu": {
+    "addNode": "Aggiungi nodo…",
+    "pasteHere": "Incolla qui"
   }
 }

@@ -45,7 +45,7 @@ export const ConditionNode = memo(function ConditionNode({
         <div className="mt-1.5 flex justify-end pl-1">
           <span
             className={cn(
-              'rounded-full border px-1.5 py-0.5 font-mono text-[9px]',
+              'rounded-full border px-1.5 py-0.5 font-mono text-[10px]',
               traceView.conditionResult
                 ? 'border-flow-ok text-flow-ok'
                 : 'border-flow-warn text-flow-warn'

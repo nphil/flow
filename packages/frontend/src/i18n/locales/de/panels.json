@@ -45,6 +45,7 @@
     "disabled": "Deaktiviert",
     "reconnecting": "Wird wiederverbunden…",
     "openPalette": "Knotenkatalog öffnen",
-    "openPanel": "Bereich öffnen"
+    "openPanel": "Bereich öffnen",
+    "unsavedChanges": "Ungespeicherte Änderungen"
   }
 }

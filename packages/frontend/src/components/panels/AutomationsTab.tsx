@@ -1,3 +1,4 @@
+import { useReactFlow } from '@xyflow/react';
 import type { TFunction } from 'i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -29,6 +30,7 @@ import { useScrollFade } from '@/hooks/useScrollFade';
 import type { AutomationCatalogItem } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
+import { FIT_VIEW_OPEN } from '@/lib/viewport';
 import { useFlowStore } from '@/store/flow-store';
 
 interface AutomationsTabProps {
@@ -110,6 +112,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
   const reset = useFlowStore((s) => s.reset);
   const setFlowName = useFlowStore((s) => s.setFlowName);
   const openAutomationById = useFlowStore((s) => s.openAutomationById);
+  const { fitView } = useReactFlow();
 
   const counts = useMemo(
     () => ({
@@ -137,13 +140,18 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
   const handleRowClick = (item: AutomationCatalogItem) => {
     const plan = planAutomationOpen(item.automation_id, dirtyGuard.isDirty);
     const open = () => {
-      openAutomationById(plan.automationId).catch((error: unknown) => {
-        toast.error(
-          t('panels:automationsTab.openFailed', {
-            message: error instanceof Error ? error.message : String(error),
-          })
-        );
-      });
+      openAutomationById(plan.automationId)
+        .then(() => {
+          // Content replaced — refit at a readable zoom (see lib/viewport.ts).
+          setTimeout(() => fitView({ ...FIT_VIEW_OPEN, duration: 300 }), 50);
+        })
+        .catch((error: unknown) => {
+          toast.error(
+            t('panels:automationsTab.openFailed', {
+              message: error instanceof Error ? error.message : String(error),
+            })
+          );
+        });
     };
     if (plan.action === 'open') {
       open();
@@ -217,7 +225,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {showConnectionError ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <p className="font-serif text-flow-text text-lg">
+            <p className="font-medium text-flow-text text-lg">
               {t('panels:automationsTab.connectionErrorHeadline')}
             </p>
             <p className="font-mono text-flow-text-muted text-xs">{connectionError}</p>
@@ -228,7 +236,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
           </div>
         ) : showEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <p className="font-serif text-flow-text text-lg">
+            <p className="font-medium text-flow-text text-lg">
               {t('panels:automationsTab.emptyHeadline')}
             </p>
             <p className="font-mono text-flow-text-muted text-xs">

@@ -98,7 +98,7 @@ export function NodeShell({
   return (
     <div
       className={cn(
-        'group relative w-[220px] rounded-flow-card border bg-flow-elevated px-3 py-2.5 shadow-flow-card',
+        'group relative w-[220px] rounded-flow-card border bg-flow-elevated px-3.5 py-3 shadow-flow-card',
         'transition-colors duration-flow-fast ease-flow-warm',
         selected
           ? 'border-flow-accent shadow-[0_0_0_3px_var(--accent-subtle)]'
@@ -125,7 +125,7 @@ export function NodeShell({
         </span>
       )}
       {!hasErrors && disabled && (
-        <span className="absolute -top-2 -right-2 rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[9px] text-flow-text-muted uppercase tracking-wide shadow-flow-card">
+        <span className="absolute -top-2 -right-2 rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[10px] text-flow-text-muted uppercase tracking-wide shadow-flow-card">
           {disabledLabel}
         </span>
       )}
@@ -134,14 +134,16 @@ export function NodeShell({
       <div className="flex items-center gap-2 pl-1">
         <span
           className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-flow-control',
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-flow-control',
             KIND_TEXT[kind]
           )}
           style={{ backgroundColor: `color-mix(in srgb, var(${KIND_VAR[kind]}) 16%, transparent)` }}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className="h-4 w-4" />
         </span>
-        <span className="truncate font-medium font-mono text-[13px] text-flow-text">{title}</span>
+        <span className="truncate font-medium font-mono text-flow-text text-sm" title={title}>
+          {title}
+        </span>
         {stepNumber != null && (
           <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-flow-accent font-mono font-semibold text-[10px] text-flow-on-accent">
             {stepNumber}
@@ -150,7 +152,9 @@ export function NodeShell({
       </div>
 
       {subtitle && (
-        <div className="mt-1 truncate pl-1 text-[11px] text-flow-text-muted">{subtitle}</div>
+        <div className="mt-1 truncate pl-1 text-flow-text-muted text-xs" title={subtitle}>
+          {subtitle}
+        </div>
       )}
 
       {children}

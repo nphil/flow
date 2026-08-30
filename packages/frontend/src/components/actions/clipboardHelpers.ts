@@ -19,16 +19,25 @@ export function copyNodesToClipboard(context: NodeActionContext): void {
 /**
  * Clones a set of nodes and their connecting edges into the canvas.
  * Deselects existing nodes and selects the new clones.
- * Uses a progressive offset based on the paste count.
+ * By default the clones land at a progressive offset based on the paste
+ * count; pass `at` (flow coordinates) to anchor the group's top-left corner
+ * there instead — the context menu's "Paste here".
  */
 export function cloneNodesIntoCanvas(
   sourceNodes: Node<FlowNodeData>[],
   sourceEdges: Edge[],
-  context: NodeActionContext
+  context: NodeActionContext,
+  at?: { x: number; y: number }
 ): void {
   const currentPasteCount = (context.pasteCount || 0) + 1;
   context.setPasteCount(currentPasteCount);
   const offset = 50 * currentPasteCount;
+  let dx = offset;
+  let dy = offset;
+  if (at && sourceNodes.length > 0) {
+    dx = at.x - Math.min(...sourceNodes.map((n) => n.position.x));
+    dy = at.y - Math.min(...sourceNodes.map((n) => n.position.y));
+  }
 
   const nodeIdMap = new Map<string, string>();
 
@@ -41,7 +50,7 @@ export function cloneNodesIntoCanvas(
       ...n,
       selected: true,
       id: newId,
-      position: { x: n.position.x + offset, y: n.position.y + offset },
+      position: { x: n.position.x + dx, y: n.position.y + dy },
     };
   });
 

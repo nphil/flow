@@ -61,10 +61,11 @@ html[data-theme$="-dark"] {
   --dur-theme: 450ms;
   --ease-out-warm: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Type -- loaded via @fontsource in main.tsx, no external CDN */
-  --font-serif: 'Source Serif 4', Georgia, serif;
-  --font-mono: 'Noto Sans Mono Variable', 'Noto Sans Mono', 'JetBrains Mono', 'Fira Code',
-    Consolas, ui-monospace, monospace;
+  /* Type -- Home Assistant's native stacks (HA body font is Roboto/Noto);
+     system fonts only, nothing downloads a webfont. */
+  --font-sans: Roboto, Noto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Roboto Mono',
+    'Liberation Mono', monospace;
 
   /* Pre-hydration fallback so the panel never paints unstyled: catppuccin-light, mirrored
      below in html[data-theme="catppuccin-light"]. useFlowTheme overwrites data-theme (and,

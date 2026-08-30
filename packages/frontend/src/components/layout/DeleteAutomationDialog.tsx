@@ -35,7 +35,7 @@ export function DeleteAutomationDialog({
     >
       <DialogContent className="max-w-md border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="font-serif text-flow-text">
+          <DialogTitle className="text-flow-text">
             {t('dialogs:deleteAutomation.title')}
           </DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
