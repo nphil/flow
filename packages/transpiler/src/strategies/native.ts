@@ -540,14 +540,21 @@ export class NativeStrategy extends BaseStrategy {
       }
     }
 
-    // Get alias from the first condition (while) or from the init node (count)
+    // The repeat block's own alias/note ride on the first condition node
+    // (while/until, via the dedicated `blockAlias`/`blockNote` fields — the
+    // block's own alias is never confused with a while/until condition's
+    // own alias, which is a different field) or on the counter-init node
+    // (count, which has no such ambiguity since it's a synthetic node with
+    // no separate "own alias" of its own).
     let alias: string | undefined;
+    let note: string | undefined;
 
     if (pattern.type === 'while') {
       // Build while conditions
       const whileConditions = pattern.conditionNodeIds.map((id) => {
         const node = this.getNode(flow, id) as ConditionNode;
-        if (!alias && node?.data?.alias) alias = node.data.alias;
+        if (!alias && node?.data?.blockAlias) alias = node.data.blockAlias;
+        if (!note && node?.data?.blockNote) note = node.data.blockNote;
         return this.buildCondition(node);
       });
 
@@ -558,12 +565,15 @@ export class NativeStrategy extends BaseStrategy {
         },
       };
       if (alias) result.alias = alias;
+      if (note) result.note = note;
       return result;
     }
 
     if (pattern.type === 'until') {
       const untilConditions = pattern.conditionNodeIds.map((id) => {
         const node = this.getNode(flow, id) as ConditionNode;
+        if (!alias && node?.data?.blockAlias) alias = node.data.blockAlias;
+        if (!note && node?.data?.blockNote) note = node.data.blockNote;
         return this.buildCondition(node);
       });
 
@@ -574,6 +584,7 @@ export class NativeStrategy extends BaseStrategy {
         },
       };
       if (alias) result.alias = alias;
+      if (note) result.note = note;
       return result;
     }
 
@@ -582,6 +593,9 @@ export class NativeStrategy extends BaseStrategy {
         const initNode = this.getNode(flow, pattern.initNodeId);
         if (initNode?.data && 'alias' in initNode.data) {
           alias = initNode.data.alias as string | undefined;
+        }
+        if (initNode?.data && 'note' in initNode.data) {
+          note = initNode.data.note as string | undefined;
         }
       }
 
@@ -592,6 +606,7 @@ export class NativeStrategy extends BaseStrategy {
         },
       };
       if (alias) result.alias = alias;
+      if (note) result.note = note;
       return result;
     }
 
@@ -985,11 +1000,17 @@ export class NativeStrategy extends BaseStrategy {
 
       // Put conditions directly in the if: array - HA implicitly ANDs them
       const chooseAction: Record<string, unknown> = {
-        alias: node.data.alias, // Use alias from the first condition
+        // A step's own alias (`stepAlias`) takes precedence when present;
+        // older graphs that only ever set `alias` (frontend-authored, or
+        // produced before this field existed) fall back to it unchanged.
+        alias: node.data.stepAlias ?? node.data.alias,
         if: conditions,
         then: [],
         else: [],
       };
+      if (typeof node.data.stepNote === 'string') {
+        chooseAction.note = node.data.stepNote;
+      }
 
       // Find convergence point between then and else branches.
       // When both branches lead to the same continuation node, that node should
@@ -1292,11 +1313,16 @@ export class NativeStrategy extends BaseStrategy {
     const condition = this.buildCondition(node);
 
     const choose: Record<string, unknown> = {
-      alias: node.data.alias,
+      // A step's own alias (`stepAlias`) takes precedence when present;
+      // older graphs that only ever set `alias` fall back to it unchanged.
+      alias: node.data.stepAlias ?? node.data.alias,
       if: [condition],
       then: [], // Will be filled by the caller
       else: [], // Will be filled by the caller
     };
+    if (typeof node.data.stepNote === 'string') {
+      choose.note = node.data.stepNote;
+    }
 
     // Note: 'id' for trigger conditions belongs inside the condition object, not at the if/then/else level
     // The id is already included via buildCondition's ...rest spread
@@ -1308,11 +1334,29 @@ export class NativeStrategy extends BaseStrategy {
    * Map a single condition object (used for individual conditions in an array)
    */
   private mapSingleCondition(data: Record<string, unknown>): Record<string, unknown> {
-    const { condition, conditions, alias, template, ...rest } = data;
+    const {
+      condition,
+      conditions,
+      alias,
+      conditionAlias,
+      stepAlias,
+      stepNote,
+      blockAlias,
+      blockNote,
+      template,
+      ...rest
+    } = data;
     const out: Record<string, unknown> = {
       condition: condition,
       ...rest,
     };
+    // A condition's own alias comes ONLY from `conditionAlias` — never
+    // `alias`, which may instead be an enclosing step's/block's alias
+    // copied down for canvas display. Omit entirely when the source
+    // condition had none, rather than fabricating it from `alias`.
+    if (typeof conditionAlias === 'string') {
+      out.alias = conditionAlias;
+    }
     // For template conditions, ensure value_template is set from template if needed
     if (condition === 'template' && !rest.value_template && template) {
       out.value_template = template;
@@ -1336,11 +1380,29 @@ export class NativeStrategy extends BaseStrategy {
     function mapCondition(data: Record<string, unknown>): Record<string, unknown> {
       if (!data || typeof data !== 'object') return data;
       // Destructure and exclude 'template' - HA uses 'value_template' for template conditions
-      const { condition, conditions, alias, template, ...rest } = data;
+      const {
+        condition,
+        conditions,
+        alias,
+        conditionAlias,
+        stepAlias,
+        stepNote,
+        blockAlias,
+        blockNote,
+        template,
+        ...rest
+      } = data;
       const out: Record<string, unknown> = {
         condition: condition,
         ...rest,
       };
+      // A condition's own alias comes ONLY from `conditionAlias` — never
+      // `alias`, which may instead be an enclosing step's/block's alias
+      // copied down for canvas display. Omit entirely when the source
+      // condition had none, rather than fabricating it from `alias`.
+      if (typeof conditionAlias === 'string') {
+        out.alias = conditionAlias;
+      }
       // For template conditions, ensure value_template is set from template if needed
       if (condition === 'template' && !rest.value_template && template) {
         out.value_template = template;

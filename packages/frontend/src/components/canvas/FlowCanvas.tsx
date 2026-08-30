@@ -15,7 +15,6 @@ import {
 } from '@xyflow/react';
 import { LayoutGrid, Lock, LockOpen } from 'lucide-react';
 import {
-  type DragEvent,
   type MouseEvent as ReactMouseEvent,
   useCallback,
   useEffect,
@@ -39,6 +38,7 @@ import {
 import { NODE_CATALOG, type NodeCatalogEntry } from '@/components/nodes/catalog';
 import { useFlowTheme } from '@/hooks/useFlowTheme';
 import { buildActionContext } from '@/hooks/useNodeActions';
+import { DROPZONE_ATTR, PALETTE_DROP_EVENT, type PaletteDropDetail } from '@/lib/paletteDrag';
 import {
   buildQuickAddConnection,
   getAvailableQuickAddTypes,
@@ -345,10 +345,40 @@ export function FlowCanvas() {
     [selectNode]
   );
 
-  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
+  // Palette card dropped on the canvas (pointer-based DnD, lib/paletteDrag.ts):
+  // place the node centered under the release point and select it — matching
+  // paste/quick-add — so a double-click straight into Properties works. The
+  // deselect + add sets land in one history burst (see flow-store handleSet),
+  // so a single undo removes the dropped node.
+  const onPaletteDrop = useCallback(
+    (detail: PaletteDropDetail) => {
+      const dropPosition = screenToFlowPosition({ x: detail.clientX, y: detail.clientY });
+      const store = useFlowStore.getState();
+      const newNode = {
+        id: generateNodeId(detail.entry.kind),
+        type: detail.entry.kind,
+        position: {
+          x: dropPosition.x - NEW_NODE_WIDTH / 2,
+          y: dropPosition.y - NEW_NODE_HEIGHT / 2,
+        },
+        data: { ...detail.entry.defaultData },
+        selected: true,
+      };
+      store.setNodes(store.nodes.map((n) => (n.selected ? { ...n, selected: false } : n)));
+      store.addNode(newNode);
+      store.selectNode(newNode.id);
+    },
+    [screenToFlowPosition]
+  );
+
+  useEffect(() => {
+    const wrapper = reactFlowWrapper.current;
+    if (!wrapper) return;
+    const handler = (event: Event) =>
+      onPaletteDrop((event as CustomEvent<PaletteDropDetail>).detail);
+    wrapper.addEventListener(PALETTE_DROP_EVENT, handler);
+    return () => wrapper.removeEventListener(PALETTE_DROP_EVENT, handler);
+  }, [onPaletteDrop]);
 
   // Prevent deletion of edges that would leave a condition node with no outgoing connections
   const onBeforeDelete = useCallback<OnBeforeDelete>(
@@ -357,43 +387,6 @@ export function FlowCanvas() {
       return { nodes: nodesToDelete, edges: allowedEdges };
     },
     [canDeleteEdge]
-  );
-
-  const onDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-
-      const data = event.dataTransfer.getData('application/reactflow');
-      if (!data) return;
-
-      try {
-        const { type, defaultData } = JSON.parse(data);
-
-        // Get the position where the node was dropped
-        const dropPosition = screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        });
-
-        // Center the node at the cursor position by offsetting by half node dimensions
-        const position = {
-          x: dropPosition.x - NEW_NODE_WIDTH / 2,
-          y: dropPosition.y - NEW_NODE_HEIGHT / 2,
-        };
-
-        const newNode = {
-          id: generateNodeId(type),
-          type,
-          position,
-          data: { ...defaultData },
-        };
-
-        addNode(newNode);
-      } catch (err) {
-        console.error('Failed to parse dropped node data:', err);
-      }
-    },
-    [screenToFlowPosition, addNode]
   );
 
   const isTraceRunning = traceData?.state === 'running';
@@ -508,7 +501,12 @@ export function FlowCanvas() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: double-click quick-add is a pointer affordance; keyboard users add nodes via the palette
-    <div className="h-full w-full" ref={reactFlowWrapper} onDoubleClick={onWrapperDoubleClick}>
+    <div
+      className="h-full w-full"
+      ref={reactFlowWrapper}
+      onDoubleClick={onWrapperDoubleClick}
+      {...{ [DROPZONE_ATTR]: '' }}
+    >
       <ReactFlow
         colorMode={mode}
         nodes={nodes}
@@ -521,8 +519,6 @@ export function FlowCanvas() {
         onSelectionChange={onSelectionChange}
         onNodeDoubleClick={(_, node) => requestPropertiesFocus(node.id)}
         onPaneContextMenu={onPaneContextMenu}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
         onMoveStart={() => setInteracting(true)}
         onMoveEnd={() => setInteracting(false)}
         onNodeDragStart={() => setInteracting(true)}

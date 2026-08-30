@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { MarqueeText } from '@/components/ui/MarqueeText';
 import { Switch } from '@/components/ui/switch';
 import { useHass } from '@/contexts/HassContext';
 import {
@@ -277,9 +278,11 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate font-mono text-flow-text text-xs">
-                          {item.friendly_name}
-                        </span>
+                        <MarqueeText
+                          text={item.friendly_name}
+                          active={isActive}
+                          className="font-mono text-flow-text text-xs"
+                        />
                         <ModeIcon
                           className="h-3 w-3 shrink-0 text-flow-text-muted"
                           aria-label={item.mode ?? 'single'}

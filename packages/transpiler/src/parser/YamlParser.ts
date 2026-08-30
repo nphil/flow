@@ -596,6 +596,12 @@ function transformToNestedCondition(condition: HACondition): NestedCondition {
   return {
     ...rest, // Preserve extra properties (including weekday, after, before, etc.)
     condition: validatedType,
+    // This sub-condition is never overwritten by an enclosing step's alias
+    // (only a top-level ConditionNode's `alias` is), so its own `alias` is
+    // already unambiguous. Mirror it into `conditionAlias` too so the
+    // generator's single "alias comes from conditionAlias" rule applies
+    // uniformly at every nesting depth without special-casing.
+    conditionAlias: typeof rest.alias === 'string' ? rest.alias : undefined,
     conditions: nestedConditions,
   };
 }
@@ -2144,6 +2150,7 @@ export class YamlParser {
           then: thenArr,
           else: elseArr,
           alias: typeof act.alias === 'string' ? act.alias : undefined,
+          note: typeof act.note === 'string' ? act.note : undefined,
           enabled: act.enabled,
         };
         const ifResult = this.parseIfBlock(ifAction, {
@@ -2344,6 +2351,7 @@ export class YamlParser {
         const repeat = act.repeat as Record<string, unknown>;
         const repeatSequence = Array.isArray(repeat.sequence) ? repeat.sequence : [];
         const blockAlias = typeof act.alias === 'string' ? act.alias : undefined;
+        const blockNote = typeof act.note === 'string' ? act.note : undefined;
         const blockEnabled = getNodeEnabled(
           typeof act.enabled === 'boolean' ? act.enabled : undefined
         );
@@ -2367,8 +2375,17 @@ export class YamlParser {
                 value_template: JSON.stringify(whileConditions[ci]),
               };
             }
+            if (typeof parsedData.alias === 'string') {
+              // Capture the condition's own alias before any block-alias
+              // override below overwrites the display alias.
+              parsedData.conditionAlias = parsedData.alias;
+            }
             if (ci === 0 && blockAlias) {
               parsedData.alias = blockAlias;
+              parsedData.blockAlias = blockAlias;
+            }
+            if (ci === 0 && blockNote) {
+              parsedData.blockNote = blockNote;
             }
             parsedData.enabled = blockEnabled;
             const condNode: ConditionNode = {
@@ -2503,8 +2520,25 @@ export class YamlParser {
                 value_template: JSON.stringify(untilConditions[ci]),
               };
             }
+            if (typeof parsedData.alias === 'string') {
+              // Capture the condition's own alias before any block-alias
+              // override below overwrites the display alias.
+              parsedData.conditionAlias = parsedData.alias;
+            }
             if (ci === 0 && blockAlias && bodyResult.nodes.length === 0) {
               parsedData.alias = blockAlias;
+            }
+            // Unlike the display alias above (only shown on the first
+            // condition when the loop body is empty, so a non-empty body's
+            // true canvas entry point keeps its own alias instead), the
+            // block's own prose is captured here unconditionally: the
+            // generator reads `blockAlias`/`blockNote` directly off this
+            // node regardless of body length, so it is never dropped.
+            if (ci === 0 && blockAlias) {
+              parsedData.blockAlias = blockAlias;
+            }
+            if (ci === 0 && blockNote) {
+              parsedData.blockNote = blockNote;
             }
             parsedData.enabled = blockEnabled;
             const condNode: ConditionNode = {
@@ -2571,6 +2605,7 @@ export class YamlParser {
             position: { x: 0, y: 0 },
             data: {
               alias: blockAlias,
+              note: blockNote,
               variables: { [counterVarName]: 0 },
               enabled: blockEnabled,
             },
@@ -2676,6 +2711,7 @@ export class YamlParser {
             position: { x: 0, y: 0 },
             data: {
               alias: blockAlias,
+              note: blockNote,
               repeat: repeat as ActionNode['data']['repeat'],
               enabled: blockEnabled,
             },
@@ -2693,6 +2729,7 @@ export class YamlParser {
             position: { x: 0, y: 0 },
             data: {
               alias: blockAlias,
+              note: blockNote,
               repeat: repeat as ActionNode['data']['repeat'],
               enabled: blockEnabled,
             },
@@ -2799,6 +2836,7 @@ export class YamlParser {
             alias: typeof act.alias === 'string' ? act.alias : undefined,
             stop: typeof act.stop === 'string' ? act.stop : '',
             ...(act.error === true ? { error: true } : {}),
+            note: typeof act.note === 'string' ? act.note : undefined,
             enabled: getNodeEnabled(typeof act.enabled === 'boolean' ? act.enabled : undefined),
           },
         };
@@ -2931,6 +2969,12 @@ export class YamlParser {
             data: {
               // Only first condition in first choice gets the alias
               alias: i === 0 ? choice.alias : undefined,
+              // The group's own alias/note, kept distinct from the display
+              // `alias` above (which may instead be the branch's alias).
+              conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+              stepAlias: i === 0 && typeof choice.alias === 'string' ? choice.alias : undefined,
+              stepNote: i === 0 && typeof choice.note === 'string' ? choice.note : undefined,
+              note: typeof condition?.note === 'string' ? condition.note : undefined,
               condition: conditionType,
               conditions: transformConditions(condition.conditions),
               // Preserve id for trigger conditions
@@ -2949,6 +2993,11 @@ export class YamlParser {
           const looseObj = {
             ...condition,
             alias: i === 0 ? (choice.alias ?? condition?.alias) : condition?.alias,
+            // The condition's own alias/note, kept distinct from the display
+            // `alias` above (which may instead be the branch's alias).
+            conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+            stepAlias: i === 0 && typeof choice.alias === 'string' ? choice.alias : undefined,
+            stepNote: i === 0 && typeof choice.note === 'string' ? choice.note : undefined,
             condition: conditionType,
             enabled: getNodeEnabled(),
           };
@@ -2961,6 +3010,9 @@ export class YamlParser {
             // Fallback: minimal valid template
             data = {
               alias: i === 0 ? choice.alias : undefined,
+              conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+              stepAlias: i === 0 && typeof choice.alias === 'string' ? choice.alias : undefined,
+              stepNote: i === 0 && typeof choice.note === 'string' ? choice.note : undefined,
               condition: 'template',
               value_template: JSON.stringify(condition),
               enabled: getNodeEnabled(),
@@ -3117,6 +3169,7 @@ export class YamlParser {
       then: (HACondition | HAAction)[];
       else?: (HACondition | HAAction)[];
       alias?: string;
+      note?: string;
       enabled?: unknown;
     },
     options: ParseOptions
@@ -3178,6 +3231,12 @@ export class YamlParser {
           data: {
             // Only first condition gets the alias from ifAction
             alias: i === 0 ? ifAction.alias : undefined,
+            // The group's own alias/note, kept distinct from the display
+            // `alias` above (which may instead be the enclosing step's alias).
+            conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+            stepAlias: i === 0 && typeof ifAction.alias === 'string' ? ifAction.alias : undefined,
+            stepNote: i === 0 && typeof ifAction.note === 'string' ? ifAction.note : undefined,
+            note: typeof condition?.note === 'string' ? condition.note : undefined,
             condition: conditionType,
             conditions: transformConditions(condition.conditions),
             enabled: getNodeEnabled(),
@@ -3195,6 +3254,11 @@ export class YamlParser {
           ...condition,
           // Only first condition gets the alias from ifAction
           alias: i === 0 ? (ifAction.alias ?? condition?.alias) : condition?.alias,
+          // The condition's own alias/note, kept distinct from the display
+          // `alias` above (which may instead be the enclosing step's alias).
+          conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+          stepAlias: i === 0 && typeof ifAction.alias === 'string' ? ifAction.alias : undefined,
+          stepNote: i === 0 && typeof ifAction.note === 'string' ? ifAction.note : undefined,
           condition: conditionType,
           enabled: getNodeEnabled(),
         };
@@ -3207,6 +3271,9 @@ export class YamlParser {
           // Fallback: minimal valid template
           data = {
             alias: i === 0 ? ifAction.alias : undefined,
+            conditionAlias: typeof condition?.alias === 'string' ? condition.alias : undefined,
+            stepAlias: i === 0 && typeof ifAction.alias === 'string' ? ifAction.alias : undefined,
+            stepNote: i === 0 && typeof ifAction.note === 'string' ? ifAction.note : undefined,
             condition: 'template',
             value_template: JSON.stringify(condition),
             enabled: getNodeEnabled(),

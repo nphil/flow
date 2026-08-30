@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { MarqueeText } from '@/components/ui/MarqueeText';
 import { cn } from '@/lib/utils';
 import type { NodeKind } from '@/utils/nodeData';
 import { NodeTraceBadge } from './NodeTraceBadge';
@@ -141,9 +142,11 @@ export function NodeShell({
         >
           <Icon className="h-4 w-4" />
         </span>
-        <span className="truncate font-medium font-mono text-flow-text text-sm" title={title}>
-          {title}
-        </span>
+        <MarqueeText
+          text={title}
+          active={selected}
+          className="font-medium font-mono text-flow-text text-sm"
+        />
         {stepNumber != null && (
           <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-flow-accent font-mono font-semibold text-[10px] text-flow-on-accent">
             {stepNumber}
@@ -152,9 +155,11 @@ export function NodeShell({
       </div>
 
       {subtitle && (
-        <div className="mt-1 truncate pl-1 text-flow-text-muted text-xs" title={subtitle}>
-          {subtitle}
-        </div>
+        <MarqueeText
+          text={subtitle}
+          active={selected}
+          className="mt-1 ml-1 text-flow-text-muted text-xs"
+        />
       )}
 
       {children}

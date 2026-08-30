@@ -12,7 +12,7 @@ FROM ${BUILD_FROM}
 # publish workflow) supply BUILD_VERSION automatically, read from this add-on's own
 # config.yaml `version` key. Building the download URL from it means the fetched release
 # and the add-on version can never drift apart -- bump config.yaml, nothing else to touch.
-ARG BUILD_VERSION=1.1.0
+ARG BUILD_VERSION=1.2.0
 
 # flow.tar.gz is the tarball of custom_components/flow (built by .github/workflows/release.yml
 # as `cd custom_components/flow && tar -czf ../../flow.tar.gz .`), so `www/` is a top-level

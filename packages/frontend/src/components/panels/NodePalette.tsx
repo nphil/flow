@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { type DragEvent, useCallback, useMemo } from 'react';
+import { type PointerEvent as ReactPointerEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NODE_CATALOG,
@@ -7,6 +7,7 @@ import {
   type NodeCatalogGroup,
 } from '@/components/nodes/catalog';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
+import { beginPaletteDrag } from '@/lib/paletteDrag';
 import { cn, generateNodeId } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 
@@ -78,13 +79,19 @@ export function NodePalette() {
     [addNode, nodes.length]
   );
 
-  const handleDragStart = useCallback(
-    (event: DragEvent<HTMLButtonElement>, entry: NodeCatalogEntry) => {
-      event.dataTransfer.setData(
-        'application/reactflow',
-        JSON.stringify({ type: entry.kind, defaultData: entry.defaultData })
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>, entry: NodeCatalogEntry) => {
+      beginPaletteDrag(
+        {
+          pointerId: event.pointerId,
+          pointerType: event.pointerType,
+          button: event.button,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        },
+        entry,
+        event.currentTarget
       );
-      event.dataTransfer.effectAllowed = 'move';
     },
     []
   );
@@ -127,10 +134,9 @@ export function NodePalette() {
                   <button
                     key={`${group}-${entry.label}`}
                     type="button"
-                    draggable
-                    onDragStart={(event) => handleDragStart(event, entry)}
+                    onPointerDown={(event) => handlePointerDown(event, entry)}
                     onClick={() => handleAddNode(entry)}
-                    className="ui-focus-ring flex w-full cursor-grab items-center gap-2.5 rounded-flow-control border border-flow-border bg-flow-elevated px-2.5 py-2 text-left transition-colors duration-flow-fast hover:border-flow-accent active:cursor-grabbing"
+                    className="ui-focus-ring flex w-full cursor-grab touch-pan-y items-center gap-2.5 rounded-flow-control border border-flow-border bg-flow-elevated px-2.5 py-2 text-left transition-colors duration-flow-fast hover:border-flow-accent active:cursor-grabbing"
                   >
                     <Icon className={cn('h-4 w-4 shrink-0', GROUP_TOKEN_CLASS[group])} />
                     <span className="font-mono text-flow-text text-xs">{entry.label}</span>

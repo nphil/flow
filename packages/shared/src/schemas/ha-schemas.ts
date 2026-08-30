@@ -16,6 +16,32 @@ export const HAConditionSchema: z.ZodType<
     [x: string]: unknown;
     condition?: string;
     alias?: string;
+    /**
+     * The condition's OWN alias from source YAML, distinct from `alias`
+     * (the display alias, which may instead be an enclosing step's alias
+     * copied down for canvas display). Set only when the source condition
+     * itself carried an `alias:` key. The generator emits a condition's
+     * `alias:` from this field exclusively, never from `alias`, so an
+     * enclosing step's alias is never fabricated as the condition's own.
+     */
+    conditionAlias?: string;
+    /**
+     * The enclosing step/branch alias (an `if:`/`choose[].alias` wraps a
+     * condition list with no dedicated canvas node of its own, so its alias
+     * rides along on the first condition node). Kept separate from
+     * `conditionAlias` so the two are never confused when emitting YAML.
+     */
+    stepAlias?: string;
+    /** The enclosing step/branch's own `note:`, carried the same way as `stepAlias`. */
+    stepNote?: string;
+    /**
+     * A `repeat.until`/`repeat.while` block's own alias. The `repeat:` step
+     * has no dedicated canvas node either, so its alias is carried on the
+     * loop's first condition node.
+     */
+    blockAlias?: string;
+    /** A `repeat.until`/`repeat.while` block's own `note:`, carried the same way as `blockAlias`. */
+    blockNote?: string;
     enabled?: boolean;
     note?: string;
     entity_id?: string | string[];
@@ -50,6 +76,11 @@ export const HAConditionSchema: z.ZodType<
   Record<string, unknown>
 > = z.looseObject({
   alias: z.string().optional(),
+  conditionAlias: z.string().optional(),
+  stepAlias: z.string().optional(),
+  stepNote: z.string().optional(),
+  blockAlias: z.string().optional(),
+  blockNote: z.string().optional(),
   condition: z.string().optional(),
   enabled: z.boolean().optional(),
   note: z.string().optional(),

@@ -68,8 +68,9 @@ function findOpenAutomationEntity(entities: HassEntity[], automationId: string |
 }
 
 /**
- * 48px app header (design doc §4), three zones: identity + inline-editable
- * name + status chips on the left, the merged canvas command cluster
+ * 48px app header (design doc §4), three zones: a compact two-row identity
+ * block on the left (inline-editable name with its status chips stacked
+ * directly beneath, sharing the same left edge), the merged canvas command cluster
  * (EditorToolbar — the former floating toolbar) in the center, and run/save +
  * the overflow menu on the right. Below `lg` the center cluster folds into
  * the overflow menu instead. Design doc §12 adds the standalone disconnect
@@ -197,7 +198,8 @@ export function Header({
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-flow-border border-b bg-flow-panel px-3">
-      {/* Left zone: identity, editable name, status chips */}
+      {/* Left zone: identity — editable name with its status chips stacked directly
+          under it (two tight rows, no dead gap between title text and chips) */}
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {isMobile && (
           <Button
@@ -215,48 +217,59 @@ export function Header({
 
         <Separator orientation="vertical" className="h-5 shrink-0 bg-flow-border" />
 
-        <input
-          value={flowName}
-          onChange={(event) => setFlowName(event.target.value)}
-          placeholder={t('common:placeholders.automationName')}
-          title={flowName || undefined}
-          className="ui-focus-ring min-w-0 max-w-72 flex-1 truncate rounded-flow-control bg-transparent px-1.5 font-medium text-[15px] text-flow-text placeholder:font-normal placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
-        />
-
-        {/* Redundant with the pulsing save button for AT users — decorative for sighted scanning. */}
-        {isDirty && (
-          <span
-            aria-hidden
-            title={t('panels:header.unsavedChanges')}
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-flow-warn"
+        <div className="flex min-w-0 max-w-72 flex-1 flex-col justify-center">
+          <input
+            value={flowName}
+            onChange={(event) => setFlowName(event.target.value)}
+            placeholder={t('common:placeholders.automationName')}
+            title={flowName || undefined}
+            className="ui-focus-ring w-full min-w-0 truncate rounded-flow-control bg-transparent px-1.5 font-medium text-[13px] text-flow-text leading-[18px] placeholder:font-normal placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
           />
-        )}
 
-        {openEntity && (
-          <span
-            className={cn(
-              'hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide sm:flex',
-              openEntity.state === 'on'
-                ? 'bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]'
-                : 'bg-flow-elevated text-flow-text-muted'
-            )}
-          >
-            {openEntity.state === 'on' ? t('panels:header.enabled') : t('panels:header.disabled')}
-          </span>
-        )}
+          {(isDirty ||
+            openEntity ||
+            (flowMetadata.mode && flowMetadata.mode !== 'single') ||
+            (isRemote && hass && !hass.connected)) && (
+            <div className="mt-0.5 flex min-w-0 items-center gap-1 px-1.5">
+              {/* Redundant with the pulsing save button for AT users — decorative for sighted scanning. */}
+              {isDirty && (
+                <span
+                  aria-hidden
+                  title={t('panels:header.unsavedChanges')}
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-flow-warn"
+                />
+              )}
 
-        {flowMetadata.mode && flowMetadata.mode !== 'single' && (
-          <span className="hidden shrink-0 rounded-full bg-flow-elevated px-2 py-0.5 font-mono text-[10px] text-flow-text-muted uppercase tracking-wide sm:flex">
-            {flowMetadata.mode}
-          </span>
-        )}
+              {openEntity && (
+                <span
+                  className={cn(
+                    'hidden shrink-0 items-center rounded-full px-1.5 font-mono text-[10px] uppercase leading-[15px] tracking-wide sm:flex',
+                    openEntity.state === 'on'
+                      ? 'bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]'
+                      : 'bg-flow-elevated text-flow-text-muted'
+                  )}
+                >
+                  {openEntity.state === 'on'
+                    ? t('panels:header.enabled')
+                    : t('panels:header.disabled')}
+                </span>
+              )}
 
-        {isRemote && hass && !hass.connected && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 font-mono text-[10px] text-[var(--warn)] uppercase tracking-wide">
-            <WifiOff className="h-2.5 w-2.5" />
-            {t('panels:header.reconnecting')}
-          </span>
-        )}
+              {flowMetadata.mode && flowMetadata.mode !== 'single' && (
+                <span className="hidden shrink-0 rounded-full bg-flow-elevated px-1.5 font-mono text-[10px] text-flow-text-muted uppercase leading-[15px] tracking-wide sm:flex">
+                  {flowMetadata.mode}
+                </span>
+              )}
+
+              {isRemote && hass && !hass.connected && (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-1.5 font-mono text-[10px] text-[var(--warn)] uppercase leading-[15px] tracking-wide">
+                  <WifiOff className="h-2.5 w-2.5" />
+                  {t('panels:header.reconnecting')}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Center zone: merged canvas command cluster (folds into the overflow menu below lg) */}

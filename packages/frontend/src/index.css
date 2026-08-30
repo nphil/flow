@@ -65,6 +65,15 @@
 /* React Flow canvas (design doc §5, §7, §13). */
 .react-flow {
   background: var(--bg);
+  transition: box-shadow var(--dur-fast) var(--ease-out-warm);
+}
+
+/* Palette drag-and-drop (lib/paletteDrag.ts): while a palette card is dragged
+   over the canvas wrapper, an inset accent ring marks it as the live drop
+   target. The transition rides --dur-fast, which prefers-reduced-motion
+   collapses to 0ms (theme/tokens.css). */
+.flow-dropzone-active .react-flow {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .react-flow__node {
