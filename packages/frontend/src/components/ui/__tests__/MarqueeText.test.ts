@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { buildMarqueeKeyframes, MARQUEE_TIMING } from '../MarqueeText';
 
 describe('buildMarqueeKeyframes', () => {
-  it('returns null when the text does not overflow (including sub-pixel rounding)', () => {
+  it('returns null unless a meaningful amount of text is hidden', () => {
     expect(buildMarqueeKeyframes(0)).toBeNull();
     expect(buildMarqueeKeyframes(1)).toBeNull();
     expect(buildMarqueeKeyframes(-40)).toBeNull();
+    // A few pixels hide at most a fraction of a character; scrolling that far
+    // is a twitch, not a reveal. Observed live on a freshly dropped node.
+    expect(buildMarqueeKeyframes(6)).toBeNull();
+    expect(buildMarqueeKeyframes(9)).toBeNull();
+    expect(buildMarqueeKeyframes(10)).not.toBeNull();
   });
 
   it('builds a start-hold / scroll / end-hold / return cycle at constant reveal speed', () => {

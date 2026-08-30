@@ -25,19 +25,25 @@ export interface MarqueePlan {
   keyframes: Keyframe[];
 }
 
+/** Below this much hidden text, animating is jitter rather than information.
+ *  The ellipsis glyph itself is about this wide, so a smaller overflow hides
+ *  at most a fraction of one character: a 6px nudge reads as a twitch, which
+ *  is exactly what showed up on a freshly dropped Delay node in the embedded
+ *  panel (sub-pixel text metrics differ from a standalone page). */
+const MIN_MEANINGFUL_OVERFLOW_PX = 10;
+
 /**
  * Builds the WAAPI keyframe plan for one marquee cycle:
  * hold at start → linear scroll to `-distancePx` → hold at end → eased return.
  * Distance-proportional legs keep the *speed* constant regardless of how much
- * text is clipped. Returns null when nothing is meaningfully clipped
- * (`distancePx <= 1` absorbs sub-pixel scrollWidth/clientWidth rounding), so
- * callers can gate "only animate when the text actually overflows" on it.
+ * text is clipped. Returns null when nothing meaningful is clipped, so callers
+ * can gate "only animate when the text actually overflows" on it.
  */
 export function buildMarqueeKeyframes(
   distancePx: number,
   timing: MarqueeTiming = MARQUEE_TIMING
 ): MarqueePlan | null {
-  if (!(distancePx > 1)) return null;
+  if (!(distancePx >= MIN_MEANINGFUL_OVERFLOW_PX)) return null;
 
   const scrollMs = (distancePx / timing.scrollPxPerSec) * 1000;
   const returnMs = (distancePx / timing.returnPxPerSec) * 1000;
