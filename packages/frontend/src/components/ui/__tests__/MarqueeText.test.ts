@@ -6,11 +6,12 @@ describe('buildMarqueeKeyframes', () => {
     expect(buildMarqueeKeyframes(0)).toBeNull();
     expect(buildMarqueeKeyframes(1)).toBeNull();
     expect(buildMarqueeKeyframes(-40)).toBeNull();
-    // A few pixels hide at most a fraction of a character, so scrolling that
-    // far would be a twitch rather than a reveal. Real clipped labels in this
-    // UI overflow by 100px or more, well clear of this floor.
-    expect(buildMarqueeKeyframes(6)).toBeNull();
-    expect(buildMarqueeKeyframes(9)).toBeNull();
+    // 1-3px is layout rounding, not hidden text. Anything from half a
+    // character up still scrolls: the sidebar's real clipped names measure
+    // 17px and 39px, and node labels 110-211px.
+    expect(buildMarqueeKeyframes(3)).toBeNull();
+    expect(buildMarqueeKeyframes(4)).not.toBeNull();
+    expect(buildMarqueeKeyframes(17)).not.toBeNull();
     expect(buildMarqueeKeyframes(10)).not.toBeNull();
   });
 

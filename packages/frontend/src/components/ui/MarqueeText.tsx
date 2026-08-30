@@ -25,12 +25,12 @@ export interface MarqueePlan {
   keyframes: Keyframe[];
 }
 
-/** Below this much hidden text, animating would be jitter rather than
- *  information: the ellipsis glyph is about this wide, so a smaller overflow
- *  hides at most a fraction of one character. Real clipped labels in this UI
- *  overflow by 100px or more, so this floor cannot suppress a genuine reveal;
- *  it only rules out sub-character twitching from layout rounding. */
-const MIN_MEANINGFUL_OVERFLOW_PX = 10;
+/** Smallest hidden width worth animating. The UI's smallest text is 12px mono
+ *  (about 7px per character), so this sits below half a character: anything
+ *  genuinely readable still scrolls, while 1-3px of layout rounding does not
+ *  twitch. Measured live, real clipped labels overflow by 17-39px in the
+ *  sidebar and 110-211px on nodes, so this floor never gates a real reveal. */
+const MIN_MEANINGFUL_OVERFLOW_PX = 4;
 
 /**
  * Builds the WAAPI keyframe plan for one marquee cycle:
