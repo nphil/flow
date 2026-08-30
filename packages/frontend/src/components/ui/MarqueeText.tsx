@@ -25,11 +25,11 @@ export interface MarqueePlan {
   keyframes: Keyframe[];
 }
 
-/** Below this much hidden text, animating is jitter rather than information.
- *  The ellipsis glyph itself is about this wide, so a smaller overflow hides
- *  at most a fraction of one character: a 6px nudge reads as a twitch, which
- *  is exactly what showed up on a freshly dropped Delay node in the embedded
- *  panel (sub-pixel text metrics differ from a standalone page). */
+/** Below this much hidden text, animating would be jitter rather than
+ *  information: the ellipsis glyph is about this wide, so a smaller overflow
+ *  hides at most a fraction of one character. Real clipped labels in this UI
+ *  overflow by 100px or more, so this floor cannot suppress a genuine reveal;
+ *  it only rules out sub-character twitching from layout rounding. */
 const MIN_MEANINGFUL_OVERFLOW_PX = 10;
 
 /**

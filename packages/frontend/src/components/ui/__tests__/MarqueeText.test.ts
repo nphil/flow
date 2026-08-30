@@ -6,8 +6,9 @@ describe('buildMarqueeKeyframes', () => {
     expect(buildMarqueeKeyframes(0)).toBeNull();
     expect(buildMarqueeKeyframes(1)).toBeNull();
     expect(buildMarqueeKeyframes(-40)).toBeNull();
-    // A few pixels hide at most a fraction of a character; scrolling that far
-    // is a twitch, not a reveal. Observed live on a freshly dropped node.
+    // A few pixels hide at most a fraction of a character, so scrolling that
+    // far would be a twitch rather than a reveal. Real clipped labels in this
+    // UI overflow by 100px or more, well clear of this floor.
     expect(buildMarqueeKeyframes(6)).toBeNull();
     expect(buildMarqueeKeyframes(9)).toBeNull();
     expect(buildMarqueeKeyframes(10)).not.toBeNull();
