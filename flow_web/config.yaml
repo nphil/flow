@@ -8,9 +8,6 @@ arch:
   - amd64
   - aarch64
 init: false
-startup: application
-boot: auto
-ingress: false
 ports:
   80/tcp: 8099
 ports_description:
