@@ -82,14 +82,14 @@ Every pull request and every push to `main` runs these GitHub Actions workflows 
 
 A release is a git tag; the Release workflow does the rest. Maintainers do not cut one without the owner's go-ahead.
 
-1. `yarn release:bump 1.3.0` sets the version in the three files above (`yarn release:check` confirms they agree).
-2. Commit them: `git commit -m "chore(release): v1.3.0"`.
-3. Tag and push: `git tag v1.3.0 && git push origin main v1.3.0`.
+1. `yarn release:bump 1.4.0` sets the version in the three files above (`yarn release:check` confirms they agree).
+2. Add a `## 1.4.0` entry to `flow_web/CHANGELOG.md` (Home Assistant shows it as the add-on's changelog; it is short and written by hand), then commit: `git commit -m "chore(release): v1.4.0"`.
+3. Tag and push: `git tag v1.4.0 && git push origin main v1.4.0`.
 
-The workflow checks that the tag and the version files agree, runs CI, builds `flow.zip` and `flow.tar.gz`, creates the GitHub Release (its notes are generated from the commit history, grouped by `feat`, `fix` and everything else, so write conventional commit subjects), and pushes `ghcr.io/nphil/flow:1.3.0` (plus `latest` for stable versions). HACS and the Home Assistant add-on pick the release up from there: HACS reads `flow.zip`, and the add-on image downloads the `flow.tar.gz` of its own version.
+The workflow checks that the tag and the version files agree, runs CI, builds `flow.zip` and `flow.tar.gz`, creates the GitHub Release (its notes are generated from the commit history, grouped by `feat`, `fix` and everything else, so write conventional commit subjects), and pushes `ghcr.io/nphil/flow:1.4.0` (plus `latest` for stable versions). HACS and the Home Assistant add-on pick the release up from there: HACS reads `flow.zip`, and the add-on image downloads the `flow.tar.gz` of its own version.
 
-- **Pre-release:** a version such as `1.4.0-rc.1` creates a GitHub pre-release and leaves the `latest` image alone.
-- **Rehearsal:** `gh workflow run release.yml --ref <branch> -f version=1.3.0` builds and tests everything but publishes nothing (`dry_run` is on by default). The files stay available as a workflow artifact.
+- **Pre-release:** a version such as `1.5.0-rc.1` creates a GitHub pre-release and leaves the `latest` image alone.
+- **Rehearsal:** `gh workflow run release.yml --ref <branch> -f version=1.4.0` builds and tests everything but publishes nothing (`dry_run` is on by default). The files stay available as a workflow artifact.
 - **By hand:** a release created in the GitHub UI works too. The workflow attaches the files and keeps your title and notes.
 
 ## Adding Packages or Tests

@@ -63,10 +63,9 @@ jobs:
       - name: Unit tests
         run: yarn test --run --exclude '**/ha-roundtrip-corpus.test.ts'
 
-      # Skipped until the corpus test is on this branch. Delete the `if:` line (and this comment)
-      # once it is on main, so a missing file fails CI instead of silently skipping the gate.
+      # Runs even when the unit tests fail, so one run reports both.
       - name: Round-trip fixtures
-        if: hashFiles('packages/transpiler/src/__tests__/ha-roundtrip-corpus.test.ts') != ''
+        if: ${{ !cancelled() }}
         run: yarn test:roundtrip
 
   build:
