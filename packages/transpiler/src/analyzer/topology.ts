@@ -64,6 +64,21 @@ export function findBackEdges(flow: FlowGraph): Set<string> {
 }
 
 /**
+ * The nodes a flow without triggers (a script) starts from: the ones nothing leads to, not counting
+ * the back-edge of a loop (a script that opens with a `repeat` loop starts at the loop's first
+ * node, which its own body leads back to). Several of them start together, in parallel.
+ */
+export function findScriptEntryNodes(
+  flow: FlowGraph,
+  backEdgeIds: ReadonlySet<string> = findBackEdges(flow)
+): string[] {
+  const hasForwardIncoming = new Set(
+    flow.edges.filter((edge) => !backEdgeIds.has(edge.id)).map((edge) => edge.target)
+  );
+  return flow.nodes.filter((node) => !hasForwardIncoming.has(node.id)).map((node) => node.id);
+}
+
+/**
  * Result of topology analysis
  */
 export interface TopologyAnalysis {

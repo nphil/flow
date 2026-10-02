@@ -5,6 +5,7 @@ import {
   validateGraphStructure,
 } from '@flow/shared';
 import { ZodError } from 'zod';
+import { findScriptEntryNodes } from './topology';
 
 /**
  * Validation result containing parsed graph or errors
@@ -134,12 +135,15 @@ function validateSemantics(graph: FlowGraph): ValidationError[] {
     }
   }
 
-  // Check for orphaned nodes (nodes not connected to any trigger)
+  // Check for orphaned nodes: nodes the flow never reaches. It starts at its triggers; a script
+  // has none and starts at the nodes nothing leads to.
   const connectedNodes = new Set<string>();
-  const triggerNodes = graph.nodes.filter((n) => n.type === 'trigger');
 
-  // BFS from all triggers
-  const queue = [...triggerNodes.map((n) => n.id)];
+  // BFS from the start
+  const queue =
+    graph.kind === 'script'
+      ? findScriptEntryNodes(graph)
+      : graph.nodes.filter((n) => n.type === 'trigger').map((n) => n.id);
   while (queue.length > 0) {
     const nodeId = queue.shift()!;
     if (connectedNodes.has(nodeId)) continue;

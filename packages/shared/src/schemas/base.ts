@@ -59,3 +59,10 @@ export const MAX_EXCEEDED_LEVELS = [
   'debug',
   'critical',
 ] as const;
+
+/**
+ * What a flow is saved as in Home Assistant. An automation starts from triggers; a script has none
+ * (it starts when it is called) and lives in `scripts.yaml` instead of `automations.yaml`.
+ */
+export const FlowKindSchema = z.enum(['automation', 'script']);
+export type FlowKind = z.infer<typeof FlowKindSchema>;

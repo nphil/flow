@@ -323,20 +323,6 @@ export interface HAChooseOption {
 }
 
 /**
- * Zod schema for FlowGraph metadata block (automation-level settings)
- */
-export const FlowGraphMetadataSchema = z.object({
-  mode: z.enum(['single', 'restart', 'queued', 'parallel']).default('single'),
-  max: z.number().optional(),
-  max_exceeded: z.string().optional(),
-  initial_state: z.boolean().optional(),
-  hide_entity: z.boolean().optional(),
-  trace: z.looseObject({ stored_traces: z.number().optional() }).optional(),
-});
-
-export type FlowGraphMetadata = z.infer<typeof FlowGraphMetadataSchema>;
-
-/**
  * Type guard for Home Assistant trigger objects.
  * Returns true if the object matches the HATrigger shape.
  */

@@ -39,7 +39,7 @@ export async function roundTripConfig(
   original: Json,
   options: CanonOptions = {}
 ): Promise<RoundTripResult> {
-  const parsed = await transpiler.fromYaml(JSON.stringify(original));
+  const parsed = await transpiler.fromYaml(JSON.stringify(original), { kind: options.kind });
   if (!parsed.success || !parsed.graph) {
     return failure('open-fail', parsed.errors ?? ['unknown parse error']);
   }
@@ -53,8 +53,10 @@ export async function roundTripConfig(
     return failure('emit-fail', [e instanceof Error ? e.message : String(e)]);
   }
 
-  const before = canonicalizeConfig(original, options);
-  const after = canonicalizeConfig(regenerated, options);
+  // Both sides are read as the same kind: the one Flow opened the config as.
+  const sameKind = { ...options, kind: parsed.graph.kind };
+  const before = canonicalizeConfig(original, sameKind);
+  const after = canonicalizeConfig(regenerated, sameKind);
   const diffs = semanticDiff(before.canon, after.canon);
 
   return {

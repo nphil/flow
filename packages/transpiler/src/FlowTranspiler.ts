@@ -1,12 +1,16 @@
-import { type FlowGraph, INTERNAL_NODE_KEYS } from '@flow/shared';
+import {
+  type BlueprintInstance,
+  type FlowGraph,
+  INTERNAL_NODE_KEYS,
+  isRecord,
+} from '@flow/shared';
 import { dump as yamlDump } from 'js-yaml';
 import { analyzeTopology, type TopologyAnalysis } from './analyzer/topology';
 import { type ValidationResult, validateFlowGraph } from './analyzer/validator';
-import { type ParseResult, YamlParser } from './parser/YamlParser';
+import { type ParseOptions, type ParseResult, YamlParser } from './parser/YamlParser';
 import type { HAYamlOutput, TranspilerStrategy } from './strategies/base';
 import { NativeStrategy } from './strategies/native';
 import { StateMachineStrategy } from './strategies/state-machine';
-import { computeNodeVisitOrder } from './utils/nodeVisitOrder';
 
 /**
  * Options for YAML generation
@@ -39,7 +43,12 @@ export interface TranspileResult {
    */
   yaml?: string;
   /**
-   * Parsed YAML object (automation or script)
+   * The complete config to store in Home Assistant: what the strategy generated plus the user's
+   * own `variables` and Flow's canvas layout (`_cafe_metadata`). Store this, not `output`.
+   */
+  config?: Record<string, unknown>;
+  /**
+   * What the strategy generated (the automation or script config before variables are added)
    */
   output?: HAYamlOutput;
   /**
@@ -63,6 +72,19 @@ function withoutHints(flow: FlowGraph): FlowGraph {
     for (const key of INTERNAL_NODE_KEYS) Reflect.deleteProperty(node.data, key);
   }
   return copy;
+}
+
+/**
+ * A config made from a blueprint, as it was read: name, description, `use_blueprint`, and whatever
+ * else the instance sets (those keys override the blueprint's own, so they stay).
+ */
+function blueprintConfig(flow: FlowGraph, blueprint: BlueprintInstance): Record<string, unknown> {
+  return {
+    alias: flow.name,
+    ...(flow.description ? { description: flow.description } : {}),
+    use_blueprint: blueprint.use_blueprint,
+    ...blueprint.overrides,
+  };
 }
 
 /**
@@ -137,6 +159,17 @@ export class FlowTranspiler {
       }
     }
 
+    // A config made from a blueprint holds none of the steps: it is written back as it was read.
+    if (flow.blueprint) {
+      const config = blueprintConfig(flow, flow.blueprint);
+      const output: HAYamlOutput = {
+        ...(flow.kind === 'script' ? { script: config } : { automation: config }),
+        warnings,
+        strategy: 'native',
+      };
+      return { success: true, yaml: this.dump(config, options), config, output, warnings };
+    }
+
     // Step 4: Generate YAML output. A native build that could not place every node (a graph that
     // is not nested after all) is redone by the general strategy.
     let output = strategy.generate(flow, analysis);
@@ -148,44 +181,18 @@ export class FlowTranspiler {
     }
     warnings.push(...output.warnings);
 
-    // Step 5: Inject _cafe_metadata metadata with node positions
-    const yamlContent = output.automation ?? output.script;
-    let yaml: string;
-
-    if (yamlContent && typeof yamlContent === 'object') {
-      const metadata = this.generateCafeMetadata(flow, strategy);
-      const contentWithMetadata = {
-        ...yamlContent,
-        variables: {
-          // First, include user-defined variables from the flow graph
-          ...(flow.userVariables || {}),
-          // Then include any variables from the generated YAML (e.g., state machine vars)
-          ...(yamlContent.variables || {}),
-          // Finally, add _cafe_metadata
-          _cafe_metadata: metadata,
-        },
-      };
-
-      // Step 6: Serialize to YAML string with metadata
-      yaml = yamlDump(contentWithMetadata, {
-        indent: options.indent ?? 2,
-        lineWidth: options.lineWidth ?? -1,
-        quotingType: '"',
-        forceQuotes: false,
-      });
-    } else {
-      // Serialize without metadata
-      yaml = yamlDump(yamlContent, {
-        indent: options.indent ?? 2,
-        lineWidth: options.lineWidth ?? -1,
-        quotingType: '"',
-        forceQuotes: false,
-      });
+    // Step 5: Add the user's variables and the node positions (_cafe_metadata)
+    const generated = output.automation ?? output.script;
+    if (!generated) {
+      return { success: false, errors: ['The strategy generated no config'], warnings };
     }
+    const config = this.withVariables(flow, strategy, generated, output.nodeOrder);
 
+    // Step 6: Serialize to YAML string with metadata
     return {
       success: true,
-      yaml,
+      yaml: this.dump(config, options),
+      config,
       output,
       analysis,
       warnings,
@@ -220,11 +227,12 @@ export class FlowTranspiler {
   }
 
   /**
-   * Parse Home Assistant YAML back into FlowGraph
+   * Parse Home Assistant YAML back into FlowGraph. Say what it is (`options.kind`) when you know:
+   * the shape alone cannot tell a script made from a blueprint from an automation made from one.
    */
-  fromYaml(yamlString: string): Promise<ParseResult> {
+  fromYaml(yamlString: string, options: ParseOptions = {}): Promise<ParseResult> {
     const parser = new YamlParser();
-    return parser.parse(yamlString);
+    return parser.parse(yamlString, options);
   }
 
   /**
@@ -244,6 +252,38 @@ export class FlowTranspiler {
     this.strategies.unshift(strategy); // Add at beginning for priority
   }
 
+  private dump(config: Record<string, unknown>, options: YamlOptions): string {
+    return yamlDump(config, {
+      indent: options.indent ?? 2,
+      lineWidth: options.lineWidth ?? -1,
+      quotingType: '"',
+      forceQuotes: false,
+    });
+  }
+
+  /**
+   * The generated config with the user's own variables and the canvas layout (`_cafe_metadata`).
+   * A script sets its variables before its steps run, so they are written above the sequence.
+   */
+  private withVariables(
+    flow: FlowGraph,
+    strategy: TranspilerStrategy,
+    generated: Record<string, unknown>,
+    nodeOrder: string[] = []
+  ): Record<string, unknown> {
+    const variables = {
+      // First, include user-defined variables from the flow graph
+      ...(flow.userVariables || {}),
+      // Then include any variables from the generated YAML (e.g., state machine vars)
+      ...(isRecord(generated.variables) ? generated.variables : {}),
+      // Finally, add _cafe_metadata
+      _cafe_metadata: this.generateCafeMetadata(flow, strategy, nodeOrder),
+    };
+    if (flow.kind !== 'script') return { ...generated, variables };
+    const { sequence, ...head } = generated;
+    return { ...head, variables, sequence };
+  }
+
   /**
    * Generate C.A.F.E. metadata for position persistence
    *
@@ -255,16 +295,18 @@ export class FlowTranspiler {
    */
   private generateCafeMetadata(
     flow: FlowGraph,
-    strategy: TranspilerStrategy
+    strategy: TranspilerStrategy,
+    nodeOrder: string[]
   ): Record<string, unknown> {
     const nodePositions: Record<string, { x: number; y: number }> = {};
 
-    // Write positions in the same order YamlParser will re-assign IDs to
-    // nodes on import (see computeNodeVisitOrder), not `flow.nodes` array
-    // order — otherwise positions get attached to the wrong node once a
-    // flow has multiple same-type nodes across parallel/condition branches.
+    // Write positions in the order the strategy wrote the nodes into the YAML, which is the order
+    // YamlParser re-assigns IDs to nodes in on import, not `flow.nodes` array order — otherwise
+    // positions get attached to the wrong node once a flow has multiple same-type nodes across
+    // parallel/condition branches (cafe-hass#225). A node the strategy did not report (the state
+    // machine keeps its ids in the YAML itself) follows in `flow.nodes` order.
     const nodesById = new Map(flow.nodes.map((node) => [node.id, node]));
-    for (const nodeId of computeNodeVisitOrder(flow)) {
+    for (const nodeId of new Set([...nodeOrder, ...nodesById.keys()])) {
       const node = nodesById.get(nodeId);
       if (!node) continue;
       nodePositions[node.id] = {

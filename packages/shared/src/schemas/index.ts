@@ -4,6 +4,8 @@ export {
   AutomationModeSchema,
   type EntityId,
   EntityIdSchema,
+  type FlowKind,
+  FlowKindSchema,
   type Handle,
   HandleSchema,
   MAX_EXCEEDED_LEVELS,
@@ -18,6 +20,8 @@ export {
 export { type ConditionEdge, ConditionEdgeSchema, EdgeSchema, type FlowEdge } from './edges';
 // Graph schemas
 export {
+  type BlueprintInstance,
+  BlueprintInstanceSchema,
   type FlowGraph,
   FlowGraphSchema,
   type FlowMetadata,
@@ -50,8 +54,6 @@ export {
   ConditionScalarSchema,
   type DurationParts,
   DurationPartsSchema,
-  type FlowGraphMetadata,
-  FlowGraphMetadataSchema,
   type HAAction,
   HAActionSchema,
   type HAAutomation,

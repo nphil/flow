@@ -26,6 +26,11 @@ export interface HAYamlOutput {
    * express this graph, and the caller should use a more general one.
    */
   incomplete?: boolean;
+  /**
+   * The node ids in the order the strategy wrote them out, when that is the order the parser meets
+   * them again (nested steps). Canvas positions are saved in this order.
+   */
+  nodeOrder?: string[];
 }
 
 /**
@@ -68,6 +73,41 @@ export abstract class BaseStrategy implements TranspilerStrategy {
   protected findEntryNodes(flow: FlowGraph): string[] {
     const targetNodes = new Set(flow.edges.map((e) => e.target));
     return flow.nodes.filter((n) => !targetNodes.has(n.id)).map((n) => n.id);
+  }
+
+  /**
+   * The settings an automation carries after its steps (mode, run limits, startup state, trace,
+   * trigger variables). Only what is set is written.
+   */
+  protected automationSettings(flow: FlowGraph): Record<string, unknown> {
+    const { metadata } = flow;
+    const settings: Record<string, unknown> = { mode: metadata?.mode ?? 'single' };
+    if (metadata?.max) settings.max = metadata.max;
+    if (metadata?.max_exceeded) settings.max_exceeded = metadata.max_exceeded;
+    if (typeof metadata?.initial_state === 'boolean') settings.initial_state = metadata.initial_state;
+    if (typeof metadata?.hide_entity === 'boolean') settings.hide_entity = metadata.hide_entity;
+    if (metadata?.trace) settings.trace = metadata.trace;
+    if (flow.userTriggerVariables && Object.keys(flow.userTriggerVariables).length > 0) {
+      settings.trigger_variables = flow.userTriggerVariables;
+    }
+    return settings;
+  }
+
+  /**
+   * Everything a script says before its steps: name, description, icon, mode, run limits, trace and
+   * the inputs it takes. Only what is set is written (a script without a description gets none).
+   */
+  protected scriptSettings(flow: FlowGraph): Record<string, unknown> {
+    const { metadata } = flow;
+    const settings: Record<string, unknown> = { alias: flow.name };
+    if (flow.description) settings.description = flow.description;
+    if (metadata?.icon) settings.icon = metadata.icon;
+    settings.mode = metadata?.mode ?? 'single';
+    if (metadata?.max) settings.max = metadata.max;
+    if (metadata?.max_exceeded) settings.max_exceeded = metadata.max_exceeded;
+    if (metadata?.trace) settings.trace = metadata.trace;
+    if (metadata?.fields) settings.fields = metadata.fields;
+    return settings;
   }
 
   /**

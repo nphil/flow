@@ -8,7 +8,7 @@ import type {
 } from '@flow/shared';
 import { readNodeHints } from '@flow/shared';
 import { computePostDominators, type PostDominators } from '../analyzer/structure';
-import { findBackEdges } from '../analyzer/topology';
+import { findBackEdges, findScriptEntryNodes } from '../analyzer/topology';
 
 /**
  * Turns the flat flow graph back into Home Assistant's nested steps.
@@ -45,6 +45,8 @@ interface Ctx {
   level: number;
   /** Where the enclosing block ends: reaching it ends the list. */
   joinId: string | undefined;
+  /** More nodes that end the list, like `joinId` (what a block that falls through hands over to). */
+  ends?: string[];
   /** Believe `stepDepth`: a node that sits above this list is not part of it. */
   hints: boolean;
 }
@@ -105,6 +107,24 @@ function withBlockProps(props: BlockProps, body: Record<string, unknown>): Recor
   return defined({ alias: props.alias, note: props.note, enabled: props.enabled, ...body });
 }
 
+/**
+ * A loop's own nodes (tests, counter set-up, increment, check) split by where they sit in relation
+ * to its body in the order the parser creates them.
+ */
+function loopNodesAround(loop: Loop): { before: string[]; after: string[] } {
+  switch (loop.kind) {
+    case 'while':
+      return { before: loop.nodeIds, after: [] };
+    case 'until':
+      return { before: [], after: loop.nodeIds };
+    case 'count':
+      return {
+        before: loop.initId ? [loop.initId] : [],
+        after: loop.nodeIds.filter((id) => id !== loop.initId),
+      };
+  }
+}
+
 export class SequenceBuilder {
   private readonly nodes: Map<string, FlowNode>;
   /** Outgoing edges that are not loop back-edges, in edge order. */
@@ -117,6 +137,8 @@ export class SequenceBuilder {
   private readonly loopMembers = new Set<string>();
   /** Nodes already turned into a step: nothing is ever written twice. */
   private readonly emitted = new Set<string>();
+  /** The same nodes in the order their steps were written (see `writtenOrder`). */
+  private readonly order: string[] = [];
   /** Loops whose body is being built. */
   private readonly activeLoops = new Set<Loop>();
 
@@ -162,13 +184,48 @@ export class SequenceBuilder {
   /** The root conditions and the actions that follow the trigger nodes. */
   buildActions(triggerIds: string[]): BuiltActions {
     const built = this.buildActionList(triggerIds);
-    return { ...built, unplaced: this.unplacedNodes(triggerIds) };
+    return { ...built, unplaced: this.unplacedNodes(triggerIds, triggerIds) };
   }
 
-  /** Every node reachable from the triggers (loop edges included) that was never written. */
-  private unplacedNodes(triggerIds: string[]): string[] {
-    const reached = new Set<string>(triggerIds);
-    const queue = [...triggerIds];
+  /**
+   * The steps of a script. It has no triggers: whatever nothing leads to starts it (see
+   * `findScriptEntryNodes`), and several such nodes start together, as a parallel block. Unlike an
+   * automation it has no root conditions: conditions drawn right at the start (with no else) are
+   * written as condition steps, which end the script when they fail.
+   */
+  buildScript(): { steps: unknown[]; unplaced: string[] } {
+    const entryIds = findScriptEntryNodes(this.flow, this.backEdgeIds);
+    const leading =
+      entryIds.length === 1
+        ? this.extractLeadingConditions(entryIds[0])
+        : { conditions: [], nextIds: entryIds };
+    const steps = [...leading.conditions, ...this.buildSequence(leading.nextIds, TOP).steps];
+    return { steps, unplaced: this.unplacedNodes(entryIds, []) };
+  }
+
+  /**
+   * The nodes in the order their steps were written: the order the config stores them in, and so
+   * the order the parser meets them again when the config is opened. Canvas positions are saved in
+   * this order (see `_cafe_metadata`) so each node finds its position again.
+   */
+  writtenOrder(): string[] {
+    return [...this.order];
+  }
+
+  /** Turns a node into a written step: nothing is ever written twice. */
+  private markEmitted(id: string): void {
+    if (this.emitted.has(id)) return;
+    this.emitted.add(id);
+    this.order.push(id);
+  }
+
+  /**
+   * Every node reachable from the seeds (loop edges included) that was never written. The seeds
+   * themselves are only skipped when they are not steps (triggers).
+   */
+  private unplacedNodes(seedIds: string[], notSteps: string[]): string[] {
+    const reached = new Set<string>(seedIds);
+    const queue = [...seedIds];
     for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
       for (const edge of this.flow.edges) {
         if (edge.source !== id || reached.has(edge.target)) continue;
@@ -176,7 +233,7 @@ export class SequenceBuilder {
         queue.push(edge.target);
       }
     }
-    return [...reached].filter((id) => !triggerIds.includes(id) && !this.emitted.has(id));
+    return [...reached].filter((id) => !notSteps.includes(id) && !this.emitted.has(id));
   }
 
   private buildActionList(triggerIds: string[]): Omit<BuiltActions, 'unplaced'> {
@@ -209,7 +266,7 @@ export class SequenceBuilder {
     const orPattern = hinted ? null : this.detectOrPattern(firstActions);
     if (orPattern) {
       // Several conditions that all lead to the same step: that step runs when any of them holds.
-      for (const condition of orPattern.conditions) this.emitted.add(condition.id);
+      for (const condition of orPattern.conditions) this.markEmitted(condition.id);
       const orConditions = orPattern.conditions.map((c) => this.hooks.buildCondition(c));
       const body = this.buildSequence([orPattern.convergence], TOP).steps;
       return {
@@ -268,7 +325,7 @@ export class SequenceBuilder {
 
       const condition = this.hooks.buildCondition(node);
       if (node.data.alias) condition.alias = node.data.alias;
-      this.emitted.add(currentId);
+      this.markEmitted(currentId);
 
       // Connected through the false handle only: an inverted condition.
       const onward = falsePaths.length > 0 ? falsePaths : truePaths;
@@ -347,7 +404,7 @@ export class SequenceBuilder {
 
   /** Why a walk must not take this node into the list it is building, if it must not. */
   private boundary(id: string, ctx: Ctx): 'join' | 'emitted' | 'above' | null {
-    if (id === ctx.joinId) return 'join';
+    if (id === ctx.joinId || ctx.ends?.includes(id)) return 'join';
     if (this.emitted.has(id)) return 'emitted';
     return ctx.hints && this.isAbove(id, ctx.level) ? 'above' : null;
   }
@@ -397,7 +454,7 @@ export class SequenceBuilder {
 
     if (node.type === 'condition') return this.buildConditionBlock(node, ctx);
 
-    this.emitted.add(id);
+    this.markEmitted(id);
     const step = this.hooks.buildNodeAction(node);
     return {
       kind: 'step',
@@ -422,7 +479,8 @@ export class SequenceBuilder {
   private buildBranches(
     branchStarts: string[][],
     ctx: Ctx,
-    pathIndex = 0
+    pathIndex = 0,
+    beforeBranch?: (index: number) => void
   ): { results: Built[]; next: string[] } {
     const starts = unique(branchStarts.flat());
     const live = starts.filter((id) => !this.isDead(id));
@@ -432,7 +490,10 @@ export class SequenceBuilder {
       joinId: join ?? ctx.joinId,
       hints: join === null && live.length <= 1,
     };
-    const results = branchStarts.map((branch) => this.buildSequence(branch, branchCtx, pathIndex));
+    const results = branchStarts.map((branch, index) => {
+      beforeBranch?.(index);
+      return this.buildSequence(branch, branchCtx, pathIndex);
+    });
 
     if (join !== null) return { results, next: [join] };
     const pending = results.find((result) => result.end !== null)?.end;
@@ -459,7 +520,7 @@ export class SequenceBuilder {
   }
 
   private buildGate(node: ConditionNode): StepOut {
-    this.emitted.add(node.id);
+    this.markEmitted(node.id);
     const step = this.hooks.buildCondition(node);
     if (node.data.alias) step.alias = node.data.alias;
     return { kind: 'step', steps: [step], next: this.targets(node.id, 'true') };
@@ -508,14 +569,40 @@ export class SequenceBuilder {
 
   private buildIf(first: ConditionNode, ctx: Ctx): StepOut {
     const chain = this.collectChain(first);
-    for (const node of chain) this.emitted.add(node.id);
+    for (const node of chain) this.markEmitted(node.id);
     const last = chain[chain.length - 1];
     const hints = this.hints(first.id);
     const marked = hints.conditionIndex !== undefined;
 
     const thenStarts = this.targets(last.id, 'true');
     const elseStarts = this.targets(first.id, 'false');
-    const { results, next } = this.buildBranches([thenStarts, elseStarts], ctx);
+    // An `if` with no else hands over to the steps below it through its false handle. Those steps
+    // sit in the list of the `if` itself or above, never in a branch, so they are written after the
+    // block however many nodes they start with (a `parallel` block opens with one node per branch,
+    // and the join of those would wrongly make the whole block an `else`). The branches of a
+    // `parallel` sit one level below the list that holds the block.
+    const listLevelOf = (id: string): number | undefined => {
+      const level = this.levelOf(id);
+      return level !== undefined && this.hints(id).parallelPath ? level - 1 : level;
+    };
+    const fallsThrough =
+      marked &&
+      elseStarts.length > 0 &&
+      elseStarts.every((id) => (listLevelOf(id) ?? Number.POSITIVE_INFINITY) <= ctx.level);
+    const { results, next } = fallsThrough
+      ? {
+          results: [
+            this.buildSequence(thenStarts, {
+              level: ctx.level + 1,
+              joinId: ctx.joinId,
+              ends: elseStarts,
+              hints: true,
+            }),
+            { steps: [], end: null },
+          ],
+          next: elseStarts,
+        }
+      : this.buildBranches([thenStarts, elseStarts], ctx);
     const [thenResult, elseResult] = results;
 
     const props: BlockProps = {
@@ -556,6 +643,8 @@ export class SequenceBuilder {
 
     while (head) {
       const chain = this.collectChain(head);
+      // Written (in `order`) together with its branch, see `beforeBranch` below: the parser
+      // meets a choose branch's conditions right before that branch's steps.
       for (const node of chain) this.emitted.add(node.id);
       branches.push({ chain, thenStarts: this.targets(chain[chain.length - 1].id, 'true') });
 
@@ -572,7 +661,11 @@ export class SequenceBuilder {
 
     const { results, next } = this.buildBranches(
       [...branches.map((b) => b.thenStarts), defaultStarts],
-      ctx
+      ctx,
+      0,
+      (index) => {
+        for (const node of branches[index]?.chain ?? []) this.order.push(node.id);
+      }
     );
     const block = this.hints(first.id);
     const choose = branches.map(({ chain }, index) => {
@@ -656,7 +749,10 @@ export class SequenceBuilder {
   }
 
   private buildLoop(loop: Loop, ctx: Ctx): StepOut {
-    for (const id of loop.nodeIds) this.emitted.add(id);
+    // The parser meets a loop's own nodes around its body (`count`: set-up, body, increment and
+    // check; `while`: tests, body; `until`: body, tests), so they are written in that order.
+    const { before, after } = loopNodesAround(loop);
+    for (const id of before) this.markEmitted(id);
 
     // An `until` loop is entered at its body's first node: while its body is built, that node
     // is the body, not the loop again.
@@ -667,6 +763,7 @@ export class SequenceBuilder {
       hints: false,
     });
     this.activeLoops.delete(loop);
+    for (const id of after) this.markEmitted(id);
     const conditions = loop.conditions.flatMap((id) => {
       const node = this.node(id);
       return node?.type === 'condition' ? [this.hooks.buildCondition(node)] : [];

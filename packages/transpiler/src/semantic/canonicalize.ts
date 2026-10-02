@@ -1,3 +1,4 @@
+import { detectFlowKind, type FlowKind } from '@flow/shared';
 import { isJsonObject, type Json, type JsonObject } from './json';
 
 /**
@@ -54,6 +55,11 @@ export interface CanonOptions {
    * looser "same behavior" reading that `semanticDiff` was built on.
    */
   strict?: boolean;
+  /**
+   * What the config is, when the caller knows (the automations or the scripts list it came from).
+   * The shape decides otherwise, which reads a script made from a blueprint as an automation.
+   */
+  kind?: FlowKind;
 }
 
 /** The prose collector plus the comparison mode, threaded through the step canonicalizers. */
@@ -61,10 +67,8 @@ interface Ctx extends Prose {
   strict: boolean;
 }
 
-export type ConfigKind = 'automation' | 'script';
-
 export interface CanonicalConfig {
-  kind: ConfigKind;
+  kind: FlowKind;
   canon: JsonObject;
   prose: Prose;
 }
@@ -430,14 +434,6 @@ function canonVariables(variables: Json | undefined): Json | null {
   return Object.keys(copy).length > 0 ? canonValue(copy) : null;
 }
 
-/** Scripts have a `sequence` and no triggers; everything else is an automation. */
-export function detectConfigKind(raw: Json): ConfigKind {
-  if (!isJsonObject(raw)) return 'automation';
-  const hasAutomationKeys =
-    'triggers' in raw || 'trigger' in raw || 'actions' in raw || 'action' in raw;
-  return 'sequence' in raw && !hasAutomationKeys ? 'script' : 'automation';
-}
-
 const PASSTHROUGH_KEYS = [
   'max',
   'max_exceeded',
@@ -462,7 +458,7 @@ function flattenNestedTriggers(list: Json[]): Json[] {
 export function canonicalizeConfig(raw: Json, options: CanonOptions = {}): CanonicalConfig {
   const ctx: Ctx = { aliases: [], notes: [], strict: options.strict === true };
   const prose: Prose = ctx;
-  const kind = detectConfigKind(raw);
+  const kind = options.kind ?? (isJsonObject(raw) ? detectFlowKind(raw) : 'automation');
   if (!isJsonObject(raw)) return { kind, canon: { value: raw }, prose };
 
   harvestProse(raw, prose);

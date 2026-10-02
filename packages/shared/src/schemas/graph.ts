@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AutomationModeSchema, MaxExceededSchema } from './base';
+import { AutomationModeSchema, FlowKindSchema, MaxExceededSchema } from './base';
 import { EdgeSchema } from './edges';
 import { NodeSchema } from './nodes';
 
@@ -35,8 +35,38 @@ export const FlowMetadataSchema = z.object({
       stored_traces: z.number().optional(),
     })
     .optional(),
+  /**
+   * Script only: the icon shown for the script (`mdi:...`)
+   */
+  icon: z.string().optional(),
+  /**
+   * Script only: the inputs the script takes when it is called, as Home Assistant stores them
+   * (per field: name, description, required, example, default, selector)
+   */
+  fields: z.record(z.string(), z.unknown()).optional(),
 });
 export type FlowMetadata = z.infer<typeof FlowMetadataSchema>;
+
+/**
+ * A config made from a blueprint. Home Assistant fills in the blueprint's own triggers, conditions
+ * and actions from the inputs, so the config itself holds none of them. Flow shows it read-only and
+ * writes it back exactly as it was read.
+ */
+export const BlueprintInstanceSchema = z.object({
+  /**
+   * `use_blueprint` as written: the blueprint's path and the values given for its inputs
+   */
+  use_blueprint: z.looseObject({
+    path: z.string(),
+    input: z.record(z.string(), z.unknown()).optional(),
+  }),
+  /**
+   * Every other top-level key the instance sets (mode, trace, ...): they override the blueprint's
+   * own, so they are kept verbatim
+   */
+  overrides: z.record(z.string(), z.unknown()).optional(),
+});
+export type BlueprintInstance = z.infer<typeof BlueprintInstanceSchema>;
 
 /**
  * Workspace metadata for merged automations
@@ -74,6 +104,11 @@ export const FlowGraphSchema = z.object({
    */
   description: z.string().optional(),
   /**
+   * What the flow is saved as: an automation (starts from triggers) or a script (starts when
+   * called). Absent means automation, which is what every graph made before scripts is.
+   */
+  kind: FlowKindSchema.optional(),
+  /**
    * Array of nodes (triggers, conditions, actions)
    */
   nodes: z.array(NodeSchema),
@@ -103,6 +138,10 @@ export const FlowGraphSchema = z.object({
    * Workspace metadata for merged automations
    */
   workspace: FlowWorkspaceSchema.optional(),
+  /**
+   * Set when the config is made from a blueprint: the graph has no nodes and is read-only
+   */
+  blueprint: BlueprintInstanceSchema.optional(),
 });
 export type FlowGraph = z.infer<typeof FlowGraphSchema>;
 
@@ -110,7 +149,8 @@ export type FlowGraph = z.infer<typeof FlowGraphSchema>;
  * Validate graph structure beyond schema validation
  * - All edge sources/targets must reference existing nodes
  * - Trigger nodes should have no incoming edges
- * - Graph must have at least one trigger node
+ * - An automation must have at least one trigger node (unless it is made from a blueprint);
+ *   a script must have none
  */
 export function validateGraphStructure(graph: FlowGraph): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -131,9 +171,13 @@ export function validateGraphStructure(graph: FlowGraph): { valid: boolean; erro
     }
   }
 
-  // Check for at least one trigger node
+  // An automation starts from its triggers (a blueprint instance brings its own); a script has none.
   const triggerNodes = graph.nodes.filter((n) => n.type === 'trigger');
-  if (triggerNodes.length === 0) {
+  if (graph.kind === 'script') {
+    if (triggerNodes.length > 0) {
+      errors.push('A script has no triggers: it starts when it is called');
+    }
+  } else if (triggerNodes.length === 0 && graph.blueprint === undefined) {
     errors.push('Graph must have at least one trigger node');
   }
 

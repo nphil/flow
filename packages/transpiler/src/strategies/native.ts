@@ -54,31 +54,42 @@ function cleanTrigger(trigger: Record<string, unknown>): Record<string, unknown>
 }
 
 /**
- * Native strategy for simple tree-shaped automations
+ * Native strategy for simple tree-shaped automations and scripts
  * Generates standard nested Home Assistant YAML with choose blocks
  */
 export class NativeStrategy extends BaseStrategy {
   readonly name = 'native';
-  readonly description = 'Generates nested HA YAML for simple tree-shaped automations';
+  readonly description = 'Generates nested HA YAML for simple tree-shaped automations and scripts';
 
   canHandle(analysis: TopologyAnalysis): boolean {
     return analysis.isTree;
   }
 
   generate(flow: FlowGraph, _analysis: TopologyAnalysis): HAYamlOutput {
-    const triggers = this.extractTriggers(flow);
     const builder = new SequenceBuilder(flow, {
       buildNodeAction: (node) => this.buildNodeAction(node),
       buildCondition: (node) => this.buildCondition(node),
     });
-    const { rootConditions, actions, warnings, unplaced } = builder.buildActions(
-      flow.nodes.filter((node) => node.type === 'trigger').map((node) => node.id)
-    );
+
+    if (flow.kind === 'script') {
+      const { steps, unplaced } = builder.buildScript();
+      pruneEmptyBranches(steps);
+      return {
+        script: { ...this.scriptSettings(flow), sequence: steps },
+        warnings: [],
+        strategy: this.name,
+        incomplete: unplaced.length > 0,
+        nodeOrder: builder.writtenOrder(),
+      };
+    }
+
+    const triggerIds = flow.nodes.filter((node) => node.type === 'trigger').map((node) => node.id);
+    const { rootConditions, actions, warnings, unplaced } = builder.buildActions(triggerIds);
 
     const automation: Record<string, unknown> = {
       alias: flow.name,
       description: flow.description || '',
-      triggers: triggers,
+      triggers: this.extractTriggers(flow),
     };
 
     if (rootConditions && rootConditions.length > 0) {
@@ -87,33 +98,14 @@ export class NativeStrategy extends BaseStrategy {
 
     pruneEmptyBranches(actions);
     automation.actions = actions;
-    automation.mode = flow.metadata?.mode ?? 'single';
-
-    // Add optional metadata
-    if (flow.metadata?.max) {
-      automation.max = flow.metadata.max;
-    }
-    if (flow.metadata?.max_exceeded) {
-      automation.max_exceeded = flow.metadata.max_exceeded;
-    }
-    if (typeof flow.metadata?.initial_state === 'boolean') {
-      automation.initial_state = flow.metadata.initial_state;
-    }
-    if (typeof flow.metadata?.hide_entity === 'boolean') {
-      automation.hide_entity = flow.metadata.hide_entity;
-    }
-    if (flow.metadata?.trace) {
-      automation.trace = flow.metadata.trace;
-    }
-    if (flow.userTriggerVariables && Object.keys(flow.userTriggerVariables).length > 0) {
-      automation.trigger_variables = flow.userTriggerVariables;
-    }
+    Object.assign(automation, this.automationSettings(flow));
 
     return {
       automation,
       warnings,
       strategy: this.name,
       incomplete: unplaced.length > 0,
+      nodeOrder: [...triggerIds, ...builder.writtenOrder()],
     };
   }
 

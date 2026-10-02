@@ -1,18 +1,22 @@
 import type {
   ActionNode,
+  BlueprintInstance,
   CafeMetadata,
   ConditionNode,
   DelayNode,
   FlowEdge,
   FlowGraph,
+  FlowKind,
   FlowNode,
   TriggerNode,
   WaitNode,
 } from '@flow/shared';
 import {
+  BlueprintInstanceSchema,
   CafeMetadataSchema,
-  FlowGraphMetadataSchema,
+  detectFlowKind,
   FlowGraphSchema,
+  FlowMetadataSchema,
   HAConditionSchema,
   HATriggerSchema,
   isHACondition,
@@ -82,10 +86,10 @@ function makeEdgeIdsUnique(edges: FlowEdge[]): void {
  * silently turned a `queued` automation into `single` and dropped its `max`.
  */
 function parseMetadataBlock(raw: Record<string, unknown>) {
-  const whole = FlowGraphMetadataSchema.safeParse(raw);
+  const whole = FlowMetadataSchema.safeParse(raw);
   if (whole.success) return whole.data;
 
-  const singleKey = FlowGraphMetadataSchema.partial();
+  const singleKey = FlowMetadataSchema.partial();
   const kept: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     const one = singleKey.safeParse({ [key]: value });
@@ -94,7 +98,7 @@ function parseMetadataBlock(raw: Record<string, unknown>) {
       if (parsedKey === key) kept[key] = parsedValue;
     }
   }
-  return FlowGraphMetadataSchema.parse(kept);
+  return FlowMetadataSchema.parse(kept);
 }
 
 /**
@@ -109,6 +113,105 @@ function flattenTriggerList(items: unknown[]): unknown[] {
   );
 }
 
+/** The node types Flow numbers: `_cafe_metadata` lists the ids it saved, each prefixed by its type. */
+const KNOWN_NODE_TYPES = ['set_variables', 'trigger', 'condition', 'action', 'delay', 'wait'];
+
+/**
+ * Hands out the node ids of a config that is being opened. The ids saved in `_cafe_metadata` come
+ * first so every node gets its canvas position back: matched by node type (depth-first parsing
+ * meets nodes of different types in another order than they were saved), then in saved order,
+ * and new ids once those run out.
+ */
+function createNodeIdAllocator(metadataNodeIds: string[]): (type: string) => string {
+  const metadataIdsByType = new Map<string, string[]>();
+  const usedMetadataIds = new Set<string>();
+  for (const id of metadataNodeIds) {
+    const matchedType = KNOWN_NODE_TYPES.find((t) => id.startsWith(`${t}_`));
+    if (matchedType) {
+      if (!metadataIdsByType.has(matchedType)) metadataIdsByType.set(matchedType, []);
+      metadataIdsByType.get(matchedType)?.push(id);
+    }
+  }
+  const metadataTypeIndexes = new Map<string, number>();
+  let sequentialFallbackIndex = 0;
+  let nodeIdCounter = metadataNodeIds.length;
+
+  return (type) => {
+    // First: try type-matched metadata ID
+    const ids = metadataIdsByType.get(type);
+    const idx = metadataTypeIndexes.get(type) ?? 0;
+    if (ids && idx < ids.length) {
+      const id = ids[idx];
+      metadataTypeIndexes.set(type, idx + 1);
+      usedMetadataIds.add(id);
+      return id;
+    }
+    // Second: fallback to next unused metadata ID (handles non-standard ID formats)
+    while (sequentialFallbackIndex < metadataNodeIds.length) {
+      const id = metadataNodeIds[sequentialFallbackIndex++];
+      if (!usedMetadataIds.has(id)) {
+        usedMetadataIds.add(id);
+        return id;
+      }
+    }
+    // Third: generate a new ID
+    return generateNodeId(type, nodeIdCounter++);
+  };
+}
+
+/** Keys a blueprint instance shares with every config; they are not overrides of the blueprint. */
+const BLUEPRINT_OWN_KEYS: Record<string, true> = {
+  id: true,
+  alias: true,
+  description: true,
+  use_blueprint: true,
+};
+
+/**
+ * The blueprint a config is made from, or undefined for a config that holds its own steps. Home
+ * Assistant builds the triggers, conditions and actions from the blueprint and the inputs, so such
+ * a config has none; whatever else it sets (mode, trace, ...) overrides the blueprint's own.
+ */
+function readBlueprintInstance(content: Record<string, unknown>): BlueprintInstance | undefined {
+  const useBlueprint = BlueprintInstanceSchema.shape.use_blueprint.safeParse(content.use_blueprint);
+  if (!useBlueprint.success) return undefined;
+  const overrides = Object.fromEntries(
+    Object.entries(content).filter(([key]) => !Object.hasOwn(BLUEPRINT_OWN_KEYS, key))
+  );
+  return {
+    use_blueprint: useBlueprint.data,
+    ...(Object.keys(overrides).length > 0 ? { overrides } : {}),
+  };
+}
+
+/** What the caller knows about the config it hands to `parse`. */
+export interface ParseOptions {
+  /**
+   * What the config is saved as. Without it the shape decides (see `detectFlowKind`), which cannot
+   * tell a script made from a blueprint from an automation made from one: say so when you know.
+   */
+  kind?: FlowKind;
+}
+
+/** The nodes and edges a config's steps make. */
+interface StructureResult {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+/** Where a config keeps its steps: a script's `sequence`, an automation's `actions` (or `action`). */
+function stepListOf(content: Record<string, unknown>, kind: FlowKind): unknown {
+  return kind === 'script' ? content.sequence : content.actions || content.action;
+}
+
+/**
+ * The trace path Home Assistant gives the step list (`sequence/0`, `action/0`). Every path the
+ * parser records starts with it, so the trace viewer finds the node a trace step belongs to.
+ */
+function stepsPathOf(kind: FlowKind): string {
+  return kind === 'script' ? 'sequence' : 'action';
+}
+
 /**
  * Parser for converting Home Assistant YAML back to FlowGraph
  */
@@ -116,7 +219,7 @@ export class YamlParser {
   /**
    * Parse Home Assistant YAML string into FlowGraph
    */
-  async parse(yamlString: string): Promise<ParseResult> {
+  async parse(yamlString: string, options: ParseOptions = {}): Promise<ParseResult> {
     const warnings: string[] = [];
     const recorder = new PathRecorder();
 
@@ -153,7 +256,7 @@ export class YamlParser {
       // Step 2b: Extract user-defined variables (excluding _cafe_metadata)
       const userVariables = this.extractUserVariables(parsed);
 
-      // Step 3: Only support automation format (no script import)
+      // Step 3: What the config is saved as, and whether it is made from a blueprint
       const content = parsed;
       // Defensive: ensure content is Record<string, unknown>
       if (typeof content !== 'object' || content === null) {
@@ -164,18 +267,17 @@ export class YamlParser {
           hadMetadata,
         };
       }
+      const kind = options.kind ?? detectFlowKind(content);
+      const blueprint = readBlueprintInstance(content);
 
       // Step 4: Extract node IDs from metadata if available
       const metadataNodeIds = metadata ? Object.keys(metadata.nodes) : [];
 
-      // Step 5: Check if this is a state-machine format automation
-      const isStateMachine =
-        metadata?.strategy === 'state-machine' || this.detectStateMachineFormat(content);
-
-      // Step 6: Parse nodes and edges from YAML structure
-      const { nodes, edges } = isStateMachine
-        ? this.parseStateMachineStructure(content, warnings, metadataNodeIds, recorder)
-        : this.parseAutomationStructure(content, warnings, metadataNodeIds, recorder);
+      // Step 5-6: Parse nodes and edges from YAML structure (a blueprint instance has none)
+      const { nodes, edges } =
+        blueprint === undefined
+          ? this.parseStructure(content, kind, warnings, metadataNodeIds, recorder, metadata)
+          : { nodes: [], edges: [] };
       makeEdgeIdsUnique(edges);
 
       // Step 7: Apply positions from metadata or generate heuristic layout
@@ -188,34 +290,56 @@ export class YamlParser {
       }
 
       // Step 8: Build FlowGraph object
-      // Validate and parse metadata block using FlowGraphMetadataSchema
-      const rawMetadata = {
-        mode: content.mode,
-        max: content.max,
-        max_exceeded: content.max_exceeded,
-        initial_state: content.initial_state,
-        hide_entity: content.hide_entity,
-        trace: content.trace,
-      };
+      // Validate and parse metadata block using FlowMetadataSchema
+      const rawMetadata =
+        kind === 'script'
+          ? {
+              mode: content.mode,
+              max: content.max,
+              max_exceeded: content.max_exceeded,
+              trace: content.trace,
+              icon: content.icon,
+              fields: content.fields,
+            }
+          : {
+              mode: content.mode,
+              max: content.max,
+              max_exceeded: content.max_exceeded,
+              initial_state: content.initial_state,
+              hide_entity: content.hide_entity,
+              trace: content.trace,
+            };
       const metadataBlock = parseMetadataBlock(rawMetadata);
 
       const userTriggerVariables =
+        kind === 'automation' &&
         typeof content.trigger_variables === 'object' &&
         content.trigger_variables !== null &&
         !Array.isArray(content.trigger_variables)
           ? (content.trigger_variables as Record<string, unknown>)
           : undefined;
 
+      // A blueprint instance keeps every other key verbatim (see readBlueprintInstance), `variables`
+      // included: none of it is a user variable of ours.
+      const keepsUserVariables = blueprint === undefined && Object.keys(userVariables).length > 0;
+
       const graph: FlowGraph = {
         id: metadata?.graph_id || generateGraphId(),
-        name: typeof content.alias === 'string' ? content.alias : 'Imported Automation',
+        name:
+          typeof content.alias === 'string'
+            ? content.alias
+            : kind === 'script'
+              ? 'Imported Script'
+              : 'Imported Automation',
         description: typeof content.description === 'string' ? content.description : '',
         nodes: nodesWithPositions,
         edges,
         metadata: metadataBlock,
         version: 1 as const,
+        kind,
+        blueprint,
         // Preserve user-defined variables for round-trip
-        userVariables: Object.keys(userVariables).length > 0 ? userVariables : undefined,
+        userVariables: keepsUserVariables ? userVariables : undefined,
         userTriggerVariables:
           userTriggerVariables && Object.keys(userTriggerVariables).length > 0
             ? userTriggerVariables
@@ -360,13 +484,13 @@ export class YamlParser {
   }
 
   /**
-   * Detect if automation is in state-machine format
+   * Detect if a flow is in state-machine format
    * State-machine format has:
    * - A variables action with current_node and flow_context
    * - A repeat loop with choose blocks
    */
-  private detectStateMachineFormat(content: Record<string, unknown>): boolean {
-    const actions = (content.actions || content.action) as unknown[];
+  private detectStateMachineFormat(content: Record<string, unknown>, kind: FlowKind): boolean {
+    const actions = stepListOf(content, kind);
     if (!Array.isArray(actions)) return false;
 
     let hasCurrentNodeVar = false;
@@ -403,10 +527,10 @@ export class YamlParser {
   }
 
   /**
-   * Parse state-machine format automation into nodes and edges
+   * Parse state-machine format flow into nodes and edges
    *
    * State-machine format structure:
-   * - Triggers are parsed normally
+   * - Triggers are parsed normally (a script has none)
    * - Actions contain: variables (current_node init) + repeat/choose blocks
    * - Each choose block represents a node:
    *   - condition: {{ current_node == "node-id" }}
@@ -414,17 +538,18 @@ export class YamlParser {
    */
   private parseStateMachineStructure(
     content: Record<string, unknown>,
+    kind: FlowKind,
     warnings: string[],
     metadataNodeIds: string[],
     recorder: PathRecorder
-  ): { nodes: FlowNode[]; edges: FlowEdge[] } {
+  ): StructureResult {
     const nodes: FlowNode[] = [];
     const edges: FlowEdge[] = [];
 
     // Find the entry node and parse the state machine
-    const actions = (content.actions || content.action) as unknown[];
+    const actions = stepListOf(content, kind);
     if (!Array.isArray(actions)) {
-      warnings.push('No actions found in automation');
+      warnings.push(`No ${kind === 'script' ? 'sequence' : 'actions'} found in ${kind}`);
       return { nodes, edges };
     }
 
@@ -463,7 +588,7 @@ export class YamlParser {
                 const nodeInfo = this.parseStateMachineChooseBlock(block);
                 if (nodeInfo) {
                   nodeInfoMap.set(nodeInfo.nodeId, nodeInfo);
-                  const basePath = `action/${dispatchIdx}/repeat/sequence/${chooseIdx}/choose/${b}`;
+                  const basePath = `${stepsPathOf(kind)}/${dispatchIdx}/repeat/sequence/${chooseIdx}/choose/${b}`;
                   chooseBlockPaths.set(nodeInfo.nodeId, basePath);
 
                   // `__parallel_trigger_*` dispatcher branches don't correspond to a
@@ -530,20 +655,23 @@ export class YamlParser {
       return generateNodeId(type, nodeIdIndex++);
     };
 
-    // Parse triggers
-    const triggerData = content.triggers || content.trigger;
-    if (!triggerData) {
-      warnings.push('No triggers found in automation');
-      return { nodes, edges };
+    // Parse triggers (a script has none)
+    let triggerNodes: FlowNode[] = [];
+    if (kind === 'automation') {
+      const triggerData = content.triggers || content.trigger;
+      if (!triggerData) {
+        warnings.push('No triggers found in automation');
+        return { nodes, edges };
+      }
+      const triggers = Array.isArray(triggerData) ? triggerData : [triggerData];
+      triggerNodes = this.parseTriggers(
+        triggers as Record<string, unknown>[],
+        warnings,
+        getNextNodeId,
+        recorder
+      );
+      nodes.push(...triggerNodes);
     }
-    const triggers = Array.isArray(triggerData) ? triggerData : [triggerData];
-    const triggerNodes = this.parseTriggers(
-      triggers as Record<string, unknown>[],
-      warnings,
-      getNextNodeId,
-      recorder
-    );
-    nodes.push(...triggerNodes);
 
     // Create nodes from parsed info
     for (const [nodeId, info] of nodeInfoMap) {
@@ -1074,6 +1202,53 @@ export class YamlParser {
   }
 
   /**
+   * Parse the steps of a flow into nodes and edges: a state machine written by Flow's own fallback
+   * strategy, a script's `sequence`, or an automation's triggers, conditions and actions.
+   */
+  private parseStructure(
+    content: Record<string, unknown>,
+    kind: FlowKind,
+    warnings: string[],
+    metadataNodeIds: string[],
+    recorder: PathRecorder,
+    metadata: CafeMetadata | null
+  ): StructureResult {
+    const isStateMachine =
+      metadata?.strategy === 'state-machine' || this.detectStateMachineFormat(content, kind);
+    if (isStateMachine) {
+      return this.parseStateMachineStructure(content, kind, warnings, metadataNodeIds, recorder);
+    }
+    return kind === 'script'
+      ? this.parseScriptStructure(content, warnings, metadataNodeIds, recorder)
+      : this.parseAutomationStructure(content, warnings, metadataNodeIds, recorder);
+  }
+
+  /**
+   * Parse a script's `sequence` into nodes and edges (native format). There are no triggers: the
+   * first step is the start, and a script that opens with a `parallel` block starts with several
+   * nodes that nothing leads to.
+   */
+  private parseScriptStructure(
+    content: Record<string, unknown>,
+    warnings: string[],
+    metadataNodeIds: string[],
+    recorder: PathRecorder
+  ): StructureResult {
+    const sequence = content.sequence;
+    if (sequence === undefined || sequence === null) {
+      warnings.push('No sequence found in script');
+      return { nodes: [], edges: [] };
+    }
+    const steps = Array.isArray(sequence) ? sequence : [sequence];
+    const { nodes, edges } = new StepParser({
+      warnings,
+      getNextNodeId: createNodeIdAllocator(metadataNodeIds),
+      recorder,
+    }).parseActions(steps, { previous: [], depth: 0, pathPrefix: stepsPathOf('script') });
+    return { nodes, edges };
+  }
+
+  /**
    * Parse automation structure into nodes and edges (native format)
    */
   private parseAutomationStructure(
@@ -1081,49 +1256,13 @@ export class YamlParser {
     warnings: string[],
     metadataNodeIds: string[],
     recorder: PathRecorder
-  ): { nodes: FlowNode[]; edges: FlowEdge[] } {
+  ): StructureResult {
     const nodes: FlowNode[] = [];
     const edges: FlowEdge[] = [];
 
-    // Group metadata IDs by node type for type-aware assignment.
-    // Without type-aware grouping, depth-first parsing of parallel branches
-    // would assign IDs in the wrong order (e.g., an action gets a condition's ID).
-    const knownNodeTypes = ['set_variables', 'trigger', 'condition', 'action', 'delay', 'wait'];
-    const metadataIdsByType = new Map<string, string[]>();
-    const usedMetadataIds = new Set<string>();
-    for (const id of metadataNodeIds) {
-      const matchedType = knownNodeTypes.find((t) => id.startsWith(`${t}_`));
-      if (matchedType) {
-        if (!metadataIdsByType.has(matchedType)) metadataIdsByType.set(matchedType, []);
-        metadataIdsByType.get(matchedType)!.push(id);
-      }
-    }
-    const metadataTypeIndexes = new Map<string, number>();
-    let sequentialFallbackIndex = 0;
-    let nodeIdCounter = metadataNodeIds.length;
-
-    // Helper to get next node ID (from metadata if available, otherwise generate)
-    const getNextNodeId = (type: string): string => {
-      // First: try type-matched metadata ID
-      const ids = metadataIdsByType.get(type);
-      const idx = metadataTypeIndexes.get(type) ?? 0;
-      if (ids && idx < ids.length) {
-        const id = ids[idx];
-        metadataTypeIndexes.set(type, idx + 1);
-        usedMetadataIds.add(id);
-        return id;
-      }
-      // Second: fallback to next unused metadata ID (handles non-standard ID formats)
-      while (sequentialFallbackIndex < metadataNodeIds.length) {
-        const id = metadataNodeIds[sequentialFallbackIndex++];
-        if (!usedMetadataIds.has(id)) {
-          usedMetadataIds.add(id);
-          return id;
-        }
-      }
-      // Third: generate a new ID
-      return generateNodeId(type, nodeIdCounter++);
-    };
+    // Hands out the saved ids by node type: without type-aware grouping, depth-first parsing of
+    // parallel branches would assign IDs in the wrong order (e.g., an action gets a condition's ID).
+    const getNextNodeId = createNodeIdAllocator(metadataNodeIds);
 
     // Parse triggers (support both 'trigger' and 'triggers')
     const triggerData = content.triggers || content.trigger;
@@ -1170,7 +1309,7 @@ export class YamlParser {
     }
 
     // Parse actions (support both 'action' and 'actions')
-    const actionData = content.actions || content.action;
+    const actionData = stepListOf(content, 'automation');
     if (!actionData) {
       warnings.push('No actions found in automation');
       return { nodes, edges };
@@ -1178,7 +1317,7 @@ export class YamlParser {
     const actions = Array.isArray(actionData) ? actionData : [actionData];
     const actionResults = new StepParser({ warnings, getNextNodeId, recorder }).parseActions(
       actions,
-      { previous: firstActions, depth: 0, pathPrefix: 'action', triggerNodeMap }
+      { previous: firstActions, depth: 0, pathPrefix: stepsPathOf('automation'), triggerNodeMap }
     );
     nodes.push(...actionResults.nodes);
     edges.push(...actionResults.edges);

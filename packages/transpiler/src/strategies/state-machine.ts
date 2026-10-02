@@ -10,7 +10,7 @@ import type {
   WaitNode,
 } from '@flow/shared';
 import { isDeviceAction } from '@flow/shared';
-import type { TopologyAnalysis } from '../analyzer/topology';
+import { findScriptEntryNodes, type TopologyAnalysis } from '../analyzer/topology';
 import { BaseStrategy, type HAYamlOutput } from './base';
 
 /**
@@ -45,33 +45,7 @@ export class StateMachineStrategy extends BaseStrategy {
 
     if (triggerRouting.size === 0) {
       warnings.push('No action nodes found after triggers');
-      // Extract triggers to determine output format
-      const triggers = this.extractTriggers(flow);
-      if (triggers.length > 0) {
-        // Output as automation with empty action
-        return {
-          automation: {
-            alias: flow.name,
-            description: flow.description || '',
-            triggers: triggers,
-            actions: [],
-            mode: flow.metadata?.mode ?? 'single',
-          },
-          warnings,
-          strategy: this.name,
-        };
-      }
-      // No triggers - output as script
-      return {
-        script: {
-          alias: flow.name,
-          description: flow.description || '',
-          sequence: [],
-          mode: flow.metadata?.mode ?? 'single',
-        },
-        warnings,
-        strategy: this.name,
-      };
+      return this.wrap(flow, [], warnings);
     }
 
     // Generate parallel entry blocks for triggers with multiple targets
@@ -103,9 +77,6 @@ export class StateMachineStrategy extends BaseStrategy {
         warnings.push(cycleWarning);
       }
     }
-
-    // Extract triggers for the automation wrapper
-    const triggers = this.extractTriggers(flow);
 
     // Generate the initial node expression
     // If all triggers lead to the same node, use that directly
@@ -152,28 +123,29 @@ export class StateMachineStrategy extends BaseStrategy {
       },
     ];
 
-    // If there are triggers, output as automation format
-    if (triggers.length > 0) {
+    return this.wrap(flow, actionSequence, warnings);
+  }
+
+  /** The config around the steps: an automation with its triggers, or a script. */
+  private wrap(
+    flow: FlowGraph,
+    steps: Record<string, unknown>[],
+    warnings: string[]
+  ): HAYamlOutput {
+    if (flow.kind === 'script') {
       return {
-        automation: {
-          alias: flow.name,
-          description: flow.description || '',
-          triggers: triggers,
-          actions: actionSequence,
-          mode: flow.metadata?.mode ?? 'single',
-        },
+        script: { ...this.scriptSettings(flow), sequence: steps },
         warnings,
         strategy: this.name,
       };
     }
-
-    // No triggers - output as script format
     return {
-      script: {
+      automation: {
         alias: flow.name,
         description: flow.description || '',
-        sequence: actionSequence,
-        mode: flow.metadata?.mode ?? 'single',
+        triggers: this.extractTriggers(flow),
+        actions: steps,
+        ...this.automationSettings(flow),
       },
       warnings,
       strategy: this.name,
@@ -184,9 +156,16 @@ export class StateMachineStrategy extends BaseStrategy {
    * Build a mapping from trigger index to target action node(s)
    * Returns a Map where key = trigger index, value = array of target node IDs
    * When a trigger has multiple targets, they should execute in parallel
+   * A script has no triggers: it is one entry whose targets are the nodes it starts from.
    */
   private buildTriggerRouting(flow: FlowGraph): Map<number, string[]> {
     const routing = new Map<number, string[]>();
+
+    if (flow.kind === 'script') {
+      const entries = findScriptEntryNodes(flow);
+      if (entries.length > 0) routing.set(0, entries);
+      return routing;
+    }
 
     // Get trigger nodes in order (they will be output in this order)
     const triggerNodes = flow.nodes.filter((n): n is TriggerNode => n.type === 'trigger');
