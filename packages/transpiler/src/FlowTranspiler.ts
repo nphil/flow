@@ -1,9 +1,4 @@
-import {
-  type BlueprintInstance,
-  type FlowGraph,
-  INTERNAL_NODE_KEYS,
-  isRecord,
-} from '@flow/shared';
+import { type BlueprintInstance, type FlowGraph, INTERNAL_NODE_KEYS, isRecord } from '@flow/shared';
 import { dump as yamlDump } from 'js-yaml';
 import { analyzeTopology, type TopologyAnalysis } from './analyzer/topology';
 import { type ValidationResult, validateFlowGraph } from './analyzer/validator';

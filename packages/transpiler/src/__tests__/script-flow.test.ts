@@ -156,9 +156,7 @@ sequence:
     });
     const dragged = positionsByAlias(graph);
 
-    const reopened = await openScript(
-      transpiler.toYaml(graph)
-    );
+    const reopened = await openScript(transpiler.toYaml(graph));
 
     expect(positionsByAlias(reopened)).toEqual(dragged);
   });
@@ -273,7 +271,10 @@ describe('what a script and an automation each need', () => {
   };
 
   it('refuses a script that has a trigger', () => {
-    const graph = drawn([trigger, action('action_a', 'light.turn_on')], [edge('trigger_a', 'action_a')]);
+    const graph = drawn(
+      [trigger, action('action_a', 'light.turn_on')],
+      [edge('trigger_a', 'action_a')]
+    );
 
     const result = transpiler.validate(graph);
 
@@ -284,11 +285,16 @@ describe('what a script and an automation each need', () => {
   });
 
   it('still refuses an automation without a trigger', () => {
-    const graph: FlowGraph = { ...drawn([action('action_a', 'light.turn_on')], []), kind: 'automation' };
+    const graph: FlowGraph = {
+      ...drawn([action('action_a', 'light.turn_on')], []),
+      kind: 'automation',
+    };
 
     const result = transpiler.validate(graph);
 
-    expect(result.errors.map((e) => e.message)).toContain('Graph must have at least one trigger node');
+    expect(result.errors.map((e) => e.message)).toContain(
+      'Graph must have at least one trigger node'
+    );
   });
 
   it('does not take a half-written use_blueprint for a blueprint instance', async () => {
@@ -354,7 +360,10 @@ describe('an if with no else, followed by a parallel block', () => {
       `alias: G\ntriggers:\n  - trigger: state\n    entity_id: light.a\nactions:${steps}`,
     ],
   ] as const)('is saved as it was written (%s)', async (kind, yaml) => {
-    const result = await roundTripConfig(transpiler, yamlLoad(yaml) as Json, { kind, strict: true });
+    const result = await roundTripConfig(transpiler, yamlLoad(yaml) as Json, {
+      kind,
+      strict: true,
+    });
 
     expect(result.diffs).toEqual([]);
     expect(result.status).toBe('ok');

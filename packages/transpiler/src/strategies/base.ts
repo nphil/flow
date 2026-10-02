@@ -84,7 +84,8 @@ export abstract class BaseStrategy implements TranspilerStrategy {
     const settings: Record<string, unknown> = { mode: metadata?.mode ?? 'single' };
     if (metadata?.max) settings.max = metadata.max;
     if (metadata?.max_exceeded) settings.max_exceeded = metadata.max_exceeded;
-    if (typeof metadata?.initial_state === 'boolean') settings.initial_state = metadata.initial_state;
+    if (typeof metadata?.initial_state === 'boolean')
+      settings.initial_state = metadata.initial_state;
     if (typeof metadata?.hide_entity === 'boolean') settings.hide_entity = metadata.hide_entity;
     if (metadata?.trace) settings.trace = metadata.trace;
     if (flow.userTriggerVariables && Object.keys(flow.userTriggerVariables).length > 0) {
