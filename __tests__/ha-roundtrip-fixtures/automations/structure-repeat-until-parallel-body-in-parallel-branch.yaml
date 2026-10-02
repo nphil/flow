@@ -1,0 +1,33 @@
+# Structure stress: one branch of a parallel block is a repeat-until loop whose body starts with
+# another parallel block (the loop sits between two parallel blocks), then one shared step.
+id: fixture_structure_until_parallel_in_branch
+alias: Fixture - parallel branch with a repeat until that starts with a parallel block
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - parallel:
+      - alias: Retry the lights
+        sequence:
+          - repeat:
+              sequence:
+                - parallel:
+                    - action: light.turn_on
+                      target:
+                        entity_id: light.hallway
+                    - action: light.turn_on
+                      target:
+                        entity_id: light.porch
+                - delay:
+                    seconds: 1
+              until:
+                - condition: state
+                  entity_id: light.hallway
+                  state: "on"
+      - action: notify.mobile_app_phone
+        data:
+          message: Someone is at the door.
+  - action: persistent_notification.create
+    data:
+      message: Everything finished.

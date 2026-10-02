@@ -1,0 +1,55 @@
+# Structure stress: a repeat-until loop whose body starts with a parallel block. The loop is
+# entered at one node per branch and every test loops back to all of them.
+id: fixture_structure_until_parallel_first
+alias: Fixture - repeat until, body starts with a parallel block
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Starting.
+  - alias: Poll until both sensors report
+    note: Each round asks both sensors at once, then waits when one is still silent.
+    repeat:
+      sequence:
+        - alias: Ask both at once
+          note: Ask both sensors in the same moment.
+          parallel:
+            - alias: Ask the first
+              sequence:
+                - action: homeassistant.update_entity
+                  target:
+                    entity_id: sensor.first_probe
+                - delay:
+                    seconds: 1
+            - action: homeassistant.update_entity
+              target:
+                entity_id: sensor.second_probe
+        - if:
+            - condition: or
+              conditions:
+                - condition: state
+                  entity_id: sensor.first_probe
+                  state: unavailable
+                - condition: state
+                  entity_id: sensor.second_probe
+                  state: unavailable
+          then:
+            - delay:
+                seconds: 5
+      until:
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: sensor.first_probe
+              state: unavailable
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: sensor.second_probe
+              state: unavailable
+  - action: persistent_notification.create
+    data:
+      message: Both sensors answered.

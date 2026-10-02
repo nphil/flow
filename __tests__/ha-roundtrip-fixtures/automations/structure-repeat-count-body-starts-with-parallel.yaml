@@ -1,0 +1,30 @@
+# Structure stress: a counted repeat whose body starts with a three-branch parallel block, followed
+# by more steps in the body and by a step after the loop.
+id: fixture_structure_count_parallel_first
+alias: Fixture - repeat count, body starts with a parallel block
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      count: 3
+      sequence:
+        - parallel:
+            - action: light.toggle
+              target:
+                entity_id: light.hallway
+            - sequence:
+                - action: switch.toggle
+                  target:
+                    entity_id: switch.porch_lamp
+                - delay:
+                    seconds: 1
+            - action: notify.mobile_app_phone
+              data:
+                message: Ding.
+        - delay:
+            seconds: 2
+  - action: persistent_notification.create
+    data:
+      message: Rang three times.

@@ -15,19 +15,49 @@ type GraphInstance = InstanceType<typeof Graph>;
  *
  * This is used to identify repeat/loop patterns structurally without
  * requiring any edge metadata.
+ *
+ * A loop whose body starts with a parallel block is entered at several nodes, one per branch, and
+ * its test loops back to every one of them. The search only reaches the first of those edges with
+ * its target on the stack: the others lead to nodes it has not visited yet, so it would follow them
+ * and call an edge inside the body the back-edge. The entries of one loop have exactly the same
+ * predecessors (the step before the loop and the tests that loop back), so an edge from the same
+ * node and handle to a node with the predecessors of an open one loops back too.
  */
 export function findBackEdges(flow: FlowGraph): Set<string> {
   const backEdgeIds = new Set<string>();
   const visited = new Set<string>();
   const inStack = new Set<string>();
 
-  // Build adjacency map
+  // Build adjacency map and the predecessors of every node
   const outgoing = new Map<string, FlowEdge[]>();
+  const predecessors = new Map<string, Set<string>>();
   for (const edge of flow.edges) {
     const existing = outgoing.get(edge.source) || [];
     existing.push(edge);
     outgoing.set(edge.source, existing);
+    predecessors.set(edge.target, (predecessors.get(edge.target) ?? new Set()).add(edge.source));
   }
+
+  const haveSamePredecessors = (a: string, b: string): boolean => {
+    const first = predecessors.get(a);
+    const second = predecessors.get(b);
+    return (
+      first !== undefined &&
+      second !== undefined &&
+      first.size === second.size &&
+      [...first].every((id) => second.has(id))
+    );
+  };
+
+  /** An edge to another entry of a loop that an edge of the same node and handle already loops back to. */
+  const entersOpenLoop = (edge: FlowEdge, siblings: FlowEdge[]): boolean =>
+    siblings.some(
+      (other) =>
+        other.sourceHandle === edge.sourceHandle &&
+        other.target !== edge.target &&
+        inStack.has(other.target) &&
+        haveSamePredecessors(other.target, edge.target)
+    );
 
   // Find entry nodes (no incoming edges)
   const incomingTargets = new Set(flow.edges.map((e) => e.target));
@@ -38,8 +68,9 @@ export function findBackEdges(flow: FlowGraph): Set<string> {
     visited.add(nodeId);
     inStack.add(nodeId);
 
-    for (const edge of outgoing.get(nodeId) || []) {
-      if (inStack.has(edge.target)) {
+    const edges = outgoing.get(nodeId) || [];
+    for (const edge of edges) {
+      if (inStack.has(edge.target) || entersOpenLoop(edge, edges)) {
         backEdgeIds.add(edge.id);
       } else if (!visited.has(edge.target)) {
         dfs(edge.target);

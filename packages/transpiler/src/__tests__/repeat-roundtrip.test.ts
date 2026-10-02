@@ -1,7 +1,10 @@
+import { readNodeHints } from '@flow/shared';
+import { load as yamlLoad } from 'js-yaml';
 import { describe, expect, it, vi } from 'vitest';
 import { findBackEdges } from '../analyzer/topology';
 import { FlowTranspiler } from '../FlowTranspiler';
 import { YamlParser } from '../parser/YamlParser';
+import { isJson, isJsonObject } from '../semantic';
 
 // Mock the generateIds functions for deterministic IDs
 let mockNodeCounter = 0;
@@ -320,5 +323,91 @@ mode: single
       expect(analysis.hasCycles).toBe(false);
       expect(analysis.recommendedStrategy).toBe('native');
     });
+  });
+
+  // A loop whose body starts with a parallel block is entered at one node per branch, and its test
+  // loops back to every one of them. The way back must be those edges: reading an edge inside the
+  // body as the way back leaves nodes unwritten and puts the loop inside one branch.
+  describe('a loop whose body starts with a parallel block', () => {
+    const body = `
+        - parallel:
+            - action: light.turn_on
+              target:
+                entity_id: light.hallway
+            - action: light.turn_on
+              target:
+                entity_id: light.porch
+        - if:
+            - condition: state
+              entity_id: light.hallway
+              state: "off"
+          then:
+            - delay:
+                seconds: 5`;
+    const loops = {
+      until: `
+      sequence:${body}
+      until:
+        - condition: state
+          entity_id: light.porch
+          state: "on"`,
+      count: `
+      count: 3
+      sequence:${body}`,
+    };
+
+    for (const [kind, loop] of Object.entries(loops)) {
+      const yaml = `
+alias: Parallel first (${kind})
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: Starting.
+  - repeat:${loop}
+  - action: notify.mobile_app_phone
+    data:
+      message: Done.
+mode: single
+`;
+
+      it(`${kind}: the test loops back to every branch of the block and nothing else`, async () => {
+        const { graph } = await parser.parse(yaml);
+        if (!graph) throw new Error('did not parse');
+
+        const branchStarts = graph.nodes
+          .filter((node) => readNodeHints(node.data).parallelPath !== undefined)
+          .map((node) => node.id);
+        expect(branchStarts).toHaveLength(2);
+
+        const backEdgeIds = findBackEdges(graph);
+        const backEdges = graph.edges.filter((edge) => backEdgeIds.has(edge.id));
+        expect(backEdges.map((edge) => edge.target).sort()).toEqual([...branchStarts].sort());
+        const [test, ...others] = [...new Set(backEdges.map((edge) => edge.source))];
+        expect(others).toEqual([]);
+        const testNode = graph.nodes.find((node) => node.id === test);
+        expect(readNodeHints(testNode?.data ?? {}).loopRole).toBe(
+          kind === 'until' ? 'until' : 'count-check'
+        );
+      });
+
+      it(`${kind}: opens and saves as the same steps, natively`, async () => {
+        const { graph } = await parser.parse(yaml);
+        if (!graph) throw new Error('did not parse');
+
+        const analysis = transpiler.analyzeTopology(graph);
+        expect(analysis.hasCycles).toBe(false);
+        expect(analysis.recommendedStrategy).toBe('native');
+
+        const saved = transpiler.transpile(graph);
+        expect(saved.output?.strategy).toBe('native');
+        const original = yamlLoad(yaml);
+        if (!isJson(original) || !isJsonObject(original)) throw new Error('not a mapping');
+        expect(saved.config?.actions).toEqual(original.actions);
+      });
+    }
   });
 });

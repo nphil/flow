@@ -437,7 +437,7 @@ export class SequenceBuilder {
     }
     if (open.length > 1) {
       const loop = this.sharedLoop(open);
-      return loop ? this.buildLoop(loop, ctx) : this.buildParallel(open, ctx, pathIndex);
+      return loop ? this.buildLoop(loop, ctx, pathIndex) : this.buildParallel(open, ctx, pathIndex);
     }
     return this.buildAt(open[0], ctx, pathIndex);
   }
@@ -447,7 +447,7 @@ export class SequenceBuilder {
     if (!node) return { kind: 'end', at: null };
 
     const loop = this.loops.get(id);
-    if (loop && !this.activeLoops.has(loop)) return this.buildLoop(loop, ctx);
+    if (loop && !this.activeLoops.has(loop)) return this.buildLoop(loop, ctx, pathIndex);
 
     const level = this.hints(id).parallelPath?.[pathIndex];
     if (level?.count === 1) return this.buildParallel([id], ctx, pathIndex);
@@ -748,7 +748,14 @@ export class SequenceBuilder {
     return shared && !this.activeLoops.has(loop) ? loop : undefined;
   }
 
-  private buildLoop(loop: Loop, ctx: Ctx): StepOut {
+  /**
+   * `pathIndex`: how many parallel blocks around the loop already used the `parallelPath` of the
+   * node it starts at. An `until` loop starts at its body's first nodes, so when a parallel block
+   * hands the loop a branch, those nodes carry that block's path and the body goes on from there;
+   * the other loops start at a node of their own and the body's nodes carry no path of the blocks
+   * around the loop.
+   */
+  private buildLoop(loop: Loop, ctx: Ctx, pathIndex: number): StepOut {
     // The parser meets a loop's own nodes around its body (`count`: set-up, body, increment and
     // check; `while`: tests, body; `until`: body, tests), so they are written in that order.
     const { before, after } = loopNodesAround(loop);
@@ -757,11 +764,11 @@ export class SequenceBuilder {
     // An `until` loop is entered at its body's first node: while its body is built, that node
     // is the body, not the loop again.
     this.activeLoops.add(loop);
-    const body = this.buildSequence(loop.bodyStarts, {
-      level: ctx.level + 1,
-      joinId: loop.tailId,
-      hints: false,
-    });
+    const body = this.buildSequence(
+      loop.bodyStarts,
+      { level: ctx.level + 1, joinId: loop.tailId, hints: false },
+      loop.kind === 'until' ? pathIndex : 0
+    );
     this.activeLoops.delete(loop);
     for (const id of after) this.markEmitted(id);
     const conditions = loop.conditions.flatMap((id) => {

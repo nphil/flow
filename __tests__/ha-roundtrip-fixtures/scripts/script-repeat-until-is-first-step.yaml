@@ -1,0 +1,26 @@
+# A script that STARTS with a repeat-until loop whose body starts with a parallel block: nothing
+# leads into the loop, so its entry is the first node of every branch of that parallel block.
+alias: Fixture - script that starts with a retry loop
+mode: restart
+sequence:
+  - repeat:
+      sequence:
+        - parallel:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.helper_a
+            - action: switch.turn_on
+              target:
+                entity_id: switch.helper_b
+        - delay:
+            seconds: 5
+      until:
+        - condition: state
+          entity_id: sensor.helper_a_status
+          state: "on"
+        - condition: state
+          entity_id: sensor.helper_b_status
+          state: "on"
+  - action: persistent_notification.create
+    data:
+      message: Both helpers are on.

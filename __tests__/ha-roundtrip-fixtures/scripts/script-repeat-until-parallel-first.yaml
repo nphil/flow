@@ -1,0 +1,105 @@
+# A retry loop whose body STARTS with a parallel block (two reloads at once), then a decision.
+# The loop is entered at two nodes (one per branch) and its test loops back to both of them.
+alias: Fixture - script retry loop that starts with a parallel block
+description: Starts two helpers, then reloads both until they answer or the deadline passes.
+icon: mdi:reload
+mode: single
+max_exceeded: silent
+fields:
+  wait_seconds:
+    name: Wait for the helpers (seconds)
+    description: How long to wait for both helpers before reporting a failure.
+    default: 60
+    selector:
+      number:
+        min: 5
+        max: 300
+        unit_of_measurement: s
+variables:
+  wait_s: "{{ wait_seconds | default(60) | int(60) }}"
+sequence:
+  - alias: Mark the job as running
+    if:
+      - condition: state
+        entity_id: input_boolean.job_running
+        state: "off"
+    then:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.job_running
+  - alias: Start both helpers (does nothing for one that already runs)
+    parallel:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.helper_a
+        continue_on_error: true
+      - action: switch.turn_on
+        target:
+          entity_id: switch.helper_b
+        continue_on_error: true
+  - alias: Give the helpers time to start
+    delay: "00:00:07"
+  - alias: Deadline for the loop below
+    variables:
+      deadline: "{{ now().timestamp() + wait_s }}"
+  - alias: Reload both helpers until both answer or the deadline passes
+    note: The deadline is wall-clock because a failing reload itself takes seconds.
+    repeat:
+      sequence:
+        - parallel:
+            - action: homeassistant.reload_config_entry
+              target:
+                entity_id: sensor.helper_a_status
+              continue_on_error: true
+            - action: homeassistant.reload_config_entry
+              target:
+                entity_id: sensor.helper_b_status
+              continue_on_error: true
+        - if:
+            - condition: or
+              conditions:
+                - condition: state
+                  entity_id: sensor.helper_a_status
+                  state: unavailable
+                - condition: state
+                  entity_id: sensor.helper_b_status
+                  state: unavailable
+          then:
+            - delay: "00:00:05"
+      until:
+        - condition: or
+          conditions:
+            - condition: and
+              conditions:
+                - condition: not
+                  conditions:
+                    - condition: state
+                      entity_id: sensor.helper_a_status
+                      state: unavailable
+                - condition: not
+                  conditions:
+                    - condition: state
+                      entity_id: sensor.helper_b_status
+                      state: unavailable
+            - condition: template
+              value_template: "{{ now().timestamp() >= deadline }}"
+  - alias: Did both helpers come up?
+    if:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.helper_a_status
+            state: unavailable
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.helper_b_status
+            state: unavailable
+    then:
+      - action: persistent_notification.create
+        data:
+          message: Both helpers are up.
+    else:
+      - action: persistent_notification.create
+        data:
+          message: A helper did not answer in time.
