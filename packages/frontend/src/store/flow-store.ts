@@ -290,6 +290,12 @@ export interface FlowState {
   // Import/Export
   toFlowGraph: () => FlowGraph;
   fromFlowGraph: (graph: FlowGraph) => void;
+  /**
+   * Applies an edited copy of the current graph (a readability fix) as ONE undoable step. Nodes
+   * whose type and data are unchanged keep their canvas object (position, selection); does
+   * nothing when the edit changes nothing.
+   */
+  applyGraphEdit: (graph: FlowGraph) => void;
   /** Loads an existing HA automation by id via the ha-api + YamlParser path, replacing the canvas. */
   openAutomationById: (id: string) => Promise<void>;
   reset: () => void;
@@ -1147,6 +1153,81 @@ export const useFlowStore = create<FlowState>()(
           // whatever was open before it.
           cancelPendingHistoryCommit();
           useFlowStore.temporal.getState().clear();
+        },
+
+        applyGraphEdit: (graph) => {
+          const state = get();
+          const existingNodes = new Map(state.nodes.map((n) => [n.id, n]));
+          const nodes = graph.nodes.map((n) => {
+            const existing = existingNodes.get(n.id);
+            if (existing && existing.type === n.type && existing.data === n.data) return existing;
+            const data = normalizeNodeData(n.type, n.data as Record<string, unknown>);
+            return existing
+              ? { ...existing, type: n.type, data: data as FlowNodeData }
+              : { id: n.id, type: n.type, position: n.position, data: data as FlowNodeData };
+          });
+
+          const existingEdges = new Map(state.edges.map((e) => [e.id, e]));
+          const edges = graph.edges.map((e) => {
+            const existing = existingEdges.get(e.id);
+            if (
+              existing &&
+              existing.source === e.source &&
+              existing.target === e.target &&
+              existing.sourceHandle === e.sourceHandle &&
+              existing.targetHandle === e.targetHandle &&
+              existing.label === e.label
+            ) {
+              return existing;
+            }
+            return {
+              ...existing,
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              sourceHandle: e.sourceHandle,
+              targetHandle: e.targetHandle,
+              label: e.label,
+            };
+          });
+
+          const flowDescription = graph.description ?? '';
+          const flowMetadata = graph.metadata
+            ? { ...defaultFlowMetadata, ...graph.metadata }
+            : state.flowMetadata;
+          const nodesChanged =
+            nodes.length !== state.nodes.length || nodes.some((n, i) => n !== state.nodes[i]);
+          const edgesChanged =
+            edges.length !== state.edges.length || edges.some((e, i) => e !== state.edges[i]);
+          const metadataChanged =
+            flowMetadata !== state.flowMetadata && !shallow(flowMetadata, state.flowMetadata);
+          if (
+            !nodesChanged &&
+            !edgesChanged &&
+            !metadataChanged &&
+            graph.name === state.flowName &&
+            flowDescription === state.flowDescription &&
+            graph.userVariables === state.userVariables &&
+            graph.userTriggerVariables === state.userTriggerVariables
+          ) {
+            return;
+          }
+
+          set({
+            flowName: graph.name,
+            flowDescription,
+            ...(metadataChanged ? { flowMetadata } : {}),
+            userVariables: graph.userVariables,
+            userTriggerVariables: graph.userTriggerVariables,
+            ...(nodesChanged ? { nodes } : {}),
+            ...(edgesChanged ? { edges } : {}),
+            selectedNodeId:
+              state.selectedNodeId && nodes.some((n) => n.id === state.selectedNodeId)
+                ? state.selectedNodeId
+                : null,
+            hasUnsavedChanges: true,
+          });
+          get().validateAllNodes();
         },
 
         openAutomationById: async (id) => {
