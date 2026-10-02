@@ -10,6 +10,7 @@
     "build": "turbo run build",
     "build:ha": "turbo run build --force && echo '✓ Built and copied to custom_components/flow/www/'",
     "test": "vitest",
+    "test:roundtrip": "vitest --run packages/transpiler/src/__tests__/ha-roundtrip-corpus.test.ts",
     "test:cli": "yarn workspace @flow/transpiler cli",
     "lint": "turbo run lint",
     "lint:biome": "biome lint .",
@@ -20,7 +21,9 @@
     "check": "biome check . ; yarn typecheck ; yarn lint:biome ; yarn format:check",
     "check:fix": "biome check --write --unsafe . ; yarn lint:fix ; yarn format",
     "typecheck": "turbo run typecheck",
-    "verify:ha": "tsx scripts/verify-ha-roundtrip.mts"
+    "verify:ha": "tsx scripts/verify-ha-roundtrip.mts",
+    "release:bump": "node scripts/bump-version.mjs",
+    "release:check": "node scripts/bump-version.mjs --check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
