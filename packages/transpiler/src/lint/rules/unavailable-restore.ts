@@ -173,7 +173,7 @@ function stateTriggerFinding(node: FlowNode, problem: RestoreProblem): Readabili
         ...base,
         message: `Ignores changes from ${quoted(problem.ignored)}, but still starts when ${entities} comes back from “unavailable”.`,
         detail:
-          'Home Assistant counts “unavailable” to “on” as a change to “on”, so a device that drops offline and reconnects starts this automation although nothing happened.',
+          'Home Assistant treats a jump from “unavailable” to a normal state (such as “on”) as a real change, so a device that drops offline and reconnects starts this automation although nothing happened.',
         fixes: [
           {
             label: 'Also ignore “unavailable”',
@@ -187,7 +187,7 @@ function stateTriggerFinding(node: FlowNode, problem: RestoreProblem): Readabili
         ...base,
         message: `Starts when ${entities} comes back after being “unavailable”, not only on a real change.`,
         detail:
-          'Home Assistant counts “unavailable” to “on” as a change to “on”. If the device drops offline and reconnects, this automation runs although nothing happened. Ignoring changes that come from “unavailable” keeps only real changes.',
+          'Home Assistant treats a jump from “unavailable” to a normal state (such as “on”) as a real change. If the device drops offline and reconnects, this automation runs although nothing happened. Ignoring changes that come from “unavailable” keeps only real changes.',
         fixes: unguardedFixes(node.id, data),
       };
   }
