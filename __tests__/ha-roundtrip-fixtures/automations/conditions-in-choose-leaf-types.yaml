@@ -1,0 +1,42 @@
+# `choose` whose branches use state, numeric_state, time, sun and template conditions.
+id: fixture_choose_leaf_conditions
+alias: Fixture - choose with leaf conditions
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.room_a_temp
+            above: 30
+          - condition: time
+            after: "12:00:00"
+            before: "18:00:00"
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.fan
+      - conditions:
+          - condition: sun
+            after: sunset
+          - condition: template
+            value_template: "{{ states('sensor.room_a_temp') | float(0) < 18 }}"
+        sequence:
+          - action: climate.turn_on
+            target:
+              entity_id: climate.living_room
+    default:
+      - action: persistent_notification.create
+        data:
+          message: Nothing to do.
+mode: single

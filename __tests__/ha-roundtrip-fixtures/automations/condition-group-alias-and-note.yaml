@@ -1,0 +1,26 @@
+# Alias and note on a condition group and on each of its members.
+id: fixture_condition_group_prose
+alias: Fixture - condition group alias and note
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - alias: Someone is around or it is cold
+    note: Either presence or temperature is enough to heat.
+    condition: or
+    conditions:
+      - alias: Alex is home
+        note: Tracked by the phone.
+        condition: state
+        entity_id: device_tracker.phone_a
+        state: home
+      - alias: It is cold
+        note: Below 20 degrees.
+        condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 20
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

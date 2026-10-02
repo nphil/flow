@@ -1,0 +1,13 @@
+# State trigger whose `for` is one template string.
+id: fixture_trigger_state_for_template_string
+alias: Fixture - state trigger for template string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for: "{{ states('input_number.door_wait_seconds') | int(30) }}"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door left open.
+mode: single

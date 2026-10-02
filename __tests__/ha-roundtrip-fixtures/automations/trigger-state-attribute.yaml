@@ -1,0 +1,13 @@
+# State trigger on an attribute value instead of the entity state.
+id: fixture_trigger_state_attribute
+alias: Fixture - state trigger attribute
+triggers:
+  - trigger: state
+    entity_id: climate.living_room
+    attribute: hvac_action
+    to: heating
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The thermostat started heating.
+mode: single

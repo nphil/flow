@@ -1,0 +1,52 @@
+# Script fields using select, time, duration, date, color and icon selectors.
+alias: Fixture - script fields option selectors
+mode: single
+fields:
+  mood:
+    name: Mood
+    description: Preset to apply.
+    required: true
+    default: relaxed
+    example: bright
+    selector:
+      select:
+        options:
+          - relaxed
+          - bright
+          - dim
+        mode: dropdown
+  labelled_choice:
+    name: Labelled choice
+    selector:
+      select:
+        options:
+          - value: a
+            label: Option A
+          - value: b
+            label: Option B
+        multiple: true
+  at_time:
+    name: Time
+    selector:
+      time: {}
+  how_long:
+    name: Duration
+    selector:
+      duration:
+        enable_day: true
+  on_date:
+    name: Date
+    selector:
+      date: {}
+  colour:
+    name: Colour
+    selector:
+      color_rgb: {}
+  glyph:
+    name: Icon
+    selector:
+      icon: {}
+sequence:
+  - action: persistent_notification.create
+    data:
+      message: "Mood {{ mood }}"

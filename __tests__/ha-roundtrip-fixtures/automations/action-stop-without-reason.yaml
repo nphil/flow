@@ -1,0 +1,13 @@
+# stop with no reason (a null value).
+id: fixture_stop_null
+alias: Fixture - stop without a reason
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - stop: null
+mode: single

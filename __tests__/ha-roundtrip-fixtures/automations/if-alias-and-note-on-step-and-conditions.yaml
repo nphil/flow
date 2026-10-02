@@ -1,0 +1,31 @@
+# Alias and note on an if step and on its conditions.
+id: fixture_if_prose
+alias: Fixture - if alias and note
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Light the hallway when it is dark
+    note: Only after sunset and when no guests are present.
+    if:
+      - alias: It is dark
+        note: Sun below the horizon.
+        condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      - alias: No guests
+        condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    then:
+      - alias: Hallway on
+        action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - alias: Say why not
+        action: persistent_notification.create
+        data:
+          message: Skipped.
+mode: single

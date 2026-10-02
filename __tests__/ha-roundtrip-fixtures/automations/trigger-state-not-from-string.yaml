@@ -1,0 +1,12 @@
+# not_from as a single string next to a `to` value.
+id: fixture_trigger_state_not_from_string
+alias: Fixture - state trigger not_from string
+triggers:
+  - trigger: state
+    entity_id: input_button.announce
+    not_from: unavailable
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Button pressed.
+mode: single

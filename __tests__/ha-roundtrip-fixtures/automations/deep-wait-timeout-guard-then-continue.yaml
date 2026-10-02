@@ -1,0 +1,26 @@
+# Wait for a trigger with a timeout, stop with a message when it timed out, otherwise carry on.
+id: fixture_deep_wait_guard
+alias: Fixture - wait timeout guard then continue
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+    timeout:
+      minutes: 5
+    continue_on_timeout: true
+  - if:
+      - "{{ not wait.completed }}"
+    then:
+      - action: notify.mobile_app_phone
+        data:
+          message: The door was left open.
+      - stop: The door never closed.
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

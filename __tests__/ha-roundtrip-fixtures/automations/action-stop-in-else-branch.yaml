@@ -1,0 +1,22 @@
+# `stop` inside `else`, with more steps after the `if`.
+id: fixture_stop_in_else
+alias: Fixture - stop inside else followed by more steps
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - stop: Guest mode active.
+  - action: persistent_notification.create
+    data:
+      message: Runs only when guest mode is off.
+mode: single

@@ -1,0 +1,18 @@
+# Root condition: several entities with `match: any`.
+id: fixture_condition_state_match_any
+alias: Fixture - state condition match any
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: state
+    entity_id:
+      - binary_sensor.motion_a
+      - binary_sensor.motion_b
+    match: any
+    state: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

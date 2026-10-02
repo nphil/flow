@@ -1,0 +1,18 @@
+# if with an empty then and an else (do nothing when true, act otherwise).
+id: fixture_if_empty_then
+alias: Fixture - if with empty then
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "on"
+    then: []
+    else:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+mode: single

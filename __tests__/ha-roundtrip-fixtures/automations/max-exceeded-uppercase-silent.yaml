@@ -1,0 +1,12 @@
+# max_exceeded written in upper case (HA upper-cases the value before checking it).
+id: fixture_max_exceeded_uppercase
+alias: Fixture - max_exceeded upper case
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: parallel
+max: 4
+max_exceeded: SILENT

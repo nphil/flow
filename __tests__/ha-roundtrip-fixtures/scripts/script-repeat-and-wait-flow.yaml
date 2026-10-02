@@ -1,0 +1,25 @@
+# A script using repeat, waits and a timeout branch.
+alias: Fixture - script repeat and wait
+mode: restart
+sequence:
+  - repeat:
+      count: 3
+      sequence:
+        - action: switch.toggle
+          target:
+            entity_id: switch.porch_lamp
+        - delay:
+            seconds: 1
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+    timeout:
+      minutes: 1
+    continue_on_timeout: true
+  - if:
+      - "{{ not wait.completed }}"
+    then:
+      - action: persistent_notification.create
+        data:
+          message: The door never closed.

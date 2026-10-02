@@ -1,0 +1,24 @@
+# Inline `- condition:` steps in the action list: later steps run only while the gates pass.
+id: fixture_inline_condition_steps
+alias: Fixture - inline condition steps gate the rest
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Always runs.
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - condition: numeric_state
+    entity_id: sensor.room_a_temp
+    below: 28
+  - action: persistent_notification.create
+    data:
+      message: Both gates passed.
+mode: single

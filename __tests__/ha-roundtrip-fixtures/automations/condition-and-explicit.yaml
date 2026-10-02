@@ -1,0 +1,20 @@
+# Root condition: explicit `and` group.
+id: fixture_condition_and
+alias: Fixture - and condition
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: and
+    conditions:
+      - condition: state
+        entity_id: device_tracker.phone_a
+        state: home
+      - condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 20
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

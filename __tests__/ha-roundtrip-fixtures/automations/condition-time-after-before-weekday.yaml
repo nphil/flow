@@ -1,0 +1,20 @@
+# Root condition: time window across midnight plus weekdays.
+id: fixture_condition_time
+alias: Fixture - time condition window and weekdays
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: time
+    after: "15:00:00"
+    before: "02:00:00"
+    weekday:
+      - mon
+      - wed
+      - fri
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

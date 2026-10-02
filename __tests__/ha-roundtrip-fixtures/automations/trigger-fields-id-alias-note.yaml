@@ -1,0 +1,20 @@
+# Every trigger carries an id, an alias and a note.
+id: fixture_trigger_fields_prose
+alias: Fixture - trigger id alias and note
+triggers:
+  - id: door_open
+    alias: Front door opens
+    note: Covers the physical contact sensor only.
+    trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+  - id: every_hour
+    alias: Hourly safety check
+    note: Runs even when nobody triggered anything.
+    trigger: time_pattern
+    minutes: "0"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "Triggered by {{ trigger.id }}"
+mode: single

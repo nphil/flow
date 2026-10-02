@@ -1,0 +1,15 @@
+# Root condition: the expected state is read from a helper entity.
+id: fixture_condition_state_helper
+alias: Fixture - state condition helper reference
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: state
+    entity_id: alarm_control_panel.home
+    state: input_select.expected_alarm_state
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Alarm is in the expected state.
+mode: single

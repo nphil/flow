@@ -1,0 +1,18 @@
+# Both automation-level `variables` and `trigger_variables` on one automation.
+id: fixture_both_variable_kinds
+alias: Fixture - variables and trigger_variables
+trigger_variables:
+  watched_event: door_event
+variables:
+  greeting: Welcome home
+  levels:
+    - 10
+    - 50
+triggers:
+  - trigger: event
+    event_type: "{{ watched_event }}"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "{{ greeting }}, level {{ levels[1] }}"
+mode: single

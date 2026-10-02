@@ -1,0 +1,18 @@
+# Root condition: purpose-specific condition with an area target and an option.
+id: fixture_condition_purpose_area
+alias: Fixture - purpose condition area target
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: climate.is_hvac_mode
+    target:
+      area_id: living_room
+    options:
+      hvac_mode:
+        - heat
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Living room is heating.
+mode: single

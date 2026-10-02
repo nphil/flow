@@ -1,0 +1,15 @@
+# MQTT trigger with a wildcard topic, value_template, QoS and encoding.
+id: fixture_trigger_mqtt_template
+alias: Fixture - mqtt trigger wildcard and template
+triggers:
+  - trigger: mqtt
+    topic: home/sensors/+/state
+    value_template: "{{ value_json.state }}"
+    payload: "ON"
+    qos: 1
+    encoding: utf-8
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A sensor reported ON.
+mode: single

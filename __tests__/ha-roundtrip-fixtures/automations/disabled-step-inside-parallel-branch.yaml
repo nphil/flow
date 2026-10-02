@@ -1,0 +1,23 @@
+# A disabled step inside a parallel branch.
+id: fixture_disabled_in_parallel
+alias: Fixture - disabled step inside parallel
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      - sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+          - enabled: false
+            delay:
+              seconds: 30
+          - action: light.turn_off
+            target:
+              entity_id: light.hallway
+      - action: persistent_notification.create
+        data:
+          message: Door opened.
+mode: single

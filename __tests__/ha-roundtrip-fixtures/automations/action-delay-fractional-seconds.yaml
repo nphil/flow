@@ -1,0 +1,16 @@
+# Delay given as a fractional number of seconds.
+id: fixture_action_delay_fraction
+alias: Fixture - delay fractional seconds
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+  - delay: 2.5
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+mode: single

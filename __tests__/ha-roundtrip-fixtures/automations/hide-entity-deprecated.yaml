@@ -1,0 +1,13 @@
+# hide_entity is deprecated but still accepted by Home Assistant.
+id: fixture_hide_entity
+alias: Fixture - hide_entity
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single
+hide_entity: true

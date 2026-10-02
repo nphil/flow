@@ -1,0 +1,16 @@
+# State trigger with `for` as a duration mapping.
+id: fixture_trigger_state_for_dict
+alias: Fixture - state trigger for mapping
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 30
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door left open.
+mode: single

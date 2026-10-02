@@ -1,0 +1,8 @@
+# A script created from a blueprint: only use_blueprint and its inputs.
+alias: Fixture - script from blueprint
+description: Created from a script blueprint.
+use_blueprint:
+  path: example/announce.yaml
+  input:
+    speaker: media_player.kitchen_speaker
+    greeting: Hello

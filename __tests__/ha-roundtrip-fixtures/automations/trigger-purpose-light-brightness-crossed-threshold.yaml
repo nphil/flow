@@ -1,0 +1,17 @@
+# Purpose-specific numeric trigger: light brightness crossing a threshold.
+id: fixture_trigger_purpose_brightness
+alias: Fixture - purpose trigger brightness threshold
+triggers:
+  - trigger: light.brightness_crossed_threshold
+    target:
+      entity_id: light.living_room
+    options:
+      threshold:
+        type: above
+        value:
+          number: 50
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Living room light passed 50 percent.
+mode: single

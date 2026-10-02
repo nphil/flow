@@ -1,0 +1,13 @@
+# State trigger with both `from` and `to` as strings.
+id: fixture_trigger_state_from_to
+alias: Fixture - state trigger from and to
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+    from: Home
+    to: Away
+actions:
+  - action: light.turn_off
+    target:
+      entity_id: all
+mode: single

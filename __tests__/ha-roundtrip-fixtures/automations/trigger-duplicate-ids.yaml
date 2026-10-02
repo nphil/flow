@@ -1,0 +1,20 @@
+# Two triggers share the same id (allowed by Home Assistant).
+id: fixture_trigger_duplicate_ids
+alias: Fixture - duplicate trigger ids
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    id: entry
+  - trigger: state
+    entity_id: binary_sensor.back_door
+    to: "on"
+    id: entry
+  - trigger: time
+    at: "23:00:00"
+    id: bedtime
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "{{ trigger.id }}"
+mode: single

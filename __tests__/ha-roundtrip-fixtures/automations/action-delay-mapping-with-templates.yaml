@@ -1,0 +1,15 @@
+# Delay mapping whose unit values are templates.
+id: fixture_action_delay_mapping_templates
+alias: Fixture - delay mapping with templates
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - delay:
+      minutes: "{{ states('input_number.delay_minutes') | int(1) }}"
+      seconds: "{{ range(0, 30) | random }}"
+  - action: persistent_notification.create
+    data:
+      message: Delay finished.
+mode: single

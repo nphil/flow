@@ -1,0 +1,23 @@
+# A disabled parallel block between two enabled steps.
+id: fixture_disabled_parallel
+alias: Fixture - disabled parallel
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Before.
+  - enabled: false
+    parallel:
+      - action: notify.mobile_app_phone
+        data:
+          message: One.
+      - action: notify.mobile_app_tablet
+        data:
+          message: Two.
+  - action: persistent_notification.create
+    data:
+      message: After.
+mode: single

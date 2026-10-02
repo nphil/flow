@@ -1,0 +1,12 @@
+# Root conditions written as one bare template string instead of a list.
+id: fixture_condition_single_template_string
+alias: Fixture - conditions as one template string
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions: "{{ is_state('device_tracker.phone_a', 'home') }}"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Phone is home.
+mode: single

@@ -1,0 +1,16 @@
+# Root condition: attribute value instead of the entity state.
+id: fixture_condition_state_attribute
+alias: Fixture - state condition attribute
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: state
+    entity_id: climate.living_room
+    attribute: fan_mode
+    state: auto
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Thermostat fan is on auto.
+mode: single

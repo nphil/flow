@@ -1,0 +1,36 @@
+# Realistic: close the garage when it was left open, verify it closed, and report either way.
+id: fixture_realistic_garage_close
+alias: Fixture - garage auto close
+triggers:
+  - trigger: state
+    entity_id: cover.garage
+    to: open
+    for:
+      minutes: 15
+conditions:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+actions:
+  - action: cover.close_cover
+    target:
+      entity_id: cover.garage
+    continue_on_error: true
+  - wait_template: "{{ is_state('cover.garage', 'closed') }}"
+    timeout:
+      minutes: 2
+    continue_on_timeout: true
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: cover.garage
+            state: closed
+        sequence:
+          - action: notify.mobile_app_phone
+            data:
+              message: The garage was open and has been closed.
+    default:
+      - action: notify.mobile_app_phone
+        data:
+          message: The garage is still open after trying to close it.
+mode: single

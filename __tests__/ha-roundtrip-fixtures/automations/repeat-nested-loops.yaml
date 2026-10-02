@@ -1,0 +1,22 @@
+# A counted repeat nested inside a for_each repeat.
+id: fixture_repeat_nested
+alias: Fixture - nested repeat
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      for_each:
+        - light.hallway
+        - light.kitchen
+      sequence:
+        - repeat:
+            count: 2
+            sequence:
+              - action: light.toggle
+                target:
+                  entity_id: "{{ repeat.item }}"
+              - delay:
+                  milliseconds: 500
+mode: single

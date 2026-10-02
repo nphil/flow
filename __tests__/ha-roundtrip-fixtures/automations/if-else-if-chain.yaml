@@ -1,0 +1,38 @@
+# An else-if ladder written as nested if statements in the else branch.
+id: fixture_if_else_if
+alias: Fixture - if else-if chain
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+actions:
+  - if:
+      - condition: state
+        entity_id: input_select.house_mode
+        state: Home
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - if:
+          - condition: state
+            entity_id: input_select.house_mode
+            state: Away
+        then:
+          - action: light.turn_off
+            target:
+              entity_id: all
+        else:
+          - if:
+              - condition: state
+                entity_id: input_select.house_mode
+                state: Night
+            then:
+              - action: light.turn_off
+                target:
+                  entity_id: light.living_room
+            else:
+              - action: persistent_notification.create
+                data:
+                  message: Unknown house mode.
+mode: single

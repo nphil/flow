@@ -1,0 +1,30 @@
+# A disabled step inside a choose branch and inside its default.
+id: fixture_disabled_in_choose
+alias: Fixture - disabled step inside choose
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: sun.sun
+            state: below_horizon
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+          - enabled: false
+            action: notify.mobile_app_phone
+            data:
+              message: Door opened after dark.
+    default:
+      - enabled: false
+        action: notify.mobile_app_phone
+        data:
+          message: Door opened by day.
+      - action: persistent_notification.create
+        data:
+          message: Logged.
+mode: single

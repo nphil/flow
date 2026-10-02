@@ -1,0 +1,14 @@
+# Purpose-specific zone trigger (target + options.zone).
+id: fixture_trigger_purpose_zone
+alias: Fixture - purpose trigger zone entered
+triggers:
+  - trigger: zone.entered
+    target:
+      entity_id: person.alex
+    options:
+      zone: zone.home
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

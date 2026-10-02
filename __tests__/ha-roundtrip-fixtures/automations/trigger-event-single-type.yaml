@@ -1,0 +1,11 @@
+# Event trigger for one custom event type.
+id: fixture_trigger_event_single
+alias: Fixture - event trigger single type
+triggers:
+  - trigger: event
+    event_type: custom_event
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Custom event received.
+mode: single

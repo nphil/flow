@@ -1,0 +1,19 @@
+# Root condition: numeric state of an attribute over several entities.
+id: fixture_condition_numeric_attribute
+alias: Fixture - numeric state condition attribute and entity list
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: numeric_state
+    entity_id:
+      - climate.living_room
+      - climate.bedroom
+    attribute: current_temperature
+    above: 17
+    below: 25
+actions:
+  - action: persistent_notification.create
+    data:
+      message: All rooms are comfortable.
+mode: single

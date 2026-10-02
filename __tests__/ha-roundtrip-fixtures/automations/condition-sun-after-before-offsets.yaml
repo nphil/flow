@@ -1,0 +1,18 @@
+# Root condition: legacy sun condition between sunset and sunrise with offsets.
+id: fixture_condition_sun_legacy
+alias: Fixture - sun condition after before offsets
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: sun
+    after: sunset
+    after_offset: "-01:00:00"
+    before: sunrise
+    before_offset: "00:30:00"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

@@ -1,0 +1,18 @@
+# A trigger-list entry holding only `triggers:` is merged into the main list by Home Assistant.
+id: fixture_nested_trigger_list
+alias: Fixture - nested trigger list
+triggers:
+  - trigger: event
+    event_type: manual_event
+  - triggers:
+      - trigger: state
+        entity_id: binary_sensor.window_a
+        to: "on"
+      - trigger: state
+        entity_id: binary_sensor.window_b
+        to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A window opened or the manual event fired.
+mode: single

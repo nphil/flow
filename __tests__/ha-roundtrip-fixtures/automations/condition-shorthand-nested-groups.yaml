@@ -1,0 +1,23 @@
+# Root condition: shorthand groups nested inside each other.
+id: fixture_condition_shorthand_nested
+alias: Fixture - nested shorthand groups
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - and:
+      - condition: state
+        entity_id: device_tracker.phone_a
+        state: home
+      - or:
+          - condition: state
+            entity_id: sensor.weather_precip
+            state: rain
+          - condition: numeric_state
+            entity_id: sensor.room_a_temp
+            below: 20
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

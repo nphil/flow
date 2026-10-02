@@ -1,0 +1,14 @@
+# Script fields that only have a description and an example (no selector).
+alias: Fixture - script fields without selectors
+mode: single
+fields:
+  who:
+    description: Name of the person to greet.
+    example: Alex
+  greeting:
+    description: The greeting to use.
+    example: Hello
+sequence:
+  - action: notify.mobile_app_phone
+    data:
+      message: "{{ greeting | default('Hello') }} {{ who }}"

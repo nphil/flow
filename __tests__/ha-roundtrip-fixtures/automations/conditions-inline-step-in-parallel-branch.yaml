@@ -1,0 +1,20 @@
+# A condition step at the start of one parallel branch.
+id: fixture_inline_condition_in_parallel
+alias: Fixture - inline condition inside parallel branch
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      - sequence:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "off"
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - action: persistent_notification.create
+        data:
+          message: Always sent.
+mode: single

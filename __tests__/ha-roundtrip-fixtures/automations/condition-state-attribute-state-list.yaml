@@ -1,0 +1,18 @@
+# Root condition: attribute matching any of several values.
+id: fixture_condition_state_attribute_list
+alias: Fixture - state condition attribute list
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: state
+    entity_id: climate.living_room
+    attribute: fan_mode
+    state:
+      - auto
+      - low
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Thermostat fan is quiet.
+mode: single

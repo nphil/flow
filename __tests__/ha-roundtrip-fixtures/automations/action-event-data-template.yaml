@@ -1,0 +1,13 @@
+# Fire an event using the older `event_data_template` key.
+id: fixture_action_event_data_template
+alias: Fixture - event_data_template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - event: door_report
+    event_data_template:
+      opened_at: "{{ now().isoformat() }}"
+      sun_state: "{{ states('sun.sun') }}"
+mode: single

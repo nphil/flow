@@ -1,0 +1,12 @@
+# State trigger on one entity with `to` as a plain string.
+id: fixture_trigger_state_to
+alias: Fixture - state trigger to string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The front door opened.
+mode: single

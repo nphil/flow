@@ -1,0 +1,17 @@
+# Event trigger that filters on the event context and on templated event data.
+id: fixture_trigger_event_context
+alias: Fixture - event trigger context and templates
+trigger_variables:
+  watched_entity: sensor.room_a_temp
+triggers:
+  - trigger: event
+    event_type: device_report
+    event_data:
+      entity_id: "{{ watched_entity }}"
+    context:
+      user_id: example_user_id
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Reported by the watched sensor.
+mode: single

@@ -1,0 +1,10 @@
+# Scene step (`scene:` instead of an action call).
+id: fixture_action_scene
+alias: Fixture - scene step
+triggers:
+  - trigger: state
+    entity_id: media_player.tv
+    to: playing
+actions:
+  - scene: scene.movie_night
+mode: single

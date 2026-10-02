@@ -1,0 +1,42 @@
+# Realistic: a motion light with on/off trigger ids, a dark-only gate and restart mode.
+id: fixture_realistic_motion_light
+alias: Fixture - motion light with timeout
+description: Turns the hallway light on at motion when it is dark and off a while after the last motion.
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.hall_motion
+    to: "on"
+    id: motion_on
+  - trigger: state
+    entity_id: binary_sensor.hall_motion
+    to: "off"
+    for:
+      minutes: 2
+    id: motion_off
+conditions:
+  - condition: or
+    conditions:
+      - condition: trigger
+        id: motion_off
+      - condition: numeric_state
+        entity_id: sensor.hall_illuminance
+        below: 30
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: motion_on
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+            data:
+              brightness_pct: 70
+      - conditions:
+          - condition: trigger
+            id: motion_off
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: light.hallway
+mode: restart

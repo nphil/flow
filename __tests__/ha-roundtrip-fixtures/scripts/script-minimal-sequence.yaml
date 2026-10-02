@@ -1,0 +1,6 @@
+# The smallest script: an alias and one step.
+alias: Fixture - minimal script
+sequence:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway

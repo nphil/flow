@@ -1,0 +1,14 @@
+# Numeric state trigger that must hold for ten minutes.
+id: fixture_trigger_numeric_for
+alias: Fixture - numeric state trigger for
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 26
+    for:
+      minutes: 10
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.fan
+mode: single

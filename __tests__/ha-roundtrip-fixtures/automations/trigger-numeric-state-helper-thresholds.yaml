@@ -1,0 +1,13 @@
+# Numeric state trigger whose thresholds are other entities.
+id: fixture_trigger_numeric_helpers
+alias: Fixture - numeric state trigger entity thresholds
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: input_number.temp_low
+    below: sensor.temp_limit
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Temperature entered the comfort band.
+mode: single

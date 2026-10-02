@@ -1,0 +1,12 @@
+# `to: null` limits the state trigger to real state changes (attribute-only updates do not fire it).
+id: fixture_trigger_state_to_null
+alias: Fixture - state trigger to null
+triggers:
+  - trigger: state
+    entity_id: climate.living_room
+    to: null
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The thermostat changed state.
+mode: single

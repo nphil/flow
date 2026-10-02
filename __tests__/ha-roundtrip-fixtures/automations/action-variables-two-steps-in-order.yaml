@@ -1,0 +1,18 @@
+# Two variables steps where the second uses the first.
+id: fixture_variables_two_steps
+alias: Fixture - variables steps in order
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - variables:
+      base_level: 40
+  - variables:
+      night_level: "{{ (base_level / 2) | int }}"
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+    data:
+      brightness_pct: "{{ night_level }}"
+mode: single

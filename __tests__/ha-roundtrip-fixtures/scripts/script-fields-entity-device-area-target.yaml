@@ -1,0 +1,33 @@
+# Script fields using entity, device, area and target selectors.
+alias: Fixture - script fields entity selectors
+mode: single
+fields:
+  lights:
+    name: Lights
+    description: Lights to switch.
+    required: true
+    selector:
+      entity:
+        domain: light
+        multiple: true
+  device:
+    name: Device
+    description: A device to ping.
+    selector:
+      device: {}
+  room:
+    name: Room
+    description: An area to treat.
+    selector:
+      area: {}
+  scope:
+    name: Scope
+    description: Anything to act on.
+    selector:
+      target:
+        entity:
+          domain: switch
+sequence:
+  - action: light.turn_on
+    target:
+      entity_id: "{{ lights }}"

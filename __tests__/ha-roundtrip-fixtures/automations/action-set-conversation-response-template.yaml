@@ -1,0 +1,9 @@
+# set_conversation_response with a template.
+id: fixture_conversation_response_template
+alias: Fixture - conversation response template
+triggers:
+  - trigger: conversation
+    command: how warm is it
+actions:
+  - set_conversation_response: "It is {{ states('sensor.room_a_temp') }} degrees."
+mode: single

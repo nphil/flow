@@ -1,0 +1,13 @@
+# An explicit empty conditions list, as the UI editor writes it.
+id: fixture_empty_conditions
+alias: Fixture - empty conditions list
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions: []
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

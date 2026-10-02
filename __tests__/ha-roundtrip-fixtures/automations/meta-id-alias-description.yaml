@@ -1,0 +1,13 @@
+# Identity fields of an automation: id, alias and a one-line description.
+id: fixture_meta_identity
+alias: Fixture - identity fields
+description: Turns the hallway light on when the front door opens.
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

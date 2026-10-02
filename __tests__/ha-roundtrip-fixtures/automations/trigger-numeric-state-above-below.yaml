@@ -1,0 +1,13 @@
+# Numeric state trigger with an upper and a lower threshold.
+id: fixture_trigger_numeric_above_below
+alias: Fixture - numeric state trigger above and below
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 26
+    below: 35
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.fan
+mode: single

@@ -1,0 +1,12 @@
+# max_exceeded: notset on a queued automation.
+id: fixture_max_exceeded_notset
+alias: Fixture - max_exceeded notset
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: queued
+max: 9
+max_exceeded: notset

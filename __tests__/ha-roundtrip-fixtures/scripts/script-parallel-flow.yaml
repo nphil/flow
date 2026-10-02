@@ -1,0 +1,17 @@
+# A script using parallel branches.
+alias: Fixture - script parallel
+mode: single
+sequence:
+  - parallel:
+      - sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+          - delay:
+              seconds: 30
+          - action: light.turn_off
+            target:
+              entity_id: light.hallway
+      - action: notify.mobile_app_phone
+        data:
+          message: Running.

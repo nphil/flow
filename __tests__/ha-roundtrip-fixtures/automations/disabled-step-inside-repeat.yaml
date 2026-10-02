@@ -1,0 +1,21 @@
+# A disabled step inside a repeat sequence.
+id: fixture_disabled_in_repeat
+alias: Fixture - disabled step inside repeat
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      count: 3
+      sequence:
+        - action: light.toggle
+          target:
+            entity_id: light.hallway
+        - enabled: false
+          delay:
+            seconds: 1
+        - action: switch.toggle
+          target:
+            entity_id: switch.porch_lamp
+mode: single

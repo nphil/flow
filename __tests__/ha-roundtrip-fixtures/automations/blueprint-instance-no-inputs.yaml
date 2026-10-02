@@ -1,0 +1,7 @@
+# A blueprint instance whose blueprint needs no inputs at all.
+id: "1700000000003"
+alias: Fixture - blueprint instance without inputs
+description: ""
+use_blueprint:
+  path: homeassistant/nightly_reminder.yaml
+  input: {}

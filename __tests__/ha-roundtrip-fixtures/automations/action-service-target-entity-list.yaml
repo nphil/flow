@@ -1,0 +1,15 @@
+# Service call targeting a list of entities.
+id: fixture_action_target_entities
+alias: Fixture - target entity list
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id:
+        - light.hallway
+        - light.kitchen
+        - light.porch
+mode: single

@@ -1,0 +1,12 @@
+# Service call targeting a floor.
+id: fixture_action_target_floor
+alias: Fixture - target floor
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+    to: Away
+actions:
+  - action: light.turn_off
+    target:
+      floor_id: ground_floor
+mode: single

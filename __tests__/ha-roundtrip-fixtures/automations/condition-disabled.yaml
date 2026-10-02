@@ -1,0 +1,19 @@
+# Root conditions: a disabled condition behaves as if it were removed.
+id: fixture_condition_disabled
+alias: Fixture - disabled condition
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - enabled: false
+    condition: state
+    entity_id: sun.sun
+    state: above_horizon
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

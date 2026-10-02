@@ -1,0 +1,23 @@
+# repeat until a condition holds (runs at least once), with steps after the loop.
+id: fixture_repeat_until
+alias: Fixture - repeat until
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      sequence:
+        - action: switch.turn_on
+          target:
+            entity_id: switch.fan
+        - delay:
+            milliseconds: 200
+      until:
+        - condition: state
+          entity_id: switch.fan
+          state: "on"
+  - action: persistent_notification.create
+    data:
+      message: Fan confirmed on.
+mode: single

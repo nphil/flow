@@ -1,0 +1,14 @@
+# Purpose-specific sun trigger with `options` instead of top-level fields.
+id: fixture_trigger_sun_purpose_sunset
+alias: Fixture - purpose-specific sunset trigger
+triggers:
+  - trigger: sun.sunset
+    options:
+      offset:
+        minutes: 45
+      offset_type: before
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.porch
+mode: single

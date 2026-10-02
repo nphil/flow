@@ -1,0 +1,14 @@
+# Persistent notification trigger for added and removed notifications.
+id: fixture_trigger_persistent_notification
+alias: Fixture - persistent_notification trigger
+triggers:
+  - trigger: persistent_notification
+    notification_id: fixture_notice
+    update_type:
+      - added
+      - removed
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The tracked notification changed.
+mode: single

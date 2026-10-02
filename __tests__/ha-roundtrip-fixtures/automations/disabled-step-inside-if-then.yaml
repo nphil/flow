@@ -1,0 +1,24 @@
+# A disabled step inside an if/then branch.
+id: fixture_disabled_in_then
+alias: Fixture - disabled step inside then
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+      - enabled: false
+        action: notify.mobile_app_phone
+        data:
+          message: Door opened after dark.
+      - action: persistent_notification.create
+        data:
+          message: Logged.
+mode: single

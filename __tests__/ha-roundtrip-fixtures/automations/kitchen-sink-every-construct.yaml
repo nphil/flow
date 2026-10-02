@@ -1,0 +1,130 @@
+# One large automation using almost every construct: identity, mode, variables, many triggers and conditions, and every step kind nested.
+id: fixture_kitchen_sink
+alias: Fixture - kitchen sink
+description: Exercises triggers, conditions and every kind of step in one automation.
+trace:
+  stored_traces: 15
+trigger_variables:
+  watched_event: sink_event
+variables:
+  base_level: 40
+  rooms:
+    - kitchen
+    - hall
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for:
+      seconds: 5
+    id: door
+    alias: Front door open for 5 s
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 28
+    id: hot
+  - trigger: time
+    at: "22:30:00"
+    id: bedtime
+  - trigger: event
+    event_type: "{{ watched_event }}"
+    id: manual
+  - trigger: light.turned_on
+    target:
+      entity_id: light.hallway
+    id: hallway_light
+  - enabled: false
+    trigger: sun
+    event: sunset
+    id: sunset
+conditions:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - condition: or
+    conditions:
+      - condition: time
+        after: "06:00:00"
+        before: "23:30:00"
+      - condition: trigger
+        id: manual
+actions:
+  - variables:
+      level: "{{ base_level + 10 }}"
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: door
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+            data:
+              brightness_pct: "{{ level }}"
+          - wait_for_trigger:
+              - trigger: state
+                entity_id: binary_sensor.front_door
+                to: "off"
+            timeout:
+              minutes: 2
+            continue_on_timeout: true
+          - if:
+              - "{{ not wait.completed }}"
+            then:
+              - action: notify.mobile_app_phone
+                data:
+                  message: The door stayed open.
+            else:
+              - action: light.turn_off
+                target:
+                  entity_id: light.hallway
+      - conditions:
+          - condition: trigger
+            id: hot
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.fan
+          - repeat:
+              until:
+                - condition: numeric_state
+                  entity_id: sensor.room_a_temp
+                  below: 25
+              sequence:
+                - delay:
+                    minutes: 5
+    default:
+      - parallel:
+          - action: persistent_notification.create
+            data:
+              message: Started by something else.
+          - sequence:
+              - repeat:
+                  for_each: "{{ rooms }}"
+                  sequence:
+                    - action: light.turn_off
+                      target:
+                        entity_id: "light.{{ repeat.item }}"
+  - alias: Tidy up
+    sequence:
+      - event: sink_finished
+        event_data:
+          trigger: "{{ trigger.id }}"
+      - enabled: false
+        action: notify.mobile_app_tablet
+        data:
+          message: Disabled extra notice.
+  - if:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "on"
+    then:
+      - stop: Guest mode started meanwhile.
+  - delay:
+      seconds: 5
+  - action: persistent_notification.create
+    data:
+      message: Kitchen sink finished.
+mode: queued
+max: 5
+max_exceeded: warning

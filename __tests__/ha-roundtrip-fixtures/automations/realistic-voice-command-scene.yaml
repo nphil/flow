@@ -1,0 +1,28 @@
+# Realistic: a conversation trigger that picks a scene from the sentence and replies.
+id: fixture_realistic_voice_scene
+alias: Fixture - voice command scene
+triggers:
+  - trigger: conversation
+    command:
+      - "activate the {name} scene"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.slots.name == 'movie' }}"
+        sequence:
+          - action: scene.turn_on
+            target:
+              entity_id: scene.movie_night
+          - set_conversation_response: Enjoy the movie.
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.slots.name == 'dinner' }}"
+        sequence:
+          - action: scene.turn_on
+            target:
+              entity_id: scene.dinner
+          - set_conversation_response: Dinner lighting is on.
+    default:
+      - set_conversation_response: "I do not know a scene called {{ trigger.slots.name }}."
+mode: single

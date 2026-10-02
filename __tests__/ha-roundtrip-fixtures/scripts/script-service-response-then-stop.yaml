@@ -1,0 +1,15 @@
+# A script calling an action with a response variable and returning part of it.
+alias: Fixture - script response from action
+mode: single
+sequence:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.home
+    data:
+      type: daily
+    response_variable: forecast
+  - variables:
+      summary:
+        high: "{{ forecast['weather.home'].forecast[0].temperature }}"
+  - stop: Forecast ready.
+    response_variable: summary

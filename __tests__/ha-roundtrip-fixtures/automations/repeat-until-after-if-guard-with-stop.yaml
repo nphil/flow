@@ -1,0 +1,31 @@
+# A guard `if ... then stop` followed by a repeat-until loop: the guard must stay outside the loop condition.
+id: fixture_guard_then_repeat_until
+alias: Fixture - if guard then repeat until
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "off"
+actions:
+  - if:
+      - condition: state
+        entity_id: lock.front_door
+        state: locked
+    then:
+      - stop: Already locked.
+  - repeat:
+      sequence:
+        - action: lock.lock
+          target:
+            entity_id: lock.front_door
+        - delay:
+            seconds: 10
+      until:
+        - condition: state
+          entity_id: lock.front_door
+          state: locked
+        - condition: template
+          value_template: "{{ repeat.index >= 5 }}"
+  - action: persistent_notification.create
+    data:
+      message: Lock routine finished.
+mode: single

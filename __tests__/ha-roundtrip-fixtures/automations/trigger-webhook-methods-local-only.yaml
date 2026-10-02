@@ -1,0 +1,15 @@
+# Webhook trigger with explicit allowed methods and local_only.
+id: fixture_trigger_webhook
+alias: Fixture - webhook trigger
+triggers:
+  - trigger: webhook
+    webhook_id: fixture-example-webhook-id
+    allowed_methods:
+      - POST
+      - PUT
+    local_only: true
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "Webhook payload: {{ trigger.json }}"
+mode: single

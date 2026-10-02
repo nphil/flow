@@ -1,0 +1,36 @@
+# Script fields using text, number and boolean selectors with name, description, required, default and example.
+alias: Fixture - script fields basic selectors
+mode: single
+fields:
+  message:
+    name: Message
+    description: Text to announce.
+    required: true
+    example: Dinner is ready
+    selector:
+      text:
+        multiline: true
+  volume:
+    name: Volume
+    description: Playback volume in percent.
+    default: 40
+    selector:
+      number:
+        min: 0
+        max: 100
+        step: 5
+        unit_of_measurement: "%"
+        mode: slider
+  repeat_announcement:
+    name: Repeat
+    description: Say it twice.
+    default: false
+    selector:
+      boolean: {}
+sequence:
+  - action: tts.speak
+    target:
+      entity_id: tts.example_engine
+    data:
+      media_player_entity_id: media_player.kitchen_speaker
+      message: "{{ message }}"

@@ -1,0 +1,20 @@
+# Root condition: explicit `not` group with two members (passes when none is true).
+id: fixture_condition_not
+alias: Fixture - not condition
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: device_tracker.phone_a
+        state: home
+      - condition: state
+        entity_id: alarm_control_panel.home
+        state: disarmed
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Nobody home and alarm armed.
+mode: single

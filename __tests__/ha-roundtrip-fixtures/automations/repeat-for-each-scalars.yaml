@@ -1,0 +1,18 @@
+# repeat.for_each over a literal list of strings.
+id: fixture_repeat_for_each_scalars
+alias: Fixture - for_each scalars
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+    to: Away
+actions:
+  - repeat:
+      for_each:
+        - living_room
+        - kitchen
+        - office
+      sequence:
+        - action: light.turn_off
+          target:
+            entity_id: "light.{{ repeat.item }}"
+mode: single

@@ -1,0 +1,25 @@
+# Every automation-level option on one automation.
+id: fixture_meta_all_options
+alias: Fixture - all top-level options
+description: Uses mode, max, max_exceeded, initial_state, trace and both variable kinds.
+trace:
+  stored_traces: 12
+initial_state: false
+trigger_variables:
+  wanted_event: sample_event
+variables:
+  label: sample
+triggers:
+  - trigger: event
+    event_type: "{{ wanted_event }}"
+conditions:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "{{ label }}"
+mode: queued
+max: 3
+max_exceeded: error

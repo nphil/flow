@@ -1,0 +1,49 @@
+# A script using choose and if/else.
+alias: Fixture - script choose and if
+mode: single
+fields:
+  level:
+    name: Level
+    default: 2
+    selector:
+      number:
+        min: 1
+        max: 3
+sequence:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ level | int(0) == 1 }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+            data:
+              brightness_pct: 20
+      - conditions:
+          - condition: template
+            value_template: "{{ level | int(0) == 2 }}"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+            data:
+              brightness_pct: 60
+    default:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+        data:
+          brightness_pct: 100
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.porch
+    else:
+      - action: light.turn_off
+        target:
+          entity_id: light.porch

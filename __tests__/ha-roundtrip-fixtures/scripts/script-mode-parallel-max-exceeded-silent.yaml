@@ -1,0 +1,9 @@
+# Script with mode parallel, a run limit and a silenced overflow warning.
+alias: Fixture - script mode parallel
+mode: parallel
+max: 15
+max_exceeded: silent
+sequence:
+  - action: notify.mobile_app_phone
+    data:
+      message: Parallel notice.

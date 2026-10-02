@@ -1,0 +1,49 @@
+# A script using identity, mode, fields, variables, trace and several step kinds.
+alias: Fixture - script full featured
+icon: mdi:script-text
+description: Announces a message in a room and returns what it did.
+mode: queued
+max: 5
+max_exceeded: warning
+trace:
+  stored_traces: 10
+fields:
+  message:
+    name: Message
+    required: true
+    example: Dinner is ready
+    selector:
+      text: {}
+  speaker:
+    name: Speaker
+    required: true
+    selector:
+      entity:
+        domain: media_player
+  repeat_count:
+    name: Repeats
+    default: 1
+    selector:
+      number:
+        min: 1
+        max: 5
+variables:
+  prefix: "Announcement:"
+sequence:
+  - repeat:
+      count: "{{ repeat_count | int(1) }}"
+      sequence:
+        - action: tts.speak
+          target:
+            entity_id: tts.example_engine
+          data:
+            media_player_entity_id: "{{ speaker }}"
+            message: "{{ prefix }} {{ message }}"
+        - delay:
+            seconds: 3
+  - variables:
+      result:
+        announced: true
+        times: "{{ repeat_count | int(1) }}"
+  - stop: Announced.
+    response_variable: result

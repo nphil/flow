@@ -1,0 +1,22 @@
+# choose branch whose `conditions` and `sequence` are single mappings instead of lists.
+id: fixture_choose_single_mappings
+alias: Fixture - choose conditions as a mapping
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      conditions:
+        condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      sequence:
+        action: light.turn_on
+        target:
+          entity_id: light.hallway
+    default:
+      action: light.turn_off
+      target:
+        entity_id: light.hallway
+mode: single

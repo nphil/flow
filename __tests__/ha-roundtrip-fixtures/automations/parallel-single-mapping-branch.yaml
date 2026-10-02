@@ -1,0 +1,13 @@
+# parallel written with a single mapping instead of a list.
+id: fixture_parallel_mapping
+alias: Fixture - parallel single mapping
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      action: notify.mobile_app_phone
+      data:
+        message: Door opened.
+mode: single

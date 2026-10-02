@@ -1,0 +1,10 @@
+# Fire an event that has no data at all.
+id: fixture_action_event_bare
+alias: Fixture - event without data
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - event: door_opened_marker
+mode: single

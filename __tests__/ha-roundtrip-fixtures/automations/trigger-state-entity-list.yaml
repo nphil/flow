@@ -1,0 +1,15 @@
+# State trigger watching a list of entities.
+id: fixture_trigger_state_entity_list
+alias: Fixture - state trigger entity list
+triggers:
+  - trigger: state
+    entity_id:
+      - binary_sensor.window_a
+      - binary_sensor.window_b
+      - binary_sensor.window_c
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A window opened.
+mode: single

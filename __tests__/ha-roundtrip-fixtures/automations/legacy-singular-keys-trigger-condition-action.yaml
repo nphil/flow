@@ -1,0 +1,22 @@
+# Legacy spelling: singular trigger/condition/action keys holding lists, `platform:` and `service:`.
+id: fixture_legacy_singular
+alias: Fixture - legacy singular keys
+trigger:
+  - platform: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+  - platform: time
+    at: "22:00:00"
+condition:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+action:
+  - service: light.turn_on
+    data:
+      entity_id: light.hallway
+      brightness_pct: 60
+  - service: notify.mobile_app_phone
+    data:
+      message: Door opened.
+mode: single

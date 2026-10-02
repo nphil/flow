@@ -1,0 +1,20 @@
+# Purpose-specific trigger whose target mixes floor, label, device and entity ids.
+id: fixture_trigger_purpose_all_targets
+alias: Fixture - purpose trigger every target kind
+triggers:
+  - trigger: light.turned_off
+    target:
+      floor_id: ground_floor
+      label_id:
+        - night_lights
+      device_id: 0123456789abcdef0123456789abcdef
+      entity_id:
+        - light.kitchen
+        - light.hallway
+    options:
+      behavior: all
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Every targeted light is off.
+mode: single

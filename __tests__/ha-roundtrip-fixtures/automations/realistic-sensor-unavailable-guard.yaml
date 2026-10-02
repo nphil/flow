@@ -1,0 +1,22 @@
+# Realistic (house rule): an actuating state trigger pins `from` and `to`, and a condition re-checks the sensor is not unavailable.
+id: fixture_realistic_unavailable_guard
+alias: Fixture - unavailable sensors never actuate
+description: Closes the blinds when the lux sensor reports a bright reading; a sensor coming back from unavailable does nothing.
+triggers:
+  - trigger: state
+    entity_id: sensor.living_room_lux
+    from: dark
+    to: bright
+conditions:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: sensor.living_room_lux
+        state:
+          - unavailable
+          - unknown
+actions:
+  - action: cover.close_cover
+    target:
+      entity_id: cover.living_room_blinds
+mode: single

@@ -1,0 +1,12 @@
+# `action` itself is a template choosing between two services.
+id: fixture_action_name_template
+alias: Fixture - action name template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: "{{ 'light.turn_on' if is_state('sun.sun', 'below_horizon') else 'light.turn_off' }}"
+    target:
+      entity_id: light.hallway
+mode: single

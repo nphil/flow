@@ -1,0 +1,17 @@
+# Root condition: numeric state with a value_template adjusting the reading.
+id: fixture_condition_numeric_value_template
+alias: Fixture - numeric state condition value template
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.room_a_temp
+    value_template: "{{ float(state.state) + 2 }}"
+    above: 17
+    below: 25
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Adjusted temperature is comfortable.
+mode: single

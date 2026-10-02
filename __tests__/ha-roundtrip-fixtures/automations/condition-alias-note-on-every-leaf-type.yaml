@@ -1,0 +1,39 @@
+# Alias and note on a state, numeric_state, template, time, sun and trigger condition.
+id: fixture_condition_leaf_prose
+alias: Fixture - alias and note on leaf conditions
+triggers:
+  - trigger: time
+    at: "22:00:00"
+    id: bedtime
+conditions:
+  - alias: Guests are away
+    note: Helper toggled by hand.
+    condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - alias: Not too warm
+    note: Upper limit.
+    condition: numeric_state
+    entity_id: sensor.room_a_temp
+    below: 28
+  - alias: Battery is fine
+    note: Phone health.
+    condition: template
+    value_template: "{{ (state_attr('device_tracker.phone_a', 'battery_level') | int(0)) > 20 }}"
+  - alias: Evening hours
+    note: After work.
+    condition: time
+    after: "17:00:00"
+  - alias: After sunset
+    note: Dark enough.
+    condition: sun
+    after: sunset
+  - alias: Started by the bedtime trigger
+    note: Not by anything else.
+    condition: trigger
+    id: bedtime
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

@@ -1,0 +1,17 @@
+# Time trigger restricted to weekdays.
+id: fixture_trigger_time_weekday
+alias: Fixture - time trigger weekdays
+triggers:
+  - trigger: time
+    at: "08:00:00"
+    weekday:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+actions:
+  - action: media_player.turn_on
+    target:
+      entity_id: media_player.kitchen_speaker
+mode: single

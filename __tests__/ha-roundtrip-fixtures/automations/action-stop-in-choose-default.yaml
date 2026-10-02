@@ -1,0 +1,23 @@
+# `stop` inside the choose default, with more steps after the choose.
+id: fixture_stop_in_choose_default
+alias: Fixture - stop inside choose default
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "off"
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+    default:
+      - stop: Guest mode active.
+  - action: persistent_notification.create
+    data:
+      message: Runs only when guest mode is off.
+mode: single

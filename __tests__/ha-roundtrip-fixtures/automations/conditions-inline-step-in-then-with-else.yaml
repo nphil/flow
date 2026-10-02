@@ -1,0 +1,24 @@
+# A condition step inside `then` of an if that also has an else: when the gate fails, neither the rest of then nor else runs.
+id: fixture_gate_in_then_with_else
+alias: Fixture - gate inside then with an else
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+    then:
+      - condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 28
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - action: persistent_notification.create
+        data:
+          message: Guest mode is on.
+mode: single

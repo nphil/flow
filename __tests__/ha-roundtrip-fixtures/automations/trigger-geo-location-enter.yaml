@@ -1,0 +1,13 @@
+# Geolocation trigger when a feed entity appears in a zone.
+id: fixture_trigger_geo_location
+alias: Fixture - geo_location trigger
+triggers:
+  - trigger: geo_location
+    source: nearby_events
+    zone: zone.home
+    event: enter
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "{{ trigger.from_state.name }} is near home."
+mode: single

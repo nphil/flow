@@ -1,0 +1,16 @@
+# A script that returns data to its caller through `stop` and `response_variable`.
+alias: Fixture - script response
+mode: single
+fields:
+  entity:
+    name: Entity
+    required: true
+    selector:
+      entity: {}
+sequence:
+  - variables:
+      answer:
+        entity: "{{ entity }}"
+        state: "{{ states(entity) }}"
+  - stop: Done.
+    response_variable: answer

@@ -1,0 +1,16 @@
+# parallel with two plain actions (each runs at the same time).
+id: fixture_parallel_actions
+alias: Fixture - parallel actions
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      - action: notify.mobile_app_phone
+        data:
+          message: Door opened.
+      - action: notify.mobile_app_tablet
+        data:
+          message: Door opened.
+mode: single

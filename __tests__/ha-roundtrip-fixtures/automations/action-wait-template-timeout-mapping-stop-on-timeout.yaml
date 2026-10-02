@@ -1,0 +1,16 @@
+# wait_template with a mapping timeout and continue_on_timeout: false (the run stops on timeout).
+id: fixture_wait_template_stop_on_timeout
+alias: Fixture - wait_template stops on timeout
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_template: "{{ is_state('binary_sensor.entrance', 'on') }}"
+    timeout:
+      minutes: 2
+    continue_on_timeout: false
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

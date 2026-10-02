@@ -1,0 +1,14 @@
+# State trigger on an attribute with numeric `from` and `to` values.
+id: fixture_trigger_state_attribute_numbers
+alias: Fixture - state trigger attribute numbers
+triggers:
+  - trigger: state
+    entity_id: light.kitchen
+    attribute: brightness
+    from: 0
+    to: 255
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Kitchen light jumped to full brightness.
+mode: single

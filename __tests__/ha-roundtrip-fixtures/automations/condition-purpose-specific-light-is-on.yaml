@@ -1,0 +1,19 @@
+# Root condition: purpose-specific `light.is_on` with a target and a behavior option.
+id: fixture_condition_light_is_on
+alias: Fixture - purpose condition light is on
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: light.is_on
+    target:
+      entity_id:
+        - light.kitchen
+        - light.hallway
+    options:
+      behavior: any
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A light is still on.
+mode: single

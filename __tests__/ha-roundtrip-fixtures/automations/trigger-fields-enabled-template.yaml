@@ -1,0 +1,16 @@
+# Trigger `enabled` driven by a limited template evaluated when the automation loads.
+id: fixture_trigger_enabled_template
+alias: Fixture - trigger enabled template
+trigger_variables:
+  minimum_level: 40
+triggers:
+  - trigger: sun
+    event: sunrise
+    enabled: "{{ minimum_level < 50 }}"
+  - trigger: time
+    at: "21:00:00"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A trigger fired.
+mode: single

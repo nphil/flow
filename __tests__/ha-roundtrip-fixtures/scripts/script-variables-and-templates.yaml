@@ -1,0 +1,21 @@
+# Script-level variables used by the sequence.
+alias: Fixture - script variables
+mode: single
+variables:
+  default_level: 40
+  rooms:
+    - kitchen
+    - hall
+  settings:
+    fade: 2
+    colour_name: warm
+sequence:
+  - repeat:
+      for_each: "{{ rooms }}"
+      sequence:
+        - action: light.turn_on
+          target:
+            entity_id: "light.{{ repeat.item }}"
+          data:
+            brightness_pct: "{{ default_level }}"
+            transition: "{{ settings.fade }}"

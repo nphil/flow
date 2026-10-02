@@ -1,0 +1,8 @@
+# Script max_exceeded with a log level other than silent or warning.
+alias: Fixture - script max_exceeded error
+mode: queued
+max: 4
+max_exceeded: error
+sequence:
+  - delay:
+      seconds: 10

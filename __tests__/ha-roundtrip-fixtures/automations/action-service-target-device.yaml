@@ -1,0 +1,12 @@
+# Service call targeting a device id.
+id: fixture_action_target_device
+alias: Fixture - target device
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      device_id: 0123456789abcdef0123456789abcdef
+mode: single

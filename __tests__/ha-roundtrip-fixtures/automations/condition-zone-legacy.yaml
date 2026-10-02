@@ -1,0 +1,15 @@
+# Root condition: legacy zone condition (entity inside a zone).
+id: fixture_condition_zone_legacy
+alias: Fixture - zone condition legacy
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: zone
+    entity_id: person.alex
+    zone: zone.home
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Alex is home.
+mode: single

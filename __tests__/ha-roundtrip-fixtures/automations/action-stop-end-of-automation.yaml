@@ -1,0 +1,13 @@
+# stop with a reason as the last step.
+id: fixture_stop_end
+alias: Fixture - stop at the end
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - stop: Nothing more to do.
+mode: single

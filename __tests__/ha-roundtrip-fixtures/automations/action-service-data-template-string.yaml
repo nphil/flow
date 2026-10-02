@@ -1,0 +1,13 @@
+# Service call whose whole data is one template that renders to a mapping.
+id: fixture_action_data_template_string
+alias: Fixture - data as template string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+    data: "{{ {'brightness_pct': 40 if now().hour > 20 else 80} }}"
+mode: single

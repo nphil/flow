@@ -1,0 +1,37 @@
+# choose where two branch conditions overlap: only the first matching branch runs.
+id: fixture_choose_first_match
+alias: Fixture - choose first match wins
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 20
+actions:
+  - choose:
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.room_a_temp
+            above: 30
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.fan
+          - action: persistent_notification.create
+            data:
+              message: Very hot.
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.room_a_temp
+            above: 25
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.fan
+      - conditions:
+          - condition: numeric_state
+            entity_id: sensor.room_a_temp
+            above: 20
+        sequence:
+          - action: persistent_notification.create
+            data:
+              message: Getting warm.
+mode: single

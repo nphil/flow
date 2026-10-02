@@ -1,0 +1,17 @@
+# A disabled variables step: later steps fall back to the default in the template.
+id: fixture_disabled_variables
+alias: Fixture - disabled variables step
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - enabled: false
+    variables:
+      level: 90
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+    data:
+      brightness_pct: "{{ level | default(30) }}"
+mode: single

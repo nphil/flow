@@ -1,0 +1,13 @@
+# Calendar trigger when an event ends.
+id: fixture_trigger_calendar_end
+alias: Fixture - calendar trigger end
+triggers:
+  - trigger: calendar
+    event: end
+    entity_id: calendar.family
+    offset: "0:0:0"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Event finished.
+mode: single

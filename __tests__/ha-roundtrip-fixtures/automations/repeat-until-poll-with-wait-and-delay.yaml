@@ -1,0 +1,22 @@
+# Poll idiom: repeat until a sensor reports, waiting between attempts.
+id: fixture_repeat_poll
+alias: Fixture - repeat poll
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      sequence:
+        - action: homeassistant.update_entity
+          target:
+            entity_id: sensor.room_a_temp
+        - wait_template: "{{ states('sensor.room_a_temp') not in ['unavailable', 'unknown'] }}"
+          timeout: "00:00:30"
+          continue_on_timeout: true
+        - delay:
+            seconds: 5
+      until:
+        - condition: template
+          value_template: "{{ states('sensor.room_a_temp') not in ['unavailable', 'unknown'] or repeat.index >= 5 }}"
+mode: single

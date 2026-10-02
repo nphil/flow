@@ -1,0 +1,12 @@
+# max_exceeded: warn (a synonym of warning in the HA log level list).
+id: fixture_max_exceeded_warn
+alias: Fixture - max_exceeded warn
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: parallel
+max: 8
+max_exceeded: warn

@@ -1,0 +1,36 @@
+# choose inside repeat inside a parallel branch inside a nested sequence.
+id: fixture_deep_choose_repeat_parallel_sequence
+alias: Fixture - choose in repeat in parallel in sequence
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Outer group
+    sequence:
+      - parallel:
+          - sequence:
+              - repeat:
+                  for_each:
+                    - light.hallway
+                    - switch.porch_lamp
+                  sequence:
+                    - choose:
+                        - conditions:
+                            - condition: template
+                              value_template: "{{ repeat.item.startswith('light.') }}"
+                          sequence:
+                            - action: light.turn_on
+                              target:
+                                entity_id: "{{ repeat.item }}"
+                      default:
+                        - action: switch.turn_on
+                          target:
+                            entity_id: "{{ repeat.item }}"
+          - action: notify.mobile_app_phone
+            data:
+              message: Lights handled.
+      - action: persistent_notification.create
+        data:
+          message: Group finished.
+mode: single

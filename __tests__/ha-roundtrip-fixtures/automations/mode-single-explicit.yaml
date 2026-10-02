@@ -1,0 +1,12 @@
+# mode: single written out explicitly (the default).
+id: fixture_mode_single
+alias: Fixture - mode single
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: Someone is at the door.
+mode: single

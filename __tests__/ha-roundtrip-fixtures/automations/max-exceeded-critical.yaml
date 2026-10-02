@@ -1,0 +1,12 @@
+# max_exceeded: critical on a parallel automation.
+id: fixture_max_exceeded_critical
+alias: Fixture - max_exceeded critical
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: parallel
+max: 6
+max_exceeded: critical

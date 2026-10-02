@@ -1,0 +1,19 @@
+# A disabled inline condition step: it no longer gates the steps after it.
+id: fixture_disabled_condition_step
+alias: Fixture - disabled condition step
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Before.
+  - enabled: false
+    condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

@@ -1,0 +1,20 @@
+# wait_for_trigger with a mapping timeout and continue_on_timeout: false.
+id: fixture_wait_trigger_stop_on_timeout
+alias: Fixture - wait_for_trigger stops on timeout
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: event
+        event_type: ifttt_webhook_received
+        event_data:
+          action: connected_to_network
+    timeout:
+      minutes: 3
+    continue_on_timeout: false
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

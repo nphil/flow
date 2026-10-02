@@ -1,0 +1,12 @@
+# set_conversation_response with plain text.
+id: fixture_conversation_response_plain
+alias: Fixture - conversation response plain text
+triggers:
+  - trigger: conversation
+    command: good night
+actions:
+  - action: light.turn_off
+    target:
+      entity_id: all
+  - set_conversation_response: Good night.
+mode: single

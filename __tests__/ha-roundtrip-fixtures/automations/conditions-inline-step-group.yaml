@@ -1,0 +1,19 @@
+# Inline condition step that is an `or` group, followed by more steps.
+id: fixture_inline_condition_group
+alias: Fixture - inline condition step group
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - condition: or
+    conditions:
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+      - condition: time
+        after: "20:00:00"
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

@@ -1,0 +1,21 @@
+# Alias and note on a repeat step and on a step inside it.
+id: fixture_repeat_prose
+alias: Fixture - repeat alias and note
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - alias: Flash the hallway three times
+    note: Gets attention without a sound.
+    repeat:
+      count: 3
+      sequence:
+        - alias: Toggle the hallway light
+          action: light.toggle
+          target:
+            entity_id: light.hallway
+        - alias: Short pause
+          delay:
+            seconds: 1
+mode: single

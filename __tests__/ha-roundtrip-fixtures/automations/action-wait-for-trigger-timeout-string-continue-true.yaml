@@ -1,0 +1,18 @@
+# wait_for_trigger with an HH:MM:SS timeout and continue_on_timeout: true.
+id: fixture_wait_trigger_timeout_string
+alias: Fixture - wait_for_trigger timeout string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+    timeout: "00:05:00"
+    continue_on_timeout: true
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

@@ -1,0 +1,12 @@
+# Numeric state trigger with only `below`.
+id: fixture_trigger_numeric_below
+alias: Fixture - numeric state trigger below only
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    below: 16
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

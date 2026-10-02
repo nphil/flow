@@ -1,0 +1,16 @@
+# A disabled set_conversation_response between two enabled steps.
+id: fixture_disabled_conversation
+alias: Fixture - disabled conversation response
+triggers:
+  - trigger: conversation
+    command: open the door
+actions:
+  - action: lock.unlock
+    target:
+      entity_id: lock.front_door
+  - enabled: false
+    set_conversation_response: Door is open.
+  - action: persistent_notification.create
+    data:
+      message: Door opened by voice.
+mode: single

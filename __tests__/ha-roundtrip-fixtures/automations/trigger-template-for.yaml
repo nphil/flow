@@ -1,0 +1,12 @@
+# Template trigger that must stay true for five minutes.
+id: fixture_trigger_template_for
+alias: Fixture - template trigger for
+triggers:
+  - trigger: template
+    value_template: "{{ is_state('binary_sensor.front_door', 'on') }}"
+    for: "00:05:00"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door has been open for five minutes.
+mode: single

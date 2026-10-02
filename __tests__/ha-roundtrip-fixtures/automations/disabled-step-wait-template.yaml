@@ -1,0 +1,19 @@
+# A disabled wait_template with a timeout.
+id: fixture_disabled_wait_template
+alias: Fixture - disabled wait_template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - enabled: false
+    wait_template: "{{ is_state('binary_sensor.front_door', 'off') }}"
+    timeout: "00:02:00"
+    continue_on_timeout: false
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

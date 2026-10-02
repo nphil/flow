@@ -1,0 +1,28 @@
+# Structure stress: a loop that stops itself from a choose branch, with steps after the loop.
+id: fixture_structure_stop_in_loop_choose
+alias: Fixture - stop from choose inside loop
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      while:
+        - condition: template
+          value_template: "{{ repeat.index <= 10 }}"
+      sequence:
+        - choose:
+            - conditions:
+                - condition: state
+                  entity_id: binary_sensor.front_door
+                  state: "off"
+              sequence:
+                - stop: Door closed, nothing to retry.
+        - action: persistent_notification.create
+          data:
+            message: "Retry {{ repeat.index }}"
+        - delay:
+            seconds: 10
+  - action: persistent_notification.create
+    data:
+      message: Retries exhausted.

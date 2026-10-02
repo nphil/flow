@@ -1,0 +1,23 @@
+# repeat while a condition holds, with steps after the loop.
+id: fixture_repeat_while
+alias: Fixture - repeat while
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      while:
+        - condition: state
+          entity_id: input_boolean.retry
+          state: "on"
+      sequence:
+        - action: persistent_notification.create
+          data:
+            message: Still retrying.
+        - delay:
+            seconds: 30
+  - action: persistent_notification.create
+    data:
+      message: Retry loop finished.
+mode: single

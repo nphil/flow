@@ -1,0 +1,27 @@
+# if with three conditions that must all hold.
+id: fixture_if_multiple_conditions
+alias: Fixture - if with several conditions
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+      - condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 30
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - action: persistent_notification.create
+        data:
+          message: Not all conditions held.
+mode: single

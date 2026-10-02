@@ -1,0 +1,17 @@
+# not_from / not_to guards that exclude unavailable and unknown.
+id: fixture_trigger_state_not_from_not_to
+alias: Fixture - state trigger not_from and not_to
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    not_from:
+      - unavailable
+      - unknown
+    not_to:
+      - unavailable
+      - unknown
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The door really changed state.
+mode: single

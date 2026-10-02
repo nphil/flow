@@ -1,0 +1,17 @@
+# Root condition: trigger identified by its index (an integer id).
+id: fixture_condition_trigger_index
+alias: Fixture - trigger condition index id
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: trigger
+    id: 0
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

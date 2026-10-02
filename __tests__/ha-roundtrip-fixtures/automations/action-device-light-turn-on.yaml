@@ -1,0 +1,14 @@
+# Device action (placeholder ids) with the empty `metadata` the editor writes.
+id: fixture_action_device
+alias: Fixture - device action
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - device_id: 0123456789abcdef0123456789abcdef
+    domain: light
+    entity_id: fedcba9876543210fedcba9876543210
+    type: turn_on
+    metadata: {}
+mode: single

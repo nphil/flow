@@ -1,0 +1,20 @@
+# Root condition: `or:` shorthand with an alias.
+id: fixture_condition_shorthand_or
+alias: Fixture - or shorthand
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - alias: Someone is home or it is cold
+    or:
+      - condition: state
+        entity_id: device_tracker.phone_a
+        state: home
+      - condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 20
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

@@ -1,0 +1,20 @@
+# A disabled device action between two enabled steps.
+id: fixture_disabled_device
+alias: Fixture - disabled device action
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - enabled: false
+    device_id: 0123456789abcdef0123456789abcdef
+    domain: light
+    entity_id: fedcba9876543210fedcba9876543210
+    type: toggle
+  - action: persistent_notification.create
+    data:
+      message: Done.
+mode: single

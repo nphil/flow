@@ -1,0 +1,19 @@
+# Root condition: a multi-line template condition written as a block scalar.
+id: fixture_condition_template_multiline
+alias: Fixture - template condition multiline
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: template
+    value_template: >-
+      {% if is_state('binary_sensor.front_door', 'off') %}
+        {{ states('sensor.room_a_temp') | float(0) < 30 }}
+      {% else %}
+        false
+      {% endif %}
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door closed and cool.
+mode: single

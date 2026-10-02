@@ -1,0 +1,14 @@
+# mode: parallel with an explicit limit of simultaneous runs.
+id: fixture_mode_parallel
+alias: Fixture - mode parallel with max
+triggers:
+  - trigger: event
+    event_type: package_arrived
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "Package for {{ trigger.event.data.name }}"
+  - delay:
+      seconds: 30
+mode: parallel
+max: 20

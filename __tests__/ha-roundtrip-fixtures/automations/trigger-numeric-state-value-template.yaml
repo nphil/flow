@@ -1,0 +1,13 @@
+# Numeric state trigger that computes the value with a template.
+id: fixture_trigger_numeric_value_template
+alias: Fixture - numeric state trigger value template
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    value_template: "{{ state.state | float(0) + 1.5 }}"
+    above: 27
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Adjusted temperature is high.
+mode: single

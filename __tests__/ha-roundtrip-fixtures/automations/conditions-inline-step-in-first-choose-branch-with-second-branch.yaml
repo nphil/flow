@@ -1,0 +1,28 @@
+# A condition step in the first choose branch: if it fails the second branch is NOT tried.
+id: fixture_gate_in_choose_branch_one
+alias: Fixture - gate inside first choose branch
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "off"
+        sequence:
+          - condition: time
+            after: "18:00:00"
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - conditions:
+          - condition: state
+            entity_id: sun.sun
+            state: below_horizon
+        sequence:
+          - action: persistent_notification.create
+            data:
+              message: Guest mode is on and it is dark.
+mode: single

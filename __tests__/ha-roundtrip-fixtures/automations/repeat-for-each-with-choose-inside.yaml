@@ -1,0 +1,25 @@
+# for_each loop whose body is a choose on the current item.
+id: fixture_repeat_for_each_choose
+alias: Fixture - for_each with choose inside
+triggers:
+  - trigger: time
+    at: "23:00:00"
+actions:
+  - repeat:
+      for_each:
+        - light.hallway
+        - switch.porch_lamp
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') }}"
+              sequence:
+                - action: light.turn_off
+                  target:
+                    entity_id: "{{ repeat.item }}"
+          default:
+            - action: switch.turn_off
+              target:
+                entity_id: "{{ repeat.item }}"
+mode: single

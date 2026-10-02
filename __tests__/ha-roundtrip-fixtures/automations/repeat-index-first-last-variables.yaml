@@ -1,0 +1,17 @@
+# repeat.index, repeat.first and repeat.last used inside a counted loop.
+id: fixture_repeat_index_first_last
+alias: Fixture - repeat index first last
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      count: 4
+      sequence:
+        - action: persistent_notification.create
+          data:
+            message: "Round {{ repeat.index }} first={{ repeat.first }} last={{ repeat.last }}"
+        - delay:
+            seconds: 1
+mode: single

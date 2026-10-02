@@ -1,0 +1,18 @@
+# An automation created from a blueprint: no triggers or actions, only use_blueprint + inputs.
+id: "1700000000002"
+alias: Fixture - blueprint instance with inputs
+description: Motion-activated light created from a blueprint.
+use_blueprint:
+  path: homeassistant/motion_light.yaml
+  input:
+    motion_entity: binary_sensor.hall_motion
+    light_target:
+      entity_id: light.hallway
+    no_motion_wait: 120
+    use_scene: true
+    notify_targets:
+      - notify.mobile_app_phone
+      - notify.mobile_app_tablet
+    schedule:
+      after: "18:00:00"
+      before: "23:00:00"

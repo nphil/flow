@@ -1,0 +1,36 @@
+# Structure stress: choose with a wait inside a repeat-until loop.
+id: fixture_structure_choose_in_loop
+alias: Fixture - choose with wait inside repeat until
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - repeat:
+      sequence:
+        - choose:
+            - conditions:
+                - condition: state
+                  entity_id: sun.sun
+                  state: below_horizon
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: light.hallway
+                - wait_for_trigger:
+                    - trigger: state
+                      entity_id: binary_sensor.front_door
+                      to: "off"
+                  timeout:
+                    seconds: 30
+                  continue_on_timeout: true
+          default:
+            - delay:
+                seconds: 30
+      until:
+        - condition: state
+          entity_id: binary_sensor.front_door
+          state: "off"
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway

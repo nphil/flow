@@ -1,0 +1,17 @@
+# mode: queued with an explicit queue length.
+id: fixture_mode_queued
+alias: Fixture - mode queued with max
+triggers:
+  - trigger: state
+    entity_id: input_button.announce
+actions:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.kitchen_speaker
+    data:
+      media_content_id: media-source://tts/announcement
+      media_content_type: provider
+  - delay:
+      seconds: 8
+mode: queued
+max: 5

@@ -1,0 +1,15 @@
+# Zone trigger for several trackers leaving a zone.
+id: fixture_trigger_zone_leave
+alias: Fixture - zone trigger leave
+triggers:
+  - trigger: zone
+    entity_id:
+      - person.alex
+      - device_tracker.phone_b
+    zone: zone.work
+    event: leave
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Someone left work.
+mode: single

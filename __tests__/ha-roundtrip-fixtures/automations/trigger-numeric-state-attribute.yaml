@@ -1,0 +1,13 @@
+# Numeric state trigger on an attribute.
+id: fixture_trigger_numeric_attribute
+alias: Fixture - numeric state trigger attribute
+triggers:
+  - trigger: numeric_state
+    entity_id: climate.living_room
+    attribute: current_temperature
+    above: 24
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The living room is warm.
+mode: single

@@ -1,0 +1,17 @@
+# A disabled stop: the run carries on past it.
+id: fixture_disabled_stop
+alias: Fixture - disabled stop
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - enabled: false
+    stop: Not stopping any more.
+  - action: persistent_notification.create
+    data:
+      message: Reached because the stop above is disabled.
+mode: single

@@ -1,0 +1,20 @@
+# repeat.for_each over a list of mappings.
+id: fixture_repeat_for_each_dicts
+alias: Fixture - for_each mappings
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - repeat:
+      for_each:
+        - language: English
+          message: Hello World
+        - language: Dutch
+          message: Hallo Wereld
+      sequence:
+        - action: notify.mobile_app_phone
+          data:
+            title: "Message in {{ repeat.item.language }}"
+            message: "{{ repeat.item.message }}!"
+mode: single

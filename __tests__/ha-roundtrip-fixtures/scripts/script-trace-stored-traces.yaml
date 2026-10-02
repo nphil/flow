@@ -1,0 +1,9 @@
+# Script trace configuration.
+alias: Fixture - script trace
+mode: single
+trace:
+  stored_traces: 20
+sequence:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway

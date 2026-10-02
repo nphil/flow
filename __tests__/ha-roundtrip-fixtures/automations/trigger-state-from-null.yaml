@@ -1,0 +1,12 @@
+# `from: null` on its own: also a state-change-only trigger.
+id: fixture_trigger_state_from_null
+alias: Fixture - state trigger from null
+triggers:
+  - trigger: state
+    entity_id: switch.fan
+    from: null
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Fan changed state.
+mode: single

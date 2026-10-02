@@ -1,0 +1,37 @@
+# Every choose branch waits or delays differently, then all continue with the same two steps.
+id: fixture_deep_diamond
+alias: Fixture - choose branches converge on a shared tail
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: sun.sun
+            state: below_horizon
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+          - delay:
+              seconds: 30
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+        sequence:
+          - wait_template: "{{ is_state('binary_sensor.front_door', 'off') }}"
+            timeout: "00:02:00"
+    default:
+      - action: persistent_notification.create
+        data:
+          message: Plain daytime visit.
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+  - action: persistent_notification.create
+    data:
+      message: Shared tail finished.
+mode: single

@@ -1,0 +1,21 @@
+# wait_for_trigger whose timeout mapping holds a template.
+id: fixture_wait_trigger_timeout_template
+alias: Fixture - wait_for_trigger timeout template
+variables:
+  timeout_minutes: 2
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+    timeout:
+      minutes: "{{ timeout_minutes }}"
+    continue_on_timeout: false
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

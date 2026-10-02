@@ -1,0 +1,12 @@
+# max_exceeded: debug on a parallel automation.
+id: fixture_max_exceeded_debug
+alias: Fixture - max_exceeded debug
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: parallel
+max: 7
+max_exceeded: debug

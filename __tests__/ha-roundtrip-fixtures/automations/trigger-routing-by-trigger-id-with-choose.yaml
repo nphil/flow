@@ -1,0 +1,33 @@
+# One automation, several triggers: a choose routes each trigger id to its own actions.
+id: fixture_trigger_routing
+alias: Fixture - routing by trigger id
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    id: door
+  - trigger: time
+    at: "22:00:00"
+    id: bedtime
+  - trigger: event
+    event_type: manual_event
+    id: manual
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: door
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - conditions:
+          - condition: trigger
+            id:
+              - bedtime
+              - manual
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: light.hallway
+mode: single

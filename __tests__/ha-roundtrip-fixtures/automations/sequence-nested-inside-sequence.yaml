@@ -1,0 +1,24 @@
+# A sequence group inside a sequence group.
+id: fixture_sequence_in_sequence
+alias: Fixture - sequence inside sequence
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Outer group
+    sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+      - alias: Inner group
+        sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.porch_lamp
+          - delay:
+              seconds: 5
+      - action: persistent_notification.create
+        data:
+          message: Outer group finished.
+mode: single

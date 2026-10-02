@@ -1,0 +1,12 @@
+# MQTT trigger on a topic with an exact payload.
+id: fixture_trigger_mqtt_payload
+alias: Fixture - mqtt trigger payload
+triggers:
+  - trigger: mqtt
+    topic: home/doors/front
+    payload: OPEN
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Front door reported open over MQTT.
+mode: single

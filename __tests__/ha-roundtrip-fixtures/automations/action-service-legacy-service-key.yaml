@@ -1,0 +1,14 @@
+# Old step spelling: `service:` instead of `action:`.
+id: fixture_action_service_key
+alias: Fixture - legacy service key
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - service: light.turn_on
+    target:
+      entity_id: light.hallway
+    data:
+      brightness_pct: 50
+mode: single

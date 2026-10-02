@@ -1,0 +1,22 @@
+# A variables step with templates and a nested mapping.
+id: fixture_variables_step_templates
+alias: Fixture - variables step templates and nesting
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - variables:
+      who: "{{ trigger.to_state.attributes.friendly_name | default('someone') }}"
+      limits:
+        low: 10
+        high: "{{ states('input_number.limit_high') | int(90) }}"
+      matrix:
+        - name: day
+          level: 80
+        - name: night
+          level: 20
+  - action: notify.mobile_app_phone
+    data:
+      message: "{{ who }} opened it, high limit {{ limits.high }}"
+mode: single

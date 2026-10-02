@@ -1,0 +1,19 @@
+# repeat whose count is a template.
+id: fixture_repeat_count_template
+alias: Fixture - repeat count template
+variables:
+  flashes: 3
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      count: "{{ flashes | int * 2 - 1 }}"
+      sequence:
+        - action: light.toggle
+          target:
+            entity_id: light.hallway
+        - delay:
+            seconds: 2
+mode: single

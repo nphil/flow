@@ -1,0 +1,32 @@
+# if/then/else with several steps in both branches.
+id: fixture_if_then_else
+alias: Fixture - if then else
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+      - delay:
+          seconds: 60
+      - action: light.turn_off
+        target:
+          entity_id: light.hallway
+    else:
+      - action: persistent_notification.create
+        data:
+          message: Daylight, no light needed.
+      - action: switch.turn_off
+        target:
+          entity_id: switch.porch_lamp
+  - action: persistent_notification.create
+    data:
+      message: Runs after the if either way.
+mode: single

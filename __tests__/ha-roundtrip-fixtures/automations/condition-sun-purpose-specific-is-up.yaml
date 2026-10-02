@@ -1,0 +1,14 @@
+# Root condition: purpose-specific sun condition `sun.is_up`.
+id: fixture_condition_sun_is_up
+alias: Fixture - purpose condition sun is up
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: sun.is_up
+actions:
+  - action: persistent_notification.create
+    data:
+      message: It is daytime.
+mode: single

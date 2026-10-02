@@ -1,0 +1,12 @@
+# Purpose-specific trigger `light.turned_on` with an entity target.
+id: fixture_trigger_purpose_light_on
+alias: Fixture - purpose trigger light turned on
+triggers:
+  - trigger: light.turned_on
+    target:
+      entity_id: light.kitchen
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Kitchen light turned on.
+mode: single

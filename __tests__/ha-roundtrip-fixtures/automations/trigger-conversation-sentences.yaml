@@ -1,0 +1,14 @@
+# Conversation (sentence) trigger with a list of phrases.
+id: fixture_trigger_conversation
+alias: Fixture - conversation trigger
+triggers:
+  - trigger: conversation
+    command:
+      - turn on the party lights
+      - start the party
+actions:
+  - action: scene.turn_on
+    target:
+      entity_id: scene.party
+  - set_conversation_response: Party lights are on.
+mode: single

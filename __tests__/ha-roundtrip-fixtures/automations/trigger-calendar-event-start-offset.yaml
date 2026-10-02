@@ -1,0 +1,13 @@
+# Calendar trigger fifteen minutes before an event starts.
+id: fixture_trigger_calendar_start
+alias: Fixture - calendar trigger start offset
+triggers:
+  - trigger: calendar
+    event: start
+    entity_id: calendar.family
+    offset: "-00:15:00"
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "Event soon: {{ trigger.calendar_event.summary }}"
+mode: single

@@ -1,0 +1,15 @@
+# Root condition: only an `after` time.
+id: fixture_condition_time_after
+alias: Fixture - time condition after only
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: time
+    after: "18:30:00"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

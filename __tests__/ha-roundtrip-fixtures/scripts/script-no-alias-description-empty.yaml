@@ -1,0 +1,7 @@
+# A script with no alias, an empty description and the default mode written out.
+description: ""
+mode: single
+sequence:
+  - action: persistent_notification.create
+    data:
+      message: Hello from a script without a name.

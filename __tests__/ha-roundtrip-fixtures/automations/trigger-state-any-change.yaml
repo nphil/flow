@@ -1,0 +1,11 @@
+# State trigger with neither `from` nor `to`: fires on every state change.
+id: fixture_trigger_state_any_change
+alias: Fixture - state trigger any change
+triggers:
+  - trigger: state
+    entity_id: sensor.room_a_temp
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The temperature sensor changed.
+mode: single

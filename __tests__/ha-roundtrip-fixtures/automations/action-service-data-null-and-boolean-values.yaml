@@ -1,0 +1,19 @@
+# Service call data holding a null, booleans, numbers and an empty list.
+id: fixture_action_data_scalars
+alias: Fixture - data null boolean number
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: script.turn_on
+    target:
+      entity_id: script.notify_everyone
+    data:
+      variables:
+        silent: true
+        retries: 0
+        ratio: 0.5
+        nothing: null
+        tags: []
+mode: single

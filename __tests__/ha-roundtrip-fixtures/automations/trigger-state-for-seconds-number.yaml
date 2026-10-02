@@ -1,0 +1,13 @@
+# State trigger with `for` as a bare number of seconds.
+id: fixture_trigger_state_for_number
+alias: Fixture - state trigger for seconds
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for: 30
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door left open.
+mode: single

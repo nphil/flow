@@ -1,0 +1,15 @@
+# Fire an event with event_data.
+id: fixture_action_event
+alias: Fixture - event with data
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - event: LOGBOOK_ENTRY
+    event_data:
+      name: Front door
+      message: was opened
+      entity_id: binary_sensor.front_door
+      domain: binary_sensor
+mode: single

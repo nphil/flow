@@ -1,0 +1,17 @@
+# Root condition: only weekdays.
+id: fixture_condition_time_weekday
+alias: Fixture - time condition weekday only
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: time
+    weekday:
+      - sat
+      - sun
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

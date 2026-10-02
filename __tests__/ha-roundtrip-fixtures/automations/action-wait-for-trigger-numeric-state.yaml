@@ -1,0 +1,19 @@
+# wait_for_trigger using a numeric_state trigger and a time trigger.
+id: fixture_wait_trigger_numeric
+alias: Fixture - wait_for_trigger numeric and time
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 22
+      - trigger: time
+        at: "23:00:00"
+    timeout: "02:00:00"
+  - action: switch.turn_off
+    target:
+      entity_id: switch.fan
+mode: single

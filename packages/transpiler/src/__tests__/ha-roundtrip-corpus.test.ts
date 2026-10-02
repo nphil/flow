@@ -25,7 +25,181 @@ const FIXTURES_DIR = join(__dirname, '../../../../__tests__/ha-roundtrip-fixture
  * its entry here turns the suite red -- the list cannot rot. The goal state is
  * an empty list.
  */
-const KNOWN_GAPS: Record<string, string> = {};
+const KNOWN_GAPS: Record<string, string> = {
+  'automations/action-delay-fractional-seconds.yaml': 'numeric delay saved as a string',
+  'automations/action-delay-mapping-all-units.yaml': 'delay days dropped',
+  'automations/action-delay-mapping-with-templates.yaml':
+    'templated delay mapping rewritten as one long template',
+  'automations/action-delay-seconds-number.yaml': 'numeric delay saved as a string',
+  'automations/action-event-data-template.yaml': 'event_data_template dropped',
+  'automations/action-scene-activate.yaml': 'scene step replaced by unknown.unknown',
+  'automations/action-service-data-template-string.yaml': 'data given as a template string dropped',
+  'automations/action-service-service-template-legacy.yaml':
+    'service_template step replaced by unknown.unknown',
+  'automations/action-service-target-template-string.yaml':
+    'target given as a template string dropped',
+  'automations/action-set-conversation-response-null.yaml':
+    'set_conversation_response: null saved as an empty step',
+  'automations/action-stop-in-choose-branch.yaml':
+    'choose/else-if with a stopping branch rewritten as sequential ifs',
+  'automations/action-stop-in-repeat.yaml':
+    'stop moved out of its branch (stop becomes unconditional)',
+  'automations/action-stop-without-reason.yaml': 'stop: null saved as an empty string',
+  'automations/action-wait-for-trigger-single-mapping.yaml':
+    'single-mapping wait_for_trigger step vanishes',
+  'automations/action-wait-template-timeout-number.yaml': 'numeric wait timeout dropped',
+  'automations/action-wait-then-branch-on-wait-completed.yaml':
+    'bare template condition corrupted into a character map',
+  'automations/action-wait-two-waits-sharing-one-timeout.yaml': 'numeric wait timeout dropped',
+  'automations/alias-note-on-flow-control-step-kinds.yaml':
+    'nested sequence step replaced by unknown.unknown',
+  'automations/alias-note-on-simple-step-kinds.yaml': 'scene step replaced by unknown.unknown',
+  'automations/blueprint-instance-no-inputs.yaml': 'blueprint instance cannot be opened',
+  'automations/blueprint-instance-with-inputs.yaml': 'blueprint instance cannot be opened',
+  'automations/choose-empty-default.yaml': 'first/only step hoisted into root conditions',
+  'automations/choose-empty-sequence-branch.yaml': 'first/only step hoisted into root conditions',
+  'automations/choose-single-branch-only.yaml': 'first/only step hoisted into root conditions',
+  'automations/condition-enabled-template.yaml':
+    '`enabled` template on a condition saved as a JSON template',
+  'automations/condition-group-alias-and-note.yaml': 'alias/note lost: Alex is home, It is cold',
+  'automations/condition-list-shorthand-condition-key.yaml':
+    '`condition:` holding a list saved as a JSON template',
+  'automations/condition-shorthand-and.yaml': 'shorthand and:/or:/not: conditions crash the parser',
+  'automations/condition-shorthand-bare-template-strings.yaml':
+    'bare template conditions collapse into one wrong condition',
+  'automations/condition-shorthand-nested-groups.yaml':
+    'shorthand and:/or:/not: conditions crash the parser',
+  'automations/condition-shorthand-not.yaml': 'shorthand and:/or:/not: conditions crash the parser',
+  'automations/condition-shorthand-or.yaml': 'shorthand and:/or:/not: conditions crash the parser',
+  'automations/condition-shorthand-single-template-string.yaml':
+    'conditions given as one template string crash the parser',
+  'automations/condition-state-attribute-number.yaml':
+    'state condition on a numeric attribute saved as a JSON template',
+  'automations/condition-trigger-index-id.yaml':
+    'trigger condition with an integer id saved as a JSON template',
+  'automations/conditions-in-choose-groups.yaml':
+    'not: shorthand in choose saved as a broken template condition',
+  'automations/conditions-in-choose-template-string.yaml':
+    'bare template condition corrupted into a character map',
+  'automations/conditions-in-if-group-long-form.yaml':
+    'first/only step hoisted into root conditions',
+  'automations/conditions-in-if-group-shorthand.yaml': 'or: shorthand in if saved as numeric_state',
+  'automations/conditions-in-if-mixed-bare-templates.yaml':
+    'bare template condition corrupted into a character map',
+  'automations/conditions-in-if-template-string.yaml':
+    'if with a template string replaced by unknown.unknown',
+  'automations/conditions-in-if-trigger-and-zone.yaml':
+    'first/only step hoisted into root conditions',
+  'automations/conditions-in-repeat-shorthand.yaml':
+    'repeat while/until as a template string rejected',
+  'automations/conditions-inline-step-gating-sequence.yaml':
+    'condition step rewritten as an if wrapping the rest',
+  'automations/conditions-inline-step-group.yaml': 'first/only step hoisted into root conditions',
+  'automations/conditions-inline-step-in-choose-sequence.yaml':
+    'gate step merged into the if/choose condition: else/other branch now runs',
+  'automations/conditions-inline-step-in-first-choose-branch-with-second-branch.yaml':
+    'gate step merged into the if/choose condition: else/other branch now runs',
+  'automations/conditions-inline-step-in-if-then.yaml':
+    'gate step inside then merged into the if conditions',
+  'automations/conditions-inline-step-in-parallel-branch.yaml':
+    'condition step rewritten as an if wrapping the rest',
+  'automations/conditions-inline-step-in-repeat-sequence.yaml':
+    'condition step rewritten as an if wrapping the rest',
+  'automations/conditions-inline-step-in-then-with-else.yaml':
+    'gate step merged into the if/choose condition: else/other branch now runs',
+  'automations/conditions-step-template-shorthand.yaml':
+    'template/or shorthand condition steps broken',
+  'automations/deep-choose-in-repeat-in-parallel-in-sequence.yaml':
+    'nested sequence step replaced by unknown.unknown',
+  'automations/deep-if-ladder-with-waits-and-stops.yaml':
+    'choose/else-if with a stopping branch rewritten as sequential ifs',
+  'automations/deep-wait-timeout-guard-then-continue.yaml':
+    'bare template condition corrupted into a character map',
+  'automations/disabled-step-choose.yaml':
+    'disabled if/choose: enabled:false pushed onto inner nodes',
+  'automations/disabled-step-condition.yaml': 'condition step rewritten as an if wrapping the rest',
+  'automations/disabled-step-if.yaml': 'disabled if/choose: enabled:false pushed onto inner nodes',
+  'automations/disabled-step-inside-if-then.yaml': 'first/only step hoisted into root conditions',
+  'automations/disabled-step-parallel.yaml': 'disabled parallel becomes enabled',
+  'automations/disabled-step-repeat.yaml': 'disabled repeat: flag pushed onto inner steps',
+  'automations/disabled-step-scene.yaml': 'scene step replaced by unknown.unknown',
+  'automations/disabled-step-sequence-group.yaml':
+    'nested sequence step replaced by unknown.unknown',
+  'automations/hide-entity-deprecated.yaml': 'hide_entity dropped',
+  'automations/if-empty-then-with-else.yaml': 'first/only step hoisted into root conditions',
+  'automations/initial-state-true.yaml': 'initial_state: true dropped',
+  'automations/kitchen-sink-every-construct.yaml':
+    'bare template condition corrupted into a character map',
+  'automations/max-exceeded-debug.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-error.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-fatal.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-info.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-notset.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-uppercase-silent.yaml':
+    'unsupported max_exceeded level resets mode to single',
+  'automations/max-exceeded-warn.yaml': 'unsupported max_exceeded level resets mode to single',
+  'automations/meta-all-top-level-options.yaml':
+    'unsupported max_exceeded level resets mode to single',
+  'automations/parallel-branch-alias-and-note.yaml':
+    'alias/note lost: Tell everyone at once, Light branch',
+  'automations/parallel-in-choose-branch.yaml': 'parallel inside if/choose becomes sequential',
+  'automations/parallel-in-if-then.yaml': 'parallel inside if/choose becomes sequential',
+  'automations/parallel-nested-parallel.yaml':
+    'nested parallel flattened, following step duplicated',
+  'automations/parallel-single-mapping-branch.yaml':
+    'parallel as a mapping replaced by unknown.unknown',
+  'automations/realistic-presence-lights-with-sun-and-zone.yaml':
+    'parallel becomes sequential steps',
+  'automations/repeat-count-template.yaml': 'repeat count template dropped',
+  'automations/sequence-nested-inside-sequence.yaml':
+    'nested sequence step replaced by unknown.unknown',
+  'automations/sequence-nested-with-alias.yaml': 'nested sequence step replaced by unknown.unknown',
+  'automations/structure-choose-inside-repeat-until-with-wait.yaml':
+    'choose branch content moved out of an emptied then (runs unconditionally)',
+  'automations/structure-if-inside-parallel-branch-converging.yaml':
+    'step after a parallel is copied into every branch',
+  'automations/structure-parallel-branches-each-with-a-loop.yaml':
+    'step after a parallel is copied into every branch',
+  'automations/structure-repeat-until-inside-repeat-while.yaml': 'inner repeat-until loop dropped',
+  'automations/structure-stop-inside-while-loop-after-choose.yaml':
+    'choose merged into the loop while-condition, loop body dropped',
+  'automations/trigger-fields-enabled-template.yaml': 'trigger enabled as a template is rejected',
+  'automations/trigger-purpose-area-list-with-options.yaml':
+    'purpose trigger without target.entity_id rejected',
+  'automations/trigger-state-attribute-from-to-numbers.yaml':
+    'numeric from/to on a state trigger rejected',
+  'automations/trigger-state-from-null.yaml': 'to: null / from: null dropped',
+  'automations/trigger-state-to-null.yaml': 'to: null / from: null dropped',
+  'automations/triggers-nested-list-flattened.yaml':
+    'nested triggers: list saved as a malformed trigger',
+  'scripts/script-alias-icon-description.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-blueprint-instance.yaml': 'blueprint instance cannot be opened',
+  'scripts/script-choose-and-if-flow.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-condition-gate-steps.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-fields-entity-device-area-target.yaml':
+    'scripts cannot be opened (no trigger node)',
+  'scripts/script-fields-required-advanced-defaults.yaml':
+    'scripts cannot be opened (no trigger node)',
+  'scripts/script-fields-select-time-duration-color.yaml':
+    'scripts cannot be opened (no trigger node)',
+  'scripts/script-fields-text-number-boolean.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-fields-without-selectors.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-full-featured.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-legacy-service-keys.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-max-exceeded-error.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-minimal-sequence.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-mode-parallel-max-exceeded-silent.yaml':
+    'scripts cannot be opened (no trigger node)',
+  'scripts/script-mode-queued-with-max.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-mode-restart.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-no-alias-description-empty.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-parallel-flow.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-repeat-and-wait-flow.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-service-response-then-stop.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-stop-with-response-variable.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-trace-stored-traces.yaml': 'scripts cannot be opened (no trigger node)',
+  'scripts/script-variables-and-templates.yaml': 'scripts cannot be opened (no trigger node)',
+};
 
 const fixtureFiles = glob.sync('**/*.yaml', { cwd: FIXTURES_DIR }).sort();
 const transpiler = new FlowTranspiler();

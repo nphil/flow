@@ -1,0 +1,21 @@
+# Trigger-level variables that are set when that trigger fires.
+id: fixture_trigger_variables_fields
+alias: Fixture - trigger level variables
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    id: door
+    variables:
+      source_name: front door
+      urgency: "{{ 'high' if now().hour < 6 else 'normal' }}"
+  - trigger: time_pattern
+    minutes: "/30"
+    id: poll
+    variables:
+      source_name: timer
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "{{ source_name }}: {{ urgency | default('none') }}"
+mode: single

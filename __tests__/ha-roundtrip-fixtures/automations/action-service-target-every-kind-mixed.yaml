@@ -1,0 +1,21 @@
+# Service call whose target mixes entity, device, area, floor and label ids (scalars and lists).
+id: fixture_action_target_all_kinds
+alias: Fixture - target every kind mixed
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+    to: Away
+actions:
+  - action: light.turn_off
+    target:
+      entity_id:
+        - light.kitchen
+        - light.hallway
+      device_id:
+        - 0123456789abcdef0123456789abcdef
+      area_id: living_room
+      floor_id:
+        - ground_floor
+        - first_floor
+      label_id: night_lights
+mode: single

@@ -1,0 +1,24 @@
+# Plural triggers/conditions/actions keys that still use the old `platform:` and `service:` names.
+id: fixture_legacy_platform_service
+alias: Fixture - platform and service in plural keys
+triggers:
+  - platform: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 26
+  - platform: sun
+    event: sunset
+    offset: "-00:30:00"
+conditions:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+actions:
+  - service: climate.set_temperature
+    target:
+      entity_id: climate.living_room
+    data:
+      temperature: 22
+  - service: switch.turn_on
+    target:
+      entity_id: switch.fan
+mode: single

@@ -1,0 +1,26 @@
+# `stop` inside a repeat loop ends the whole run.
+id: fixture_stop_in_repeat
+alias: Fixture - stop inside repeat
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      count: 5
+      sequence:
+        - action: persistent_notification.create
+          data:
+            message: "Attempt {{ repeat.index }}"
+        - if:
+            - condition: state
+              entity_id: binary_sensor.front_door
+              state: "off"
+          then:
+            - stop: Door closed, no more attempts.
+        - delay:
+            seconds: 10
+  - action: persistent_notification.create
+    data:
+      message: Gave up after five attempts.
+mode: single

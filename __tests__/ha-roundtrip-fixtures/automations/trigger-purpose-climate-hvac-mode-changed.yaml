@@ -1,0 +1,16 @@
+# Purpose-specific trigger with a list option: climate HVAC mode changed.
+id: fixture_trigger_purpose_climate
+alias: Fixture - purpose trigger hvac mode changed
+triggers:
+  - trigger: climate.hvac_mode_changed
+    target:
+      entity_id: climate.living_room
+    options:
+      hvac_mode:
+        - heat
+        - cool
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The thermostat mode changed.
+mode: single

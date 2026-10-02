@@ -1,0 +1,13 @@
+# Old step spelling: `service:` with `data_template`.
+id: fixture_action_data_template
+alias: Fixture - legacy data_template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - service: notify.mobile_app_phone
+    data_template:
+      message: "Door opened at {{ now().strftime('%H:%M') }}"
+      title: Door
+mode: single

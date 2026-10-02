@@ -1,0 +1,12 @@
+# max_exceeded: warning (the HA default level, written out) on a queued automation.
+id: fixture_max_exceeded_warning
+alias: Fixture - max_exceeded warning
+triggers:
+  - trigger: state
+    entity_id: input_button.announce
+actions:
+  - delay:
+      seconds: 5
+mode: queued
+max: 4
+max_exceeded: warning

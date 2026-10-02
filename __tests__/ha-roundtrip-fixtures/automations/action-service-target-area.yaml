@@ -1,0 +1,12 @@
+# Service call targeting an area.
+id: fixture_action_target_area
+alias: Fixture - target area
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      area_id: living_room
+mode: single

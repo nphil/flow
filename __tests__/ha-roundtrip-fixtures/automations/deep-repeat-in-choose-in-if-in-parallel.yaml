@@ -1,0 +1,41 @@
+# repeat inside choose inside if inside a parallel branch, plus a second branch.
+id: fixture_deep_repeat_choose_if_parallel
+alias: Fixture - repeat in choose in if in parallel
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      - sequence:
+          - if:
+              - condition: state
+                entity_id: input_boolean.guest_mode
+                state: "off"
+            then:
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: sun.sun
+                        state: below_horizon
+                    sequence:
+                      - repeat:
+                          count: 3
+                          sequence:
+                            - action: light.toggle
+                              target:
+                                entity_id: light.hallway
+                            - delay:
+                                seconds: 1
+                default:
+                  - action: light.turn_on
+                    target:
+                      entity_id: light.hallway
+            else:
+              - action: persistent_notification.create
+                data:
+                  message: Guest mode, no flashing.
+      - action: notify.mobile_app_phone
+        data:
+          message: Door opened.
+mode: single

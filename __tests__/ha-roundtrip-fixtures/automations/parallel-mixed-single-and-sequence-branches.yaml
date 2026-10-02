@@ -1,0 +1,21 @@
+# parallel mixing a bare action branch with a sequence branch.
+id: fixture_parallel_mixed
+alias: Fixture - parallel mixed branches
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - parallel:
+      - sequence:
+          - wait_for_trigger:
+              - trigger: state
+                entity_id: binary_sensor.front_door
+                to: "off"
+          - action: notify.mobile_app_phone
+            data:
+              message: Door closed again.
+      - action: notify.mobile_app_tablet
+        data:
+          message: Door opened.
+mode: single

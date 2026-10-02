@@ -1,0 +1,24 @@
+# Alias and note on parallel step, on its sequence branches and on steps inside.
+id: fixture_parallel_prose
+alias: Fixture - parallel alias and note
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Tell everyone at once
+    note: The two branches do not depend on each other.
+    parallel:
+      - alias: Light branch
+        sequence:
+          - alias: Hallway on
+            action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - alias: Notification branch
+        sequence:
+          - alias: Tell the phone
+            action: notify.mobile_app_phone
+            data:
+              message: Door opened.
+mode: single

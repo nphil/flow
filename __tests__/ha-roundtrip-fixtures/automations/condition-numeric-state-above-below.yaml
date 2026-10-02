@@ -1,0 +1,16 @@
+# Root condition: numeric state between two thresholds.
+id: fixture_condition_numeric
+alias: Fixture - numeric state condition
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 17
+    below: 25
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Comfortable temperature.
+mode: single

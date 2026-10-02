@@ -1,0 +1,10 @@
+# Script with mode queued and a queue length.
+alias: Fixture - script mode queued
+mode: queued
+max: 6
+sequence:
+  - action: notify.mobile_app_phone
+    data:
+      message: Queued notice.
+  - delay:
+      seconds: 10

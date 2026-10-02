@@ -1,0 +1,21 @@
+# Condition steps written as `condition: "<template>"` and as `or:` shorthand.
+id: fixture_step_condition_shorthand
+alias: Fixture - condition step shorthand
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - condition: "{{ is_state('input_boolean.guest_mode', 'off') }}"
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - or:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      - "{{ now().hour >= 20 }}"
+  - action: persistent_notification.create
+    data:
+      message: Dark or late.
+mode: single

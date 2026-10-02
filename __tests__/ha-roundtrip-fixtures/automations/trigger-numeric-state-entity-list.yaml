@@ -1,0 +1,14 @@
+# Numeric state trigger over a list of entities.
+id: fixture_trigger_numeric_entity_list
+alias: Fixture - numeric state trigger entity list
+triggers:
+  - trigger: numeric_state
+    entity_id:
+      - sensor.room_a_temp
+      - sensor.room_b_temp
+    above: 28.5
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.fan
+mode: single

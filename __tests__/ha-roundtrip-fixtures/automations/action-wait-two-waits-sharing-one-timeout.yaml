@@ -1,0 +1,25 @@
+# Two waits sharing one overall timeout through `wait.remaining`.
+id: fixture_wait_shared_timeout
+alias: Fixture - two waits one timeout
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_template: "{{ is_state('binary_sensor.door_1', 'on') }}"
+    timeout: 10
+    continue_on_timeout: false
+  - action: switch.turn_on
+    target:
+      entity_id: switch.some_light
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.door_2
+        to: "on"
+        for: 2
+    timeout: "{{ wait.remaining }}"
+    continue_on_timeout: false
+  - action: switch.turn_off
+    target:
+      entity_id: switch.some_light
+mode: single

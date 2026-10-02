@@ -1,0 +1,17 @@
+# State trigger where `from` and `to` are lists of states.
+id: fixture_trigger_state_from_to_lists
+alias: Fixture - state trigger from and to lists
+triggers:
+  - trigger: state
+    entity_id: climate.living_room
+    from:
+      - "off"
+      - fan_only
+    to:
+      - heat
+      - cool
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Climate switched on.
+mode: single

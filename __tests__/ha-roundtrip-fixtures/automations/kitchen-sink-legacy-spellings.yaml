@@ -1,0 +1,52 @@
+# A large automation written entirely with the older spellings (singular keys, platform, service, data_template, device ids).
+id: fixture_kitchen_sink_legacy
+alias: Fixture - kitchen sink legacy spellings
+description: Singular trigger/condition/action keys, platform, service and data_template everywhere.
+trigger:
+  - platform: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    id: door
+  - platform: time_pattern
+    minutes: "/30"
+    id: poll
+  - platform: sun
+    event: sunset
+    offset: "-00:15:00"
+    id: dusk
+condition:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - condition: or
+    conditions:
+      - condition: time
+        after: "06:00:00"
+      - condition: numeric_state
+        entity_id: sensor.room_a_temp
+        below: 20
+action:
+  - service: light.turn_on
+    data:
+      entity_id: light.hallway
+      brightness_pct: 50
+  - service: notify.mobile_app_phone
+    data_template:
+      message: "Started by {{ trigger.id }}"
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: poll
+        sequence:
+          - service: homeassistant.update_entity
+            entity_id: sensor.room_a_temp
+    default:
+      - service: light.turn_off
+        entity_id: light.porch
+  - wait_template: "{{ is_state('binary_sensor.front_door', 'off') }}"
+    timeout: "00:05:00"
+    continue_on_timeout: false
+  - service: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

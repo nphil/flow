@@ -1,0 +1,12 @@
+# max_exceeded: info on a queued automation.
+id: fixture_max_exceeded_info
+alias: Fixture - max_exceeded info
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: queued
+max: 12
+max_exceeded: info

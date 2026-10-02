@@ -1,0 +1,11 @@
+# Template trigger that fires when the template turns true.
+id: fixture_trigger_template
+alias: Fixture - template trigger
+triggers:
+  - trigger: template
+    value_template: "{{ states('sensor.room_a_temp') | float(0) > 26 }}"
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.fan
+mode: single

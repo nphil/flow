@@ -1,0 +1,17 @@
+# Delay mapping with only milliseconds.
+id: fixture_action_delay_milliseconds
+alias: Fixture - delay milliseconds
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+  - delay:
+      milliseconds: 250
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+mode: single

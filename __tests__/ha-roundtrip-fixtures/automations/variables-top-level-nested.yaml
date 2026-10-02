@@ -1,0 +1,36 @@
+# Automation-level variables: scalars, a nested dict, lists, a list of dicts and templates.
+id: fixture_variables_nested
+alias: Fixture - nested top-level variables
+variables:
+  mood: relaxed
+  threshold: 21.5
+  enabled_flag: true
+  nothing: null
+  brightness_levels:
+    low: 20
+    high: 80
+  rooms:
+    - kitchen
+    - hall
+  settings:
+    schedule:
+      weekday:
+        - mon
+        - tue
+      start: "07:00:00"
+    presets:
+      - name: morning
+        level: 40
+      - name: evening
+        level: 70
+    computed: "{{ states('sensor.room_a_temp') | float(0) * 2 }}"
+triggers:
+  - trigger: time
+    at: "07:00:00"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.kitchen
+    data:
+      brightness_pct: "{{ brightness_levels.high }}"
+mode: single

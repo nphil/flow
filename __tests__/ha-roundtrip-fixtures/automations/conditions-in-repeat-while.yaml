@@ -1,0 +1,22 @@
+# `repeat.while` with a state condition and a template using repeat.index.
+id: fixture_repeat_while_conditions
+alias: Fixture - repeat while conditions
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      while:
+        - condition: state
+          entity_id: input_boolean.retry
+          state: "on"
+        - condition: template
+          value_template: "{{ repeat.index <= 5 }}"
+      sequence:
+        - action: persistent_notification.create
+          data:
+            message: "Attempt {{ repeat.index }}"
+        - delay:
+            seconds: 10
+mode: single

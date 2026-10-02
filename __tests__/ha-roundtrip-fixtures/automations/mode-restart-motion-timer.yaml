@@ -1,0 +1,17 @@
+# mode: restart - a classic motion light that restarts its delay on every new motion.
+id: fixture_mode_restart
+alias: Fixture - mode restart motion timer
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.hall_motion
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - delay:
+      minutes: 5
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: restart

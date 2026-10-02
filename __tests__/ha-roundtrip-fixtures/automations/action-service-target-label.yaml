@@ -1,0 +1,12 @@
+# Service call targeting a label.
+id: fixture_action_target_label
+alias: Fixture - target label
+triggers:
+  - trigger: state
+    entity_id: input_select.house_mode
+    to: Away
+actions:
+  - action: light.turn_off
+    target:
+      label_id: night_lights
+mode: single

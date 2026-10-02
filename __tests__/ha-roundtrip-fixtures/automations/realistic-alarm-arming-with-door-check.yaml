@@ -1,0 +1,31 @@
+# Realistic: check a list of doors, stop with a notice if one is open, otherwise arm the alarm.
+id: fixture_realistic_alarm_arming
+alias: Fixture - arm alarm with door check
+variables:
+  doors:
+    - binary_sensor.front_door
+    - binary_sensor.back_door
+    - binary_sensor.garage_door
+triggers:
+  - trigger: state
+    entity_id: input_button.arm_alarm
+actions:
+  - variables:
+      open_doors: "{{ doors | select('is_state', 'on') | list }}"
+  - if:
+      - condition: template
+        value_template: "{{ open_doors | count > 0 }}"
+    then:
+      - action: notify.mobile_app_phone
+        data:
+          message: "Cannot arm, open: {{ open_doors | join(', ') }}"
+      - stop: A door is open.
+  - action: alarm_control_panel.alarm_arm_away
+    target:
+      entity_id: alarm_control_panel.home
+    data:
+      code: "{{ states('input_text.alarm_code') }}"
+  - action: notify.mobile_app_phone
+    data:
+      message: Alarm armed.
+mode: single

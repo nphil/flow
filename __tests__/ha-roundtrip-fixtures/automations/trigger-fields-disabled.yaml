@@ -1,0 +1,17 @@
+# A disabled trigger between two enabled ones.
+id: fixture_trigger_disabled
+alias: Fixture - disabled trigger
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+  - enabled: false
+    trigger: sun
+    event: sunset
+  - trigger: time
+    at: "15:32:00"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A trigger fired.
+mode: single

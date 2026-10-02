@@ -1,0 +1,11 @@
+# Old step spelling: `service_template` choosing the service with a template.
+id: fixture_action_service_template
+alias: Fixture - legacy service_template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - service_template: "{{ 'light.turn_on' if is_state('sun.sun', 'below_horizon') else 'light.turn_off' }}"
+    entity_id: light.hallway
+mode: single

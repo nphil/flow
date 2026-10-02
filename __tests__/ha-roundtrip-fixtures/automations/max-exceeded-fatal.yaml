@@ -1,0 +1,12 @@
+# max_exceeded: fatal (a synonym of critical in the HA log level list).
+id: fixture_max_exceeded_fatal
+alias: Fixture - max_exceeded fatal
+triggers:
+  - trigger: event
+    event_type: panic_button
+actions:
+  - delay:
+      seconds: 5
+mode: queued
+max: 3
+max_exceeded: fatal

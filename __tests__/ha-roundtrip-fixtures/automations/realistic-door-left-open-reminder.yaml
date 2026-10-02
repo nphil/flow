@@ -1,0 +1,33 @@
+# Realistic: remind every 5 minutes while a door stays open, at most three times.
+id: fixture_realistic_door_reminder
+alias: Fixture - door left open reminder
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for:
+      minutes: 10
+actions:
+  - repeat:
+      while:
+        - condition: state
+          entity_id: binary_sensor.front_door
+          state: "on"
+        - condition: template
+          value_template: "{{ repeat.index <= 3 }}"
+      sequence:
+        - action: notify.mobile_app_phone
+          data:
+            title: Front door
+            message: "The front door has been open for {{ repeat.index * 5 + 5 }} minutes."
+        - delay:
+            minutes: 5
+  - if:
+      - condition: state
+        entity_id: binary_sensor.front_door
+        state: "on"
+    then:
+      - action: notify.mobile_app_phone
+        data:
+          message: Giving up on reminders, the door is still open.
+mode: single

@@ -1,0 +1,17 @@
+# repeat with a fixed count.
+id: fixture_repeat_count_number
+alias: Fixture - repeat count number
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - repeat:
+      count: 3
+      sequence:
+        - action: light.toggle
+          target:
+            entity_id: light.hallway
+        - delay:
+            seconds: 1
+mode: single

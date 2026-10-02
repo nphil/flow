@@ -1,0 +1,29 @@
+# else branch holding an if AND another step (so it is not a plain else-if ladder).
+id: fixture_if_nested_else_extra
+alias: Fixture - nested if in else with extra step
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - if:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+        then:
+          - action: persistent_notification.create
+            data:
+              message: Guest at the door in daylight.
+      - action: persistent_notification.create
+        data:
+          message: Daylight, logged.
+mode: single

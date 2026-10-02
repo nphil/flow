@@ -1,0 +1,18 @@
+# Purpose-specific trigger targeting two areas, with behavior and `for` options.
+id: fixture_trigger_purpose_area_options
+alias: Fixture - purpose trigger areas with options
+triggers:
+  - trigger: light.turned_on
+    target:
+      area_id:
+        - kitchen
+        - living_room
+    options:
+      behavior: first
+      for:
+        minutes: 1
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A light has been on for a minute.
+mode: single

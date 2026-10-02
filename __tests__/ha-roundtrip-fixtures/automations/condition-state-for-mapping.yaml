@@ -1,0 +1,19 @@
+# Root condition: state held for a duration given as a mapping.
+id: fixture_condition_state_for
+alias: Fixture - state condition for mapping
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: state
+    entity_id: device_tracker.phone_a
+    state: not_home
+    for:
+      hours: 1
+      minutes: 10
+      seconds: 5
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Phone has been away a while.
+mode: single

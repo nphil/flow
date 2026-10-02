@@ -1,0 +1,17 @@
+# Root conditions: bare template strings mixed with full condition mappings.
+id: fixture_condition_bare_templates
+alias: Fixture - bare template conditions
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - "{{ (state_attr('device_tracker.phone_a', 'battery_level') | int(0)) > 50 }}"
+  - condition: state
+    entity_id: alarm_control_panel.home
+    state: armed_away
+  - "{{ is_state('device_tracker.phone_a', 'away') }}"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Phone away with good battery and alarm armed.
+mode: single

@@ -1,0 +1,16 @@
+# Event trigger with a list of event types and an event_data filter.
+id: fixture_trigger_event_list
+alias: Fixture - event trigger type list with data
+triggers:
+  - trigger: event
+    event_type:
+      - button_press
+      - button_release
+    event_data:
+      command: toggle
+      count: 2
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Matching button event.
+mode: single

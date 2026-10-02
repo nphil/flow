@@ -1,0 +1,18 @@
+# Delay mapping using days, hours, minutes, seconds and milliseconds together.
+id: fixture_action_delay_all_units
+alias: Fixture - delay mapping all units
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - delay:
+      days: 1
+      hours: 2
+      minutes: 3
+      seconds: 4
+      milliseconds: 500
+  - action: persistent_notification.create
+    data:
+      message: A day and a bit later.
+mode: single

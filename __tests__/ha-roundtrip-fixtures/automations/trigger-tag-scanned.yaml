@@ -1,0 +1,12 @@
+# Tag trigger for one tag scanned on one scanner device.
+id: fixture_trigger_tag
+alias: Fixture - tag trigger
+triggers:
+  - trigger: tag
+    tag_id: A7-6B-90-5F
+    device_id: 0e19cd3cf2b311ea88f469a7512c307d
+actions:
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+mode: single

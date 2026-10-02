@@ -1,0 +1,19 @@
+# Root condition: purpose-specific `zone.in_zone` with target and options.
+id: fixture_condition_zone_in_zone
+alias: Fixture - purpose condition in zone
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: zone.in_zone
+    target:
+      entity_id:
+        - person.alex
+        - person.sam
+    options:
+      zone: zone.home
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Everyone is home.
+mode: single

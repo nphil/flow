@@ -1,0 +1,10 @@
+# A script written with `service:` and `data_template` spellings.
+alias: Fixture - script legacy keys
+mode: single
+sequence:
+  - service: notify.mobile_app_phone
+    data_template:
+      message: "It is {{ now().strftime('%H:%M') }}"
+  - service: light.turn_on
+    data:
+      entity_id: light.hallway

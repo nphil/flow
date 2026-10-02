@@ -1,0 +1,13 @@
+# State trigger with `for` as an HH:MM:SS string.
+id: fixture_trigger_state_for_string
+alias: Fixture - state trigger for string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    for: "00:05:00"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Door left open.
+mode: single

@@ -1,0 +1,27 @@
+# `stop` inside a choose branch, with more steps after the choose.
+id: fixture_stop_in_choose
+alias: Fixture - stop inside choose followed by more steps
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+        sequence:
+          - stop: Guest mode active.
+      - conditions:
+          - condition: state
+            entity_id: sun.sun
+            state: above_horizon
+        sequence:
+          - action: persistent_notification.create
+            data:
+              message: Daytime, nothing to light.
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

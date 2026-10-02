@@ -1,0 +1,11 @@
+# Home Assistant start trigger.
+id: fixture_trigger_ha_start
+alias: Fixture - homeassistant start
+triggers:
+  - trigger: homeassistant
+    event: start
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Home Assistant started.
+mode: single

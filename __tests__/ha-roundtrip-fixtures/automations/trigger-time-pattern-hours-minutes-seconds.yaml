@@ -1,0 +1,13 @@
+# Time pattern trigger using hours, minutes and seconds together.
+id: fixture_trigger_time_pattern_hms
+alias: Fixture - time pattern hours minutes seconds
+triggers:
+  - trigger: time_pattern
+    hours: /3
+    minutes: "0"
+    seconds: "30"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Every third hour at half a minute past.
+mode: single

@@ -1,0 +1,13 @@
+# Delay computed by one template.
+id: fixture_action_delay_template
+alias: Fixture - delay template
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - delay: "{{ states('input_number.minute_delay') | multiply(60) | int(0) }}"
+  - action: persistent_notification.create
+    data:
+      message: Delay finished.
+mode: single

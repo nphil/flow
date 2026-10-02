@@ -1,0 +1,15 @@
+# max_exceeded: silent on a single-mode automation (suppress the "already running" warning).
+id: fixture_max_exceeded_silent
+alias: Fixture - max_exceeded silent
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.hall_motion
+    to: "on"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - delay:
+      minutes: 5
+mode: single
+max_exceeded: silent

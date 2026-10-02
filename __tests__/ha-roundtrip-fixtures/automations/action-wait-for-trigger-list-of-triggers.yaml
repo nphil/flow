@@ -1,0 +1,21 @@
+# wait_for_trigger with a list of two triggers, each with an id.
+id: fixture_wait_trigger_list
+alias: Fixture - wait_for_trigger list
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: event
+        event_type: MY_EVENT
+        id: custom_event
+      - trigger: state
+        entity_id: light.hallway
+        to: "on"
+        for: 10
+        id: light_on
+  - action: persistent_notification.create
+    data:
+      message: Something the automation waited for happened.
+mode: single

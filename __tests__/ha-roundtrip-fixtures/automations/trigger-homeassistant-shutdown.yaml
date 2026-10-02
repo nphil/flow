@@ -1,0 +1,11 @@
+# Home Assistant shutdown trigger.
+id: fixture_trigger_ha_shutdown
+alias: Fixture - homeassistant shutdown
+triggers:
+  - trigger: homeassistant
+    event: shutdown
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Home Assistant is shutting down.
+mode: single

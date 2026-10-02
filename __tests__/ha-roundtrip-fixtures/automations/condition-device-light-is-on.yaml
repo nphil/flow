@@ -1,0 +1,17 @@
+# Root condition: device condition (placeholder ids).
+id: fixture_condition_device
+alias: Fixture - device condition
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: device
+    device_id: 0123456789abcdef0123456789abcdef
+    domain: light
+    entity_id: fedcba9876543210fedcba9876543210
+    type: is_on
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The light is on.
+mode: single

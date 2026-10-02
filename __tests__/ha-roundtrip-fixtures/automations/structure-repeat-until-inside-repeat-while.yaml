@@ -1,0 +1,26 @@
+# Structure stress: a repeat-until loop nested inside a repeat-while loop.
+id: fixture_structure_nested_loops
+alias: Fixture - repeat until inside repeat while
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      while:
+        - condition: state
+          entity_id: input_boolean.retry
+          state: "on"
+      sequence:
+        - repeat:
+            sequence:
+              - action: switch.toggle
+                target:
+                  entity_id: switch.fan
+              - delay:
+                  seconds: 5
+            until:
+              - condition: template
+                value_template: "{{ repeat.index >= 2 }}"
+        - delay:
+            seconds: 30

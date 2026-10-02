@@ -1,0 +1,17 @@
+# Service call storing its response in a variable that a later step uses.
+id: fixture_action_response_variable
+alias: Fixture - response variable
+triggers:
+  - trigger: time
+    at: "07:00:00"
+actions:
+  - action: weather.get_forecasts
+    target:
+      entity_id: weather.home
+    data:
+      type: daily
+    response_variable: forecast
+  - action: notify.mobile_app_phone
+    data:
+      message: "High today: {{ forecast['weather.home'].forecast[0].temperature }}"
+mode: single

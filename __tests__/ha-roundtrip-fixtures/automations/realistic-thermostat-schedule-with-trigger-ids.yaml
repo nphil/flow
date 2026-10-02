@@ -1,0 +1,45 @@
+# Realistic: three time triggers with ids, a choose that sets a different setpoint for each.
+id: fixture_realistic_thermostat
+alias: Fixture - thermostat schedule
+variables:
+  comfort_temp: 21
+  night_temp: 17
+triggers:
+  - trigger: time
+    at: "06:30:00"
+    id: morning
+    weekday:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+  - trigger: time
+    at: "18:00:00"
+    id: evening
+  - trigger: time
+    at: "22:30:00"
+    id: night
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - morning
+              - evening
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.living_room
+            data:
+              temperature: "{{ comfort_temp }}"
+      - conditions:
+          - condition: trigger
+            id: night
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.living_room
+            data:
+              temperature: "{{ night_temp }}"
+mode: single

@@ -1,0 +1,16 @@
+# Root condition: state of one entity.
+id: fixture_condition_state
+alias: Fixture - state condition
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

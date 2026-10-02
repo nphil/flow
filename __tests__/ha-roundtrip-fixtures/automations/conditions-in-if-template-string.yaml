@@ -1,0 +1,18 @@
+# `if` written as one bare template string.
+id: fixture_if_template_string
+alias: Fixture - if with a template string
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if: "{{ is_state('sun.sun', 'below_horizon') }}"
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+    else:
+      - action: light.turn_off
+        target:
+          entity_id: light.hallway
+mode: single

@@ -1,0 +1,55 @@
+# Alias and note on a service call, device action, scene, event, delay, waits, variables, conversation response and condition step.
+id: fixture_prose_simple_steps
+alias: Fixture - alias and note on simple steps
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Service call alias
+    note: Service call note.
+    action: light.turn_on
+    target:
+      entity_id: light.hallway
+  - alias: Device action alias
+    note: Device action note.
+    device_id: 0123456789abcdef0123456789abcdef
+    domain: light
+    entity_id: fedcba9876543210fedcba9876543210
+    type: toggle
+  - alias: Scene alias
+    note: Scene note.
+    scene: scene.movie_night
+  - alias: Event alias
+    note: Event note.
+    event: door_report
+    event_data:
+      source: front
+  - alias: Delay alias
+    note: Delay note.
+    delay:
+      seconds: 5
+  - alias: Wait template alias
+    note: Wait template note.
+    wait_template: "{{ is_state('binary_sensor.front_door', 'off') }}"
+    timeout: "00:01:00"
+  - alias: Wait trigger alias
+    note: Wait trigger note.
+    wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "on"
+    timeout: "00:01:00"
+  - alias: Variables alias
+    note: Variables note.
+    variables:
+      level: 40
+  - alias: Condition step alias
+    note: Condition step note.
+    condition: state
+    entity_id: input_boolean.guest_mode
+    state: "off"
+  - alias: Conversation response alias
+    note: Conversation response note.
+    set_conversation_response: Done.
+mode: single

@@ -1,0 +1,30 @@
+# Structure stress: every parallel branch runs its own repeat loop, then one shared step.
+id: fixture_structure_parallel_loops
+alias: Fixture - parallel branches with loops
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell
+    to: "on"
+actions:
+  - parallel:
+      - sequence:
+          - repeat:
+              count: 3
+              sequence:
+                - action: light.toggle
+                  target:
+                    entity_id: light.hallway
+                - delay:
+                    seconds: 1
+      - sequence:
+          - repeat:
+              count: 2
+              sequence:
+                - action: switch.toggle
+                  target:
+                    entity_id: switch.porch_lamp
+                - delay:
+                    seconds: 2
+  - action: persistent_notification.create
+    data:
+      message: Both signals finished.

@@ -1,0 +1,17 @@
+# Root condition: thresholds taken from other entities.
+id: fixture_condition_numeric_helpers
+alias: Fixture - numeric state condition entity thresholds
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: numeric_state
+    entity_id: climate.living_room
+    attribute: temperature
+    above: input_number.temp_low
+    below: input_number.temp_high
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Setpoint is inside the allowed band.
+mode: single

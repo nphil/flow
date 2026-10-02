@@ -1,0 +1,13 @@
+# wait_template without a timeout.
+id: fixture_wait_template_basic
+alias: Fixture - wait_template basic
+triggers:
+  - trigger: state
+    entity_id: media_player.tv
+    to: playing
+actions:
+  - wait_template: "{{ is_state('media_player.tv', 'idle') }}"
+  - action: light.turn_on
+    target:
+      entity_id: light.living_room
+mode: single

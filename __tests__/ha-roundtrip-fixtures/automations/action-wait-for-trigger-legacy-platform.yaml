@@ -1,0 +1,17 @@
+# wait_for_trigger written with the old `platform:` key.
+id: fixture_wait_trigger_platform
+alias: Fixture - wait_for_trigger platform key
+triggers:
+  - platform: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+    timeout: "00:02:00"
+  - action: light.turn_off
+    target:
+      entity_id: light.hallway
+mode: single

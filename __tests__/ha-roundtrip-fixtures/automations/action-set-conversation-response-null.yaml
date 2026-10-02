@@ -1,0 +1,9 @@
+# set_conversation_response set to null clears the response.
+id: fixture_conversation_response_null
+alias: Fixture - conversation response cleared
+triggers:
+  - trigger: conversation
+    command: stay quiet
+actions:
+  - set_conversation_response: null
+mode: single

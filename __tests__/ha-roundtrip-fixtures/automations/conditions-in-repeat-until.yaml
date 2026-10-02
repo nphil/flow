@@ -1,0 +1,22 @@
+# `repeat.until` with a numeric_state condition and a template.
+id: fixture_repeat_until_conditions
+alias: Fixture - repeat until conditions
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      sequence:
+        - action: switch.turn_on
+          target:
+            entity_id: switch.fan
+        - delay:
+            seconds: 20
+      until:
+        - condition: numeric_state
+          entity_id: sensor.room_a_temp
+          below: 25
+        - condition: template
+          value_template: "{{ repeat.index >= 3 }}"
+mode: single

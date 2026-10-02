@@ -1,0 +1,14 @@
+# Purpose-specific trigger on a door sensor.
+id: fixture_trigger_purpose_door
+alias: Fixture - purpose trigger door opened
+triggers:
+  - trigger: door.opened
+    target:
+      entity_id: binary_sensor.front_door
+    options:
+      behavior: first
+actions:
+  - action: persistent_notification.create
+    data:
+      message: A door opened.
+mode: single

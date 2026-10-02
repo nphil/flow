@@ -1,0 +1,25 @@
+# A nested `sequence:` step with an alias, followed by another group.
+id: fixture_sequence_nested
+alias: Fixture - nested sequence with alias
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - alias: Turn on devices
+    sequence:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+      - action: switch.turn_on
+        target:
+          entity_id: switch.porch_lamp
+  - alias: Send notifications
+    sequence:
+      - action: notify.mobile_app_phone
+        data:
+          message: Door opened.
+      - action: notify.mobile_app_tablet
+        data:
+          message: Door opened.
+mode: single

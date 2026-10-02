@@ -1,0 +1,24 @@
+# Realistic: power drops below a threshold for two minutes, then announce and wait for the door to open.
+id: fixture_realistic_washer
+alias: Fixture - washer finished
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.washer_power
+    below: 5
+    for:
+      minutes: 2
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: The washing machine is done.
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.washer_door
+        to: "on"
+    timeout:
+      hours: 2
+    continue_on_timeout: false
+  - action: notify.mobile_app_phone
+    data:
+      message: Thanks, the laundry has been taken out.
+mode: single

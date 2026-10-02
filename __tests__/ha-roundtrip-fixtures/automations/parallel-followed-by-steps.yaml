@@ -1,0 +1,28 @@
+# Steps after a parallel only run once every branch has finished.
+id: fixture_parallel_then_steps
+alias: Fixture - parallel followed by steps
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Before.
+  - parallel:
+      - sequence:
+          - delay:
+              seconds: 10
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+      - sequence:
+          - delay:
+              seconds: 20
+          - action: light.turn_on
+            target:
+              entity_id: light.porch
+  - action: persistent_notification.create
+    data:
+      message: Both lights handled.
+mode: single

@@ -1,0 +1,37 @@
+# Branch on which trigger a wait_for_trigger saw (`wait.trigger.id`).
+id: fixture_wait_trigger_id_choose
+alias: Fixture - choose on wait.trigger.id
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.front_door
+        to: "off"
+        id: closed
+      - trigger: time
+        at: "23:00:00"
+        id: night
+    timeout: "01:00:00"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger is not none and wait.trigger.id == 'closed' }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              message: Door closed again.
+      - conditions:
+          - condition: template
+            value_template: "{{ wait.trigger is not none and wait.trigger.id == 'night' }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              message: Door still open at night.
+    default:
+      - action: persistent_notification.create
+        data:
+          message: Nothing happened within the hour.
+mode: single

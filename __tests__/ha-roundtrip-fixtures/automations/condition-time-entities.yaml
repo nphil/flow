@@ -1,0 +1,16 @@
+# Root condition: time window defined by helper and sensor entities.
+id: fixture_condition_time_entities
+alias: Fixture - time condition entities
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions:
+  - condition: time
+    after: input_datetime.quiet_start
+    before: sensor.sunrise_time
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

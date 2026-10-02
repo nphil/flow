@@ -1,0 +1,43 @@
+# Script fields with required and advanced flags and defaults of several types.
+alias: Fixture - script fields flags and defaults
+mode: single
+fields:
+  retries:
+    name: Retries
+    required: true
+    advanced: false
+    default: 3
+    selector:
+      number:
+        min: 1
+        max: 10
+  targets:
+    name: Targets
+    advanced: true
+    default:
+      - light.hallway
+      - light.kitchen
+    selector:
+      object: {}
+  settings:
+    name: Settings
+    advanced: true
+    default:
+      brightness: 50
+      fade: true
+    selector:
+      object: {}
+  note_text:
+    name: Note
+    required: false
+    advanced: true
+    example: remember the milk
+    selector:
+      text: {}
+sequence:
+  - repeat:
+      count: "{{ retries | int(1) }}"
+      sequence:
+        - action: persistent_notification.create
+          data:
+            message: "{{ note_text | default('hello') }}"

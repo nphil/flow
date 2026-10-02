@@ -1,0 +1,16 @@
+# trigger_variables are available when the triggers are attached (limited templates only).
+id: fixture_trigger_variables
+alias: Fixture - trigger_variables
+trigger_variables:
+  my_event: example_event
+  my_topic: home/doors/front
+triggers:
+  - trigger: event
+    event_type: "{{ my_event }}"
+  - trigger: mqtt
+    topic: "{{ my_topic }}"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Something happened.
+mode: single

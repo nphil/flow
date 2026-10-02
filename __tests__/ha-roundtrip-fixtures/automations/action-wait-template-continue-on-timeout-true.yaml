@@ -1,0 +1,15 @@
+# wait_template with continue_on_timeout written out as true (the default).
+id: fixture_wait_template_continue_true
+alias: Fixture - wait_template continue_on_timeout true
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - wait_template: "{{ is_state('binary_sensor.entrance', 'on') }}"
+    timeout: "00:00:45"
+    continue_on_timeout: true
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

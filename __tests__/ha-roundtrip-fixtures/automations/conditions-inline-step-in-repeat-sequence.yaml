@@ -1,0 +1,18 @@
+# A condition step inside a repeat sequence.
+id: fixture_inline_condition_in_repeat
+alias: Fixture - inline condition inside repeat
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      count: 3
+      sequence:
+        - condition: state
+          entity_id: input_boolean.guest_mode
+          state: "off"
+        - action: light.toggle
+          target:
+            entity_id: light.hallway
+mode: single

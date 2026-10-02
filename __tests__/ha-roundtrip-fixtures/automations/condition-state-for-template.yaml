@@ -1,0 +1,18 @@
+# Root condition: `for` mapping holding templates.
+id: fixture_condition_state_for_template
+alias: Fixture - state condition for template
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: state
+    entity_id: device_tracker.phone_a
+    state: home
+    for:
+      minutes: "{{ states('input_number.lock_minutes') | int(5) }}"
+      seconds: "{{ states('input_number.lock_seconds') | int(0) }}"
+actions:
+  - action: persistent_notification.create
+    data:
+      message: Phone has been home long enough.
+mode: single

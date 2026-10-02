@@ -1,0 +1,15 @@
+# Root condition: numeric state with only `below`.
+id: fixture_condition_numeric_below
+alias: Fixture - numeric state condition below only
+triggers:
+  - trigger: time_pattern
+    minutes: "/10"
+conditions:
+  - condition: numeric_state
+    entity_id: sensor.room_a_temp
+    below: 18
+actions:
+  - action: climate.turn_on
+    target:
+      entity_id: climate.living_room
+mode: single

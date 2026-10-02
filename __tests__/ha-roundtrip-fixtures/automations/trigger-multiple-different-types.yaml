@@ -1,0 +1,23 @@
+# Several different trigger types on one automation, each with an id.
+id: fixture_trigger_multiple_types
+alias: Fixture - multiple trigger types
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+    id: door
+  - trigger: time_pattern
+    minutes: "/15"
+    id: poll
+  - trigger: event
+    event_type: manual_event
+    id: manual
+  - trigger: numeric_state
+    entity_id: sensor.room_a_temp
+    above: 30
+    id: hot
+actions:
+  - action: persistent_notification.create
+    data:
+      message: "Started by {{ trigger.id }}"
+mode: single

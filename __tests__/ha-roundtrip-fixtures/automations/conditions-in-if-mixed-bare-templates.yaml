@@ -1,0 +1,19 @@
+# `if` list mixing bare template strings with a state condition.
+id: fixture_if_mixed_bare
+alias: Fixture - if with mixed bare templates
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - "{{ states('sensor.room_a_temp') | float(0) < 28 }}"
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: "off"
+      - "{{ now().hour >= 20 }}"
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+mode: single

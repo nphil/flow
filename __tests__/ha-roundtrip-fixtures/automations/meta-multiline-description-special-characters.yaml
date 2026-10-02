@@ -1,0 +1,15 @@
+# Alias and a multi-line description with quotes, colons, hash signs and accents.
+id: fixture_meta_special_characters
+alias: "Fixture - Küche: Licht & Lüftung (Abend)"
+description: |-
+  Line one explains the idea.
+  Line two has "quotes", a colon: and a # hash sign.
+  Line three keeps accents: café, naïve.
+triggers:
+  - trigger: time
+    at: "18:30:00"
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.kitchen
+mode: single

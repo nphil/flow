@@ -1,0 +1,14 @@
+# Shape the UI editor saves: numeric-string id, empty description, empty conditions list.
+id: "1700000000001"
+alias: Fixture - UI style empty description
+description: ""
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+conditions: []
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.hallway
+mode: single

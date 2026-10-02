@@ -1,0 +1,13 @@
+# Old step spelling: `entity_id` directly on the step instead of under `target`.
+id: fixture_action_step_entity_id
+alias: Fixture - step level entity_id
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: light.turn_on
+    entity_id: light.hallway
+    data:
+      brightness_pct: 50
+mode: single

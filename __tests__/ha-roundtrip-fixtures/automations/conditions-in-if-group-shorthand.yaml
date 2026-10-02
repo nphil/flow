@@ -1,0 +1,25 @@
+# `if` using the `or:` and `and:` shorthand group spellings.
+id: fixture_if_shorthand_groups
+alias: Fixture - if with shorthand groups
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - or:
+          - and:
+              - condition: state
+                entity_id: binary_sensor.motion_a
+                state: "on"
+              - condition: state
+                entity_id: binary_sensor.motion_b
+                state: "on"
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+    then:
+      - action: light.turn_on
+        target:
+          entity_id: light.hallway
+mode: single

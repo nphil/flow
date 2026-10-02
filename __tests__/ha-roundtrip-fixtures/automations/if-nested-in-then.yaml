@@ -1,0 +1,30 @@
+# if nested inside the then branch of another if.
+id: fixture_if_nested_then
+alias: Fixture - nested if in then
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - if:
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+    then:
+      - if:
+          - condition: state
+            entity_id: input_boolean.guest_mode
+            state: "on"
+        then:
+          - action: light.turn_on
+            target:
+              entity_id: light.living_room
+        else:
+          - action: light.turn_on
+            target:
+              entity_id: light.hallway
+    else:
+      - action: persistent_notification.create
+        data:
+          message: Daylight.
+mode: single

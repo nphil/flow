@@ -1,0 +1,15 @@
+# stop returning a response variable.
+id: fixture_stop_response_variable
+alias: Fixture - stop with response variable
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - variables:
+      outcome:
+        handled: true
+        by: automation
+  - stop: Finished with a response.
+    response_variable: outcome
+mode: single

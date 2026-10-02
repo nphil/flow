@@ -1,0 +1,14 @@
+# Delay mapping with only minutes.
+id: fixture_action_delay_minutes
+alias: Fixture - delay mapping minutes
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - delay:
+      minutes: 10
+  - action: persistent_notification.create
+    data:
+      message: Ten minutes later.
+mode: single

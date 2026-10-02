@@ -1,0 +1,19 @@
+# `repeat.while` and `repeat.until` written as bare template strings.
+id: fixture_repeat_shorthand_conditions
+alias: Fixture - repeat shorthand conditions
+triggers:
+  - trigger: state
+    entity_id: input_boolean.retry
+    to: "on"
+actions:
+  - repeat:
+      while: "{{ is_state('input_boolean.retry', 'on') and repeat.index < 10 }}"
+      sequence:
+        - delay:
+            seconds: 5
+  - repeat:
+      until: "{{ is_state('device_tracker.phone_a', 'home') or repeat.index > 6 }}"
+      sequence:
+        - delay:
+            seconds: 30
+mode: single

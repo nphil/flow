@@ -1,0 +1,16 @@
+# Service call with continue_on_error: the next step still runs when it fails.
+id: fixture_action_continue_on_error
+alias: Fixture - continue on error
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.front_door
+    to: "on"
+actions:
+  - action: notify.unreliable_service
+    continue_on_error: true
+    data:
+      message: Door opened.
+  - action: persistent_notification.create
+    data:
+      message: Still runs after a failure above.
+mode: single

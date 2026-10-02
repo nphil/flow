@@ -1,0 +1,17 @@
+# Root condition: one entity matching any of several states.
+id: fixture_condition_state_list
+alias: Fixture - state condition state list
+triggers:
+  - trigger: time
+    at: "22:00:00"
+conditions:
+  - condition: state
+    entity_id: alarm_control_panel.home
+    state:
+      - armed_away
+      - armed_home
+actions:
+  - action: persistent_notification.create
+    data:
+      message: The alarm is armed.
+mode: single

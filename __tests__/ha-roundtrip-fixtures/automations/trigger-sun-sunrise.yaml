@@ -1,0 +1,11 @@
+# Sun trigger (legacy options) at sunrise with no offset.
+id: fixture_trigger_sun_sunrise
+alias: Fixture - sun trigger sunrise
+triggers:
+  - trigger: sun
+    event: sunrise
+actions:
+  - action: light.turn_off
+    target:
+      entity_id: light.porch
+mode: single
