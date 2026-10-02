@@ -1,6 +1,8 @@
+import { useNodeId } from '@xyflow/react';
 import type { LucideIcon } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useNodeReadabilityWarning } from '@/hooks/useReadability';
 import type { NodeDescription } from '@/lib/describeNode';
 import { cn } from '@/lib/utils';
 import type { NodeKind } from '@/utils/nodeData';
@@ -20,7 +22,7 @@ const KIND_BG: Record<NodeKind, string> = {
   unknown: 'bg-flow-node-unknown',
 };
 
-const KIND_TEXT: Record<NodeKind, string> = {
+export const KIND_TEXT: Record<NodeKind, string> = {
   trigger: 'text-flow-node-trigger',
   condition: 'text-flow-node-condition',
   action: 'text-flow-node-action',
@@ -94,6 +96,8 @@ export function NodeShell({
   className,
 }: NodeShellProps) {
   const { ringClass, dimmed, tooltip } = traceView;
+  // Warnings only: suggestions (a missing name...) would put a dot on nearly every node.
+  const readabilityWarning = useNodeReadabilityWarning(useNodeId());
   const pulse = isActive && !dimmed;
 
   return (
@@ -129,6 +133,12 @@ export function NodeShell({
         <span className="absolute -top-2 -right-2 rounded-full border border-flow-border bg-flow-elevated px-1.5 py-0.5 font-mono text-[10px] text-flow-text-muted uppercase tracking-wide shadow-flow-card">
           {disabledLabel}
         </span>
+      )}
+      {readabilityWarning && (
+        <span
+          className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-flow-warn"
+          title={readabilityWarning}
+        />
       )}
       <NodeTraceBadge view={traceView} />
 

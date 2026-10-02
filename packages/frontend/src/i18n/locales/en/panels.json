@@ -47,5 +47,26 @@
     "openPalette": "Open node palette",
     "openPanel": "Open panel",
     "unsavedChanges": "Unsaved changes"
+  },
+  "readability": {
+    "title": "Readability",
+    "worthFixing": "Worth fixing",
+    "suggestions": "Suggestions",
+    "warningsCount_one": "{{count}} thing worth fixing",
+    "warningsCount_other": "{{count}} things worth fixing",
+    "suggestionsCount_one": "{{count}} suggestion",
+    "suggestionsCount_other": "{{count}} suggestions",
+    "fixAllSafeCount": "Fix all safe ({{count}})",
+    "fixAllSafeHint": "Applies only the changes that cannot change what the automation does. You can undo it with Ctrl+Z.",
+    "emptyTitle": "Nothing to fix",
+    "emptyBody": "This automation reads well: nothing looks fragile and every step is easy to follow.",
+    "emptyCanvasTitle": "Nothing to check yet",
+    "emptyCanvasBody": "Add a trigger and an action. Tips for making the automation easier to read show up here.",
+    "automationLevel": "Whole automation",
+    "showOnCanvas": "Show on canvas: {{name}}",
+    "openProperties": "Open the automation settings",
+    "unsafeFix": "Check first:",
+    "tabBadge_one": "{{count}} readability finding",
+    "tabBadge_other": "{{count}} readability findings"
   }
 }

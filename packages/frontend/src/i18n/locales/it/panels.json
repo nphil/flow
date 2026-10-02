@@ -47,5 +47,26 @@
     "openPalette": "Apri tavolozza nodi",
     "openPanel": "Apri pannello",
     "unsavedChanges": "Modifiche non salvate"
+  },
+  "readability": {
+    "title": "Leggibilità",
+    "worthFixing": "Da correggere",
+    "suggestions": "Suggerimenti",
+    "warningsCount_one": "{{count}} punto da correggere",
+    "warningsCount_other": "{{count}} punti da correggere",
+    "suggestionsCount_one": "{{count}} suggerimento",
+    "suggestionsCount_other": "{{count}} suggerimenti",
+    "fixAllSafeCount": "Correggi tutto in sicurezza ({{count}})",
+    "fixAllSafeHint": "Applica solo le modifiche che non cambiano il comportamento dell'automazione. Annullabile con Ctrl+Z.",
+    "emptyTitle": "Niente da correggere",
+    "emptyBody": "Questa automazione è leggibile: niente sembra fragile e ogni passaggio è facile da seguire.",
+    "emptyCanvasTitle": "Ancora niente da controllare",
+    "emptyCanvasBody": "Aggiungi un trigger e un'azione. I consigli di leggibilità compariranno qui.",
+    "automationLevel": "Intera automazione",
+    "showOnCanvas": "Mostra sulla tela: {{name}}",
+    "openProperties": "Apri le impostazioni dell'automazione",
+    "unsafeFix": "Da verificare:",
+    "tabBadge_one": "{{count}} segnalazione di leggibilità",
+    "tabBadge_other": "{{count}} segnalazioni di leggibilità"
   }
 }

@@ -23,6 +23,7 @@
     "automationName": "Nome automazione",
     "properties": "Proprietà",
     "yaml": "YAML",
+    "readability": "Leggibilità",
     "debug": "Debug",
     "enabled": "Abilitato",
     "alias": "Alias (Nome visualizzato)",

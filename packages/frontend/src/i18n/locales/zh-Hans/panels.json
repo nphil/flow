@@ -47,5 +47,23 @@
     "openPalette": "打开节点调板",
     "openPanel": "打开面板",
     "unsavedChanges": "未保存的更改"
+  },
+  "readability": {
+    "title": "可读性",
+    "worthFixing": "建议修复",
+    "suggestions": "改进建议",
+    "warningsCount_other": "{{count}} 项建议修复",
+    "suggestionsCount_other": "{{count}} 条改进建议",
+    "fixAllSafeCount": "一键修复所有安全项（{{count}}）",
+    "fixAllSafeHint": "只应用不会改变自动化行为的修改。可用 Ctrl+Z 撤销。",
+    "emptyTitle": "没有需要修复的内容",
+    "emptyBody": "这个自动化很易读：没有脆弱之处，每一步都清晰明了。",
+    "emptyCanvasTitle": "暂无可检查的内容",
+    "emptyCanvasBody": "添加一个触发器和一个动作后，提高可读性的建议会显示在这里。",
+    "automationLevel": "整个自动化",
+    "showOnCanvas": "在画布上显示：{{name}}",
+    "openProperties": "打开自动化设置",
+    "unsafeFix": "请先确认：",
+    "tabBadge_other": "{{count}} 条可读性提示"
   }
 }
