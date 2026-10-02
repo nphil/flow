@@ -23,6 +23,7 @@
     "automationName": "自动化名称",
     "properties": "属性",
     "yaml": "YAML",
+    "readability": "可读性",
     "debug": "调试",
     "enabled": "已启用",
     "alias": "别名（显示名称）",

@@ -47,5 +47,26 @@
     "openPalette": "Ouvrir la palette de nœuds",
     "openPanel": "Ouvrir le panneau",
     "unsavedChanges": "Modifications non enregistrées"
+  },
+  "readability": {
+    "title": "Lisibilité",
+    "worthFixing": "À corriger",
+    "suggestions": "Suggestions",
+    "warningsCount_one": "{{count}} point à corriger",
+    "warningsCount_other": "{{count}} points à corriger",
+    "suggestionsCount_one": "{{count}} suggestion",
+    "suggestionsCount_other": "{{count}} suggestions",
+    "fixAllSafeCount": "Tout corriger sans risque ({{count}})",
+    "fixAllSafeHint": "N'applique que les changements qui ne modifient pas le comportement de l'automatisation. Annulable avec Ctrl+Z.",
+    "emptyTitle": "Rien à corriger",
+    "emptyBody": "Cette automatisation se lit bien : rien ne semble fragile et chaque étape est facile à suivre.",
+    "emptyCanvasTitle": "Rien à vérifier pour l'instant",
+    "emptyCanvasBody": "Ajoutez un déclencheur et une action. Les conseils de lisibilité apparaîtront ici.",
+    "automationLevel": "Toute l'automatisation",
+    "showOnCanvas": "Afficher sur le canevas : {{name}}",
+    "openProperties": "Ouvrir les réglages de l'automatisation",
+    "unsafeFix": "À vérifier :",
+    "tabBadge_one": "{{count}} remarque de lisibilité",
+    "tabBadge_other": "{{count}} remarques de lisibilité"
   }
 }

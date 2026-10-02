@@ -64,6 +64,7 @@ Flow is architected with strict engineering principles to ensure your home remai
 - **Entity Intelligence:** Full autocomplete and state-awareness via the native HASS WebSocket API.
 - **Visual Import:** Load any native automation and see it mapped instantly to nodes.
 - **Live Trace View:** A Node-RED-style live debugger built into the editor. Toggle **Live** in the Debug panel and every run paints itself onto your flow: executed nodes badge green, false conditions badge orange with the reason, errors badge red, unvisited nodes dim out, and delay/wait nodes count down while they hold. A run picker lets you replay any recent execution.
+- **Readability Tab:** Plain-language tips on the open automation: steps without a name, templates a built-in State or Numeric state condition can replace, literal `device_id`s, and state triggers that fire when a sensor comes back from `unavailable`. Each tip has one-click fixes (an unsafe one tells you what else changes), **Fix all safe** applies only the harmless ones in a single Ctrl+Z step, and nodes with something worth fixing get a small amber dot on the canvas.
 - **Theming:** Six built-in palettes (Catppuccin, Nord, Tokyo Night, Gruvbox, Rosé Pine, Everforest), each with a light and dark variant, plus an optional "Home Assistant" mode that blends the editor into your existing HA theme.
 
 ---

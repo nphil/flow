@@ -47,5 +47,26 @@
     "openPalette": "Knotenkatalog öffnen",
     "openPanel": "Bereich öffnen",
     "unsavedChanges": "Ungespeicherte Änderungen"
+  },
+  "readability": {
+    "title": "Lesbarkeit",
+    "worthFixing": "Sollte behoben werden",
+    "suggestions": "Vorschläge",
+    "warningsCount_one": "{{count}} Punkt zu beheben",
+    "warningsCount_other": "{{count}} Punkte zu beheben",
+    "suggestionsCount_one": "{{count}} Vorschlag",
+    "suggestionsCount_other": "{{count}} Vorschläge",
+    "fixAllSafeCount": "Alle sicheren beheben ({{count}})",
+    "fixAllSafeHint": "Wendet nur Änderungen an, die das Verhalten der Automation nicht ändern. Mit Strg+Z rückgängig zu machen.",
+    "emptyTitle": "Nichts zu beheben",
+    "emptyBody": "Diese Automation ist gut lesbar: nichts wirkt fragil und jeder Schritt ist leicht nachzuvollziehen.",
+    "emptyCanvasTitle": "Noch nichts zu prüfen",
+    "emptyCanvasBody": "Füge einen Auslöser und eine Aktion hinzu. Tipps für bessere Lesbarkeit erscheinen hier.",
+    "automationLevel": "Ganze Automation",
+    "showOnCanvas": "Auf der Arbeitsfläche zeigen: {{name}}",
+    "openProperties": "Einstellungen der Automation öffnen",
+    "unsafeFix": "Vorher prüfen:",
+    "tabBadge_one": "{{count}} Lesbarkeitshinweis",
+    "tabBadge_other": "{{count}} Lesbarkeitshinweise"
   }
 }

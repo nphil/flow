@@ -24,6 +24,14 @@ interface CachedYaml {
 export function YamlPreview() {
   const { t } = useTranslation(['common', 'errors']);
   const nodes = useFlowStore((s) => s.nodes);
+  // Everything toFlowGraph() reads: the YAML must follow edits that touch only these (a
+  // readability fix, a rename, a new connection), not just changes to the node list.
+  const edges = useFlowStore((s) => s.edges);
+  const flowName = useFlowStore((s) => s.flowName);
+  const flowDescription = useFlowStore((s) => s.flowDescription);
+  const flowMetadata = useFlowStore((s) => s.flowMetadata);
+  const userVariables = useFlowStore((s) => s.userVariables);
+  const userTriggerVariables = useFlowStore((s) => s.userTriggerVariables);
   const toFlowGraph = useFlowStore((s) => s.toFlowGraph);
   const [copied, setCopied] = useState(false);
   const [forceStrategy, setForceStrategy] = useState<'auto' | 'native' | 'state-machine'>('auto');
@@ -32,6 +40,7 @@ export function YamlPreview() {
   const lastValidYamlRef = useRef<CachedYaml | null>(null);
 
   // Compute YAML from nodes (canvas → YAML)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the flow fields are read through toFlowGraph(); they are the re-run triggers
   const { yaml, errors, warnings, strategy, isStale } = useMemo(() => {
     if (nodes.length === 0) {
       lastValidYamlRef.current = null;
@@ -82,7 +91,18 @@ export function YamlPreview() {
         isStale: !!cached,
       };
     }
-  }, [nodes, toFlowGraph, forceStrategy, t]);
+  }, [
+    nodes,
+    edges,
+    flowName,
+    flowDescription,
+    flowMetadata,
+    userVariables,
+    userTriggerVariables,
+    toFlowGraph,
+    forceStrategy,
+    t,
+  ]);
 
   const handleCopy = async () => {
     try {
