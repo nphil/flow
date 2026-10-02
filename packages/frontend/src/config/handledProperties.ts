@@ -87,6 +87,7 @@ export const HANDLED_PROPERTIES = {
     // Legacy/alternative action formats
     'entity_id', // Legacy: often shows up instead of target.entity_id
     'action', // Alternative field name for service
+    'legacyServiceKey', // Internal: the step was written with `service:`, keep it on save
     'metadata', // HA metadata field
     'repeat', // repeat.for_each opaque block — see ForEachEditor
   ],

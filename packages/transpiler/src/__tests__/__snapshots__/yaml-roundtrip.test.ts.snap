@@ -371,7 +371,7 @@ actions:
       - condition: template
         value_template: "{{ is_state(target_light, 'on') }}"
     then:
-      - service: light.turn_on
+      - action: light.turn_on
         target:
           entity_id: "{{ target_light }}"
         data:
@@ -381,7 +381,7 @@ actions:
           milliseconds: 500
       - variables:
           color_before: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-      - service: adaptive_lighting.apply
+      - action: adaptive_lighting.apply
         data:
           entity_id: switch.adaptive_lighting_adapt_color_dali
           lights:
@@ -398,7 +398,7 @@ actions:
           - condition: template
             value_template: "{{ is_state(target_light, 'on') and (color_after_1 == color_before) }}"
         then:
-          - service: adaptive_lighting.apply
+          - action: adaptive_lighting.apply
             data:
               entity_id: switch.adaptive_lighting_adapt_color_dali
               lights:
@@ -415,7 +415,7 @@ actions:
           - condition: template
             value_template: "{{ is_state(target_light, 'on') and (color_after_2 == color_before) }}"
         then:
-          - service: adaptive_lighting.apply
+          - action: adaptive_lighting.apply
             data:
               entity_id: switch.adaptive_lighting_adapt_color_dali
               lights:
@@ -507,7 +507,7 @@ triggers:
     entity_id: alarm_control_panel.allarme
 actions:
   - alias: "Action: light.turn_on"
-    service: light.turn_on
+    action: light.turn_on
     target:
       entity_id: light.studio
     data: {}
@@ -561,15 +561,15 @@ actions:
             above: 39
             attribute: current_temperature
         then:
-          - service: notify.mobile_app_iphone_maria
+          - action: notify.mobile_app_iphone_maria
             data:
               title: 🚿 Hot Water Ready
               message: Welcome back! There is plenty of hot water waiting for you.
         else:
-          - service: water_heater.turn_on
+          - action: water_heater.turn_on
             target:
               entity_id: water_heater.altherma
-          - service: notify.mobile_app_iphone_maria
+          - action: notify.mobile_app_iphone_maria
             data:
               title: 🚿 Heating Water
               message: Welcome back! Turning on the water heater now.
@@ -591,7 +591,7 @@ actions:
                 entity_id: person.maria
                 zone: zone.city_limits
         then:
-          - service: water_heater.turn_off
+          - action: water_heater.turn_off
             target:
               entity_id: water_heater.altherma
 mode: single
@@ -673,7 +673,7 @@ actions:
       - condition: trigger
         id: playing
     then:
-      - service: light.turn_off
+      - action: light.turn_off
         target:
           entity_id:
             - light.0a12b58eadb1ae45d36fdb96e025444d
@@ -685,7 +685,7 @@ actions:
           - condition: trigger
             id: paused
         then:
-          - service: light.turn_on
+          - action: light.turn_on
             target:
               entity_id: light.751314eaa8749ab751d478948a65b33e
             data:
@@ -813,7 +813,7 @@ actions:
         to: "on"
     timeout: "00:00:30"
     continue_on_timeout: false
-  - service: timer.start
+  - action: timer.start
     target:
       entity_id: timer.uscita_maya
 mode: restart
@@ -895,7 +895,7 @@ actions:
               seconds: 0
               milliseconds: 0
           - metadata: {}
-            service: switch.turn_off
+            action: switch.turn_off
             target:
               entity_id:
                 - switch.ensuite_fan
@@ -903,7 +903,7 @@ actions:
             data: {}
         else:
           - metadata: {}
-            service: switch.turn_off
+            action: switch.turn_off
             target:
               entity_id:
                 - switch.ensuite_fan
@@ -928,7 +928,7 @@ actions:
               - "off"
         then:
           - metadata: {}
-            service: switch.turn_on
+            action: switch.turn_on
             target:
               entity_id: switch.ensuite_fan
             data: {}
@@ -953,7 +953,7 @@ actions:
                       seconds: 0
                       milliseconds: 0
                   - metadata: {}
-                    service: switch.turn_off
+                    action: switch.turn_off
                     target:
                       entity_id: switch.ensuite_fan
                     data: {}
@@ -964,7 +964,7 @@ actions:
                       seconds: 0
                       milliseconds: 0
                   - metadata: {}
-                    service: switch.turn_off
+                    action: switch.turn_off
                     target:
                       entity_id: switch.ensuite_fan
                     data: {}
@@ -1072,11 +1072,11 @@ actions:
         entity_id: input_boolean.wasmachine_status
         state: "off"
     then:
-      - service: input_boolean.turn_on
+      - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.wasmachine_status
         data: {}
-      - service: input_number.set_value
+      - action: input_number.set_value
         target:
           entity_id: input_number.wasmachine_energie_start_cyclus
         data:
@@ -1089,20 +1089,20 @@ actions:
             entity_id: input_boolean.wasmachine_status
             state: "on"
         then:
-          - service: input_boolean.turn_off
+          - action: input_boolean.turn_off
             target:
               entity_id: input_boolean.wasmachine_status
             data: {}
           - variables:
               verbruik_cyclus: "{{ (((states('sensor.noord_wasplaats_energie_wasmachine') | float) - (states('input_number.wasmachine_energie_start_cyclus') | float)) * 1000) | int }}"
-          - service: script.notify_by_label
+          - action: script.notify_by_label
             data:
               labels:
                 - gsm_bart
                 - gsm_cindy
               title: Wasmachine gereed
               message: Cyclus heeft ({{ verbruik_cyclus | int }} Wh verbruikt
-          - service: tts.cloud_say
+          - action: tts.cloud_say
             data:
               entity_id:
                 - media_player.kitchen_speaker
@@ -1175,7 +1175,7 @@ conditions:
         id:
           - ZapfenstreichAn
 actions:
-  - service: input_boolean.turn_off
+  - action: input_boolean.turn_off
     target:
       entity_id: input_boolean.gartenbeleuchtung
     data: {}
@@ -1209,12 +1209,12 @@ actions:
           domain: light
           type: turn_off
           entity_id: fe1b6aecf59b3bdd146aec7d8e589496
-        - service: input_boolean.turn_off
+        - action: input_boolean.turn_off
           target:
             entity_id: input_boolean.zapfenstreich
           data: {}
       - metadata: {}
-        service: input_boolean.turn_off
+        action: input_boolean.turn_off
         target:
           entity_id: input_boolean.gartenbeleuchtung
         data: {}
@@ -1286,17 +1286,17 @@ conditions:
     entity_id: binary_sensor.lxc_paperless_ai_209_status
     state: "on"
 actions:
-  - service: persistent_notification.create
+  - action: persistent_notification.create
     data:
       title: Container Auto-Shutdown
       message: Paperless AI (209) has been running for 4 hours and will be shut down now.
       notification_id: paperless_ai_shutdown
-  - service: button.press
+  - action: button.press
     target:
       entity_id: button.lxc_paperless_ai_209_shutdown
   - delay:
       seconds: 5
-  - service: persistent_notification.create
+  - action: persistent_notification.create
     data:
       title: Container Shutdown Complete
       message: Paperless AI (209) has been shut down successfully.
@@ -1388,11 +1388,11 @@ actions:
                       minutes: 0
                       seconds: 30
     then:
-      - service: input_boolean.turn_on
+      - action: input_boolean.turn_on
         target:
           entity_id: input_boolean.tv_light_supposed_state
     else:
-      - service: input_boolean.turn_off
+      - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.tv_light_supposed_state
 mode: single
@@ -1476,7 +1476,7 @@ conditions:
         weekday:
           - sat
 actions:
-  - service: hassio.backup_full
+  - action: hassio.backup_full
     data:
       compressed: true
 mode: single
@@ -1521,7 +1521,7 @@ actions:
     entity_id: select.work_mode
     option: Self Use
   - metadata: {}
-    service: notify.mobile_app_pbw_iphone
+    action: notify.mobile_app_pbw_iphone
     data:
       message: Change slot closed
       title: Self Use reactivated
@@ -1590,7 +1590,7 @@ triggers:
       behavior: any
 actions:
   - metadata: {}
-    service: light.turn_on
+    action: light.turn_on
     target:
       entity_id: light.ceiling_lamp
     data: {}
@@ -1622,7 +1622,7 @@ triggers:
       - vacuum the main floor
 actions:
   - metadata: {}
-    service: mqtt.publish
+    action: mqtt.publish
     data:
       evaluate_payload: false
       qos: 0
@@ -1707,7 +1707,7 @@ actions:
         value_template: "{{ action_type == 'activity_call' }}"
     then:
       - alias: Execute Universal Activity Orchestrator
-        service: script.universal_media_activity_orchestrator
+        action: script.universal_media_activity_orchestrator
         data:
           activity_key: "{{ action_value }}"
         enabled: false
@@ -1751,7 +1751,7 @@ actions:
           entity_id: binary_sensor.motion
           state: "on"
       sequence:
-        - service: light.turn_on
+        - action: light.turn_on
           target:
             entity_id: light.living_room
         - delay:
@@ -1793,7 +1793,7 @@ actions:
           entity_id: binary_sensor.door
           state: "off"
       sequence:
-        - service: notify.mobile_app
+        - action: notify.mobile_app
           data:
             message: Door is still open!
         - delay:
@@ -1832,7 +1832,7 @@ actions:
   - repeat:
       count: 3
       sequence:
-        - service: light.toggle
+        - action: light.toggle
           target:
             entity_id: light.living_room
         - delay:
@@ -1884,13 +1884,13 @@ actions:
               entity_id: input_boolean.reminder_needed
               state: "on"
           sequence:
-            - service: notify.mobile_app
+            - action: notify.mobile_app
               data:
                 message: Time to get ready!
             - delay:
                 minutes: 5
     else:
-      - service: notify.mobile_app
+      - action: notify.mobile_app
         data:
           message: Enjoy your day off!
 mode: single

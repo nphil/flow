@@ -1,6 +1,6 @@
 import { load as yamlLoad } from 'js-yaml';
 import type { FlowTranspiler } from '../FlowTranspiler';
-import { canonicalizeConfig } from './canonicalize';
+import { type CanonOptions, canonicalizeConfig } from './canonicalize';
 import { semanticDiff } from './diff';
 import { isJson, type Json } from './json';
 
@@ -36,7 +36,8 @@ function failure(status: 'open-fail' | 'emit-fail', errors: string[]): RoundTrip
  */
 export async function roundTripConfig(
   transpiler: FlowTranspiler,
-  original: Json
+  original: Json,
+  options: CanonOptions = {}
 ): Promise<RoundTripResult> {
   const parsed = await transpiler.fromYaml(JSON.stringify(original));
   if (!parsed.success || !parsed.graph) {
@@ -52,8 +53,8 @@ export async function roundTripConfig(
     return failure('emit-fail', [e instanceof Error ? e.message : String(e)]);
   }
 
-  const before = canonicalizeConfig(original);
-  const after = canonicalizeConfig(regenerated);
+  const before = canonicalizeConfig(original, options);
+  const after = canonicalizeConfig(regenerated, options);
   const diffs = semanticDiff(before.canon, after.canon);
 
   return {
