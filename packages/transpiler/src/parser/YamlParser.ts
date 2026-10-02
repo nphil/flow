@@ -1240,12 +1240,20 @@ export class YamlParser {
       return { nodes: [], edges: [] };
     }
     const steps = Array.isArray(sequence) ? sequence : [sequence];
+    // Nothing leads to a script's first step. A stand-in start gives every list the exit it
+    // connects from, so the first steps know they are where the list starts (a `parallel` block at
+    // the start needs that to keep its branches, alias and note); the edges from it are dropped.
+    const start = '__script_start__';
     const { nodes, edges } = new StepParser({
       warnings,
       getNextNodeId: createNodeIdAllocator(metadataNodeIds),
       recorder,
-    }).parseActions(steps, { previous: [], depth: 0, pathPrefix: stepsPathOf('script') });
-    return { nodes, edges };
+    }).parseActions(steps, {
+      previous: [{ id: start }],
+      depth: 0,
+      pathPrefix: stepsPathOf('script'),
+    });
+    return { nodes, edges: edges.filter((edge) => edge.source !== start) };
   }
 
   /**

@@ -360,3 +360,25 @@ describe('an if with no else, followed by a parallel block', () => {
     expect(result.status).toBe('ok');
   });
 });
+
+describe('a script that starts with a parallel block', () => {
+  it('keeps the block alias and note, which the branches carry', async () => {
+    const config = yamlLoad(`
+alias: Release links
+sequence:
+  - alias: Release every link
+    note: Each one is isolated from the others.
+    parallel:
+      - action: notify.a
+      - action: notify.b
+  - delay:
+      seconds: 5
+`) as Json;
+
+    const result = await roundTripConfig(transpiler, config, { kind: 'script', strict: true });
+
+    expect(result.status).toBe('ok');
+    expect(result.lostAliases).toEqual([]);
+    expect(result.lostNotes).toEqual([]);
+  });
+});
