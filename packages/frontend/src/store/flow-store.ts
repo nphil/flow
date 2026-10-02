@@ -342,6 +342,19 @@ function normalizeNodeData(type: string, data: Record<string, unknown>): Record<
   return data;
 }
 
+/** An action node that is a real step even though it has no `service` (stop, event, repeat, device). */
+function isStepWithoutService(data: Record<string, unknown>): boolean {
+  const inner = data.data;
+  return (
+    'stop' in data ||
+    (typeof data.event === 'string' && data.event.trim() !== '') ||
+    data.repeat !== undefined ||
+    (typeof inner === 'object' &&
+      inner !== null &&
+      typeof (inner as Record<string, unknown>).device_id === 'string')
+  );
+}
+
 // NOTE: Upstream CAFE (#170) treated any two nodes sharing `data.id` as a
 // save-blocking error. That contradicts Home Assistant's own semantics:
 // multiple triggers may legitimately share an id (it groups them), and a
@@ -1056,7 +1069,10 @@ export const useFlowStore = create<FlowState>()(
                 nodeData.trigger = 'state';
               }
 
-              if (n.type === 'action' && !nodeData.service) {
+              // The default only fills a step that holds nothing at all. A stop, a fired event,
+              // a repeat block or a device action has no `service`, and giving it one writes a
+              // bogus `service: light.turn_on` next to its real content.
+              if (n.type === 'action' && !nodeData.service && !isStepWithoutService(nodeData)) {
                 console.warn(
                   `Flow: Action node ${n.id} missing service, adding default 'light.turn_on'`
                 );

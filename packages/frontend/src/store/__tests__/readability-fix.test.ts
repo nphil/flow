@@ -218,3 +218,24 @@ describe('readability fixes in the store', () => {
     expect(state().nodeErrors.has('action-1')).toBe(true);
   });
 });
+
+describe('toFlowGraph and steps that have no service', () => {
+  beforeEach(() => state().reset());
+
+  it('does not write a made-up service next to a stop step', () => {
+    state().fromFlowGraph({
+      ...GRAPH,
+      nodes: [
+        GRAPH.nodes[0],
+        { id: 'action-1', type: 'action', position: { x: 1, y: 1 }, data: { stop: 'Done' } },
+      ],
+      edges: [{ id: 'e1', source: 'trigger-1', target: 'action-1' }],
+    });
+
+    const stepData = state().toFlowGraph().nodes[1].data as Record<string, unknown>;
+    expect(stepData).not.toHaveProperty('service');
+    const yaml = new FlowTranspiler().transpile(state().toFlowGraph()).yaml ?? '';
+    expect(yaml).toContain('stop: Done');
+    expect(yaml).not.toContain('light.turn_on');
+  });
+});
