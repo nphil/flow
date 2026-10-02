@@ -22,11 +22,13 @@ import {
   HATriggerSchema,
   isDeviceAction,
   isHACondition,
+  isRecord,
   validateGraphStructure,
 } from '@flow/shared';
 import { load as yamlLoad } from 'js-yaml';
 import { generateEdgeId, generateGraphId, generateNodeId } from '../utils/generateIds';
 import { PathRecorder, type TracePathMap } from '../utils/tracePathMap';
+import { normalizeConditionList } from './conditions';
 import { applyHeuristicLayout } from './layout';
 
 // Type guards for Home Assistant objects
@@ -42,117 +44,6 @@ function isDelayAction(action: unknown): action is HADelay {
       (typeof (action as Record<string, unknown>).delay === 'object' &&
         (action as Record<string, unknown>).delay !== null))
   );
-}
-
-type DelayDurationObject = {
-  hours?: number;
-  minutes?: number;
-  seconds?: number;
-  milliseconds?: number;
-};
-
-const DELAY_DURATION_MULTIPLIERS = {
-  hours: 60 * 60 * 1000,
-  minutes: 60 * 1000,
-  seconds: 1000,
-  milliseconds: 1,
-} as const;
-
-function isFiniteDelayNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function unwrapTemplateExpression(value: string): string {
-  const trimmed = value.trim();
-  const templateMatch = /^\{\{\s*([\s\S]*?)\s*\}\}$/.exec(trimmed);
-  return templateMatch ? templateMatch[1].trim() : trimmed;
-}
-
-function toDelayTemplatePart(value: unknown): string | null {
-  if (isFiniteDelayNumber(value)) {
-    return String(value);
-  }
-
-  if (typeof value !== 'string' || value.trim() === '') {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  const numericValue = Number(trimmed);
-  if (Number.isFinite(numericValue)) {
-    return String(numericValue);
-  }
-
-  return `(${unwrapTemplateExpression(trimmed)})`;
-}
-
-function buildTemplatedDelayString(duration: Record<string, unknown>): string {
-  const terms = Object.entries(DELAY_DURATION_MULTIPLIERS).flatMap(([key, multiplier]) => {
-    const templatePart = toDelayTemplatePart(duration[key]);
-    if (!templatePart) {
-      return [];
-    }
-
-    return multiplier === 1 ? [templatePart] : [`(${templatePart}) * ${multiplier}`];
-  });
-
-  const totalMillisecondsExpression = terms.length > 0 ? terms.join(' + ') : '0';
-  const hoursExpression = `(${totalMillisecondsExpression}) // 3600000`;
-  const minutesExpression = `((${totalMillisecondsExpression}) % 3600000) // 60000`;
-  const secondsExpression = `((${totalMillisecondsExpression}) % 60000) // 1000`;
-  const millisecondsExpression = `(${totalMillisecondsExpression}) % 1000`;
-
-  return Object.hasOwn(duration, 'milliseconds')
-    ? `{{ '%02d:%02d:%02d.%03d' | format(${hoursExpression}, ${minutesExpression}, ${secondsExpression}, ${millisecondsExpression}) }}`
-    : `{{ '%02d:%02d:%02d' | format(${hoursExpression}, ${minutesExpression}, ${secondsExpression}) }}`;
-}
-
-function normalizeDelayValue(delayValue: unknown): string | DelayDurationObject {
-  if (typeof delayValue === 'string') {
-    return delayValue;
-  }
-
-  if (isFiniteDelayNumber(delayValue)) {
-    return String(delayValue);
-  }
-
-  if (typeof delayValue !== 'object' || delayValue === null) {
-    return '';
-  }
-
-  const duration = delayValue as Record<string, unknown>;
-  const normalizedDuration: DelayDurationObject = {};
-  let requiresTemplateNormalization = false;
-
-  for (const key of Object.keys(DELAY_DURATION_MULTIPLIERS) as Array<keyof DelayDurationObject>) {
-    const rawValue = duration[key];
-    if (rawValue === undefined) {
-      continue;
-    }
-
-    if (isFiniteDelayNumber(rawValue)) {
-      normalizedDuration[key] = rawValue;
-      continue;
-    }
-
-    if (typeof rawValue === 'string' && rawValue.trim() !== '') {
-      const numericValue = Number(rawValue.trim());
-      if (Number.isFinite(numericValue)) {
-        normalizedDuration[key] = numericValue;
-      } else {
-        requiresTemplateNormalization = true;
-      }
-      continue;
-    }
-
-    requiresTemplateNormalization = true;
-  }
-
-  if (requiresTemplateNormalization) {
-    return buildTemplatedDelayString(duration);
-  }
-
-  return normalizedDuration;
 }
 
 /** Returns true if the action is a wait node */
@@ -614,16 +505,13 @@ function transformToNestedCondition(condition: HACondition): NestedCondition {
   // Use spread pattern to preserve unknown properties from custom integrations
   const { condition: conditionField, conditions, ...rest } = condition;
   const conditionType = conditionField || 'template';
-  const validatedType = VALID_CONDITIONS.includes(conditionType as ValidConditionType)
-    ? (conditionType as ValidConditionType)
-    : 'template';
 
   // Recursively transform nested conditions if present
   const nestedConditions = Array.isArray(conditions) ? transformConditions(conditions) : undefined;
 
   return {
     ...rest, // Preserve extra properties (including weekday, after, before, etc.)
-    condition: validatedType,
+    condition: conditionType,
     // This sub-condition is never overwritten by an enclosing step's alias
     // (only a top-level ConditionNode's `alias` is), so its own `alias` is
     // already unambiguous. Mirror it into `conditionAlias` too so the
@@ -632,6 +520,39 @@ function transformToNestedCondition(condition: HACondition): NestedCondition {
     conditionAlias: typeof rest.alias === 'string' ? rest.alias : undefined,
     conditions: nestedConditions,
   };
+}
+
+/**
+ * The automation-level settings (mode, max, max_exceeded, initial_state, ...). One unusable key
+ * must not wipe the others: a failed whole-object parse used to fall back to the defaults, which
+ * silently turned a `queued` automation into `single` and dropped its `max`.
+ */
+function parseMetadataBlock(raw: Record<string, unknown>) {
+  const whole = FlowGraphMetadataSchema.safeParse(raw);
+  if (whole.success) return whole.data;
+
+  const singleKey = FlowGraphMetadataSchema.partial();
+  const kept: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const one = singleKey.safeParse({ [key]: value });
+    if (!one.success) continue;
+    for (const [parsedKey, parsedValue] of Object.entries(one.data)) {
+      if (parsedKey === key) kept[key] = parsedValue;
+    }
+  }
+  return FlowGraphMetadataSchema.parse(kept);
+}
+
+/**
+ * Home Assistant lets a trigger list nest: an entry that holds only `triggers: [...]` is merged
+ * into the main list. Flow shows (and saves) the flat list.
+ */
+function flattenTriggerList(items: unknown[]): unknown[] {
+  return items.flatMap((item) =>
+    isRecord(item) && Object.keys(item).length === 1 && Array.isArray(item.triggers)
+      ? flattenTriggerList(item.triggers)
+      : [item]
+  );
 }
 
 /**
@@ -721,10 +642,7 @@ export class YamlParser {
         hide_entity: content.hide_entity,
         trace: content.trace,
       };
-      const metadataResult = FlowGraphMetadataSchema.safeParse(rawMetadata);
-      const metadataBlock = metadataResult.success
-        ? metadataResult.data
-        : FlowGraphMetadataSchema.parse({});
+      const metadataBlock = parseMetadataBlock(rawMetadata);
 
       const userTriggerVariables =
         typeof content.trigger_variables === 'object' &&
@@ -1659,7 +1577,7 @@ export class YamlParser {
       warnings.push('No triggers found in automation');
       return { nodes, edges };
     }
-    const triggers = Array.isArray(triggerData) ? triggerData : [triggerData];
+    const triggers = flattenTriggerList(Array.isArray(triggerData) ? triggerData : [triggerData]);
     const triggerNodes = this.parseTriggers(triggers, warnings, getNextNodeId, recorder);
     nodes.push(...triggerNodes);
 
@@ -1674,13 +1592,7 @@ export class YamlParser {
 
     // Parse conditions (if present at top level - support both 'condition' and 'conditions')
     let firstActionNodeIds: string[] = [];
-    const conditionData = content.conditions || content.condition;
-    // Normalize to array and check if non-empty
-    const conditions = Array.isArray(conditionData)
-      ? conditionData
-      : conditionData
-        ? [conditionData]
-        : [];
+    const conditions = normalizeConditionList(content.conditions ?? content.condition);
 
     if (conditions.length > 0) {
       const conditionResults = this.parseConditions(conditions, warnings, getNextNodeId, recorder);
@@ -1893,11 +1805,16 @@ export class YamlParser {
           return;
         }
 
+        const members = result.data.conditions;
         const node: ConditionNode = {
           id: nodeId,
           type: 'condition',
           position: { x: 0, y: 0 },
-          data: result.data,
+          // Group members keep their own alias/note like every nested condition (see
+          // transformToNestedCondition); without this the members' aliases are lost on save.
+          data: Array.isArray(members)
+            ? { ...result.data, conditions: transformConditions(members) }
+            : result.data,
         };
         nodes.push(node);
         outputNodeIds.push(nodeId);
@@ -1950,8 +1867,9 @@ export class YamlParser {
     // whatever follows the sequence, so the sequence has no exits.
     let endsWithStop = false;
 
-    // Helper to compute the enabled state for a node
-    const getNodeEnabled = (nodeEnabled: boolean | undefined): boolean | undefined => {
+    // Helper to compute the enabled state for a node. `enabled` may also be a template (HA renders
+    // it when the config loads); it passes through untouched unless a parent block is disabled.
+    const getNodeEnabled = <T extends boolean | string | undefined>(nodeEnabled: T): T | false => {
       // If parent is disabled, child is always disabled
       if (inheritedEnabled === false) return false;
       // Otherwise use the node's own enabled state
@@ -2053,15 +1971,16 @@ export class YamlParser {
       } else if (isVariablesAction(action)) {
         // Variables block - create set_variables node
         const nodeId = getNextNodeId('set_variables');
-        const act = action as Record<string, unknown>;
+        const { alias, variables, enabled, ...extraProps } = action as Record<string, unknown>;
         const setVariablesNode: SetVariablesNode = {
           id: nodeId,
           type: 'set_variables',
           position: { x: 0, y: 0 },
           data: {
-            alias: typeof act.alias === 'string' ? act.alias : undefined,
-            variables: (act.variables as Record<string, unknown>) || {},
-            enabled: getNodeEnabled(typeof act.enabled === 'boolean' ? act.enabled : undefined),
+            ...extraProps, // note and any other key the step carries
+            alias: typeof alias === 'string' ? alias : undefined,
+            variables: isRecord(variables) ? variables : {},
+            enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
           },
         };
         nodes.push(setVariablesNode);
@@ -2070,9 +1989,11 @@ export class YamlParser {
         currentNodeIds = [nodeId];
       } else if (isDelayAction(action)) {
         const nodeId = getNextNodeId('delay');
-        const act = action as Record<string, unknown>;
-        // Use spread pattern to preserve unknown properties from custom integrations
-        const { alias, delay: delayValue, enabled, ...extraProps } = act;
+        // Use spread pattern to preserve unknown properties from custom integrations. The delay is
+        // kept exactly as written: seconds as a number, HH:MM:SS text, a template, or a mapping of
+        // units (days included, any unit may be a template).
+        const delayStep: HADelay = action;
+        const { alias, delay, enabled, ...extraProps } = delayStep;
         const delayNode: DelayNode = {
           id: nodeId,
           type: 'delay',
@@ -2080,7 +2001,7 @@ export class YamlParser {
           data: {
             ...extraProps, // Preserve extra properties
             alias: typeof alias === 'string' ? alias : undefined,
-            delay: normalizeDelayValue(delayValue),
+            delay,
             enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
           },
         };
@@ -2102,18 +2023,14 @@ export class YamlParser {
           ...extraProps
         } = act;
 
-        // Handle timeout as either string or object format
-        let timeout: WaitNode['data']['timeout'];
-        if (typeof timeoutValue === 'string') {
-          timeout = timeoutValue;
-        } else if (typeof timeoutValue === 'object' && timeoutValue !== null) {
-          timeout = timeoutValue as {
-            hours?: number;
-            minutes?: number;
-            seconds?: number;
-            milliseconds?: number;
-          };
-        }
+        // `timeout` is HH:MM:SS text, a number of seconds, a mapping (any unit may be a template)
+        // or a template. Keep whatever was written: dropping it lets a wait block forever.
+        const timeout =
+          typeof timeoutValue === 'string' ||
+          typeof timeoutValue === 'number' ||
+          isRecord(timeoutValue)
+            ? timeoutValue
+            : undefined;
 
         const waitData: WaitNode['data'] = {
           ...extraProps, // Preserve extra properties
@@ -2124,11 +2041,17 @@ export class YamlParser {
           enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
         };
 
+        // HA also accepts a single trigger mapping where a list is expected.
+        const waitTriggers = Array.isArray(waitForTrigger)
+          ? waitForTrigger
+          : isRecord(waitForTrigger)
+            ? [waitForTrigger]
+            : undefined;
         if (typeof waitTemplate === 'string') {
           waitData.wait_template = waitTemplate;
-        } else if (Array.isArray(waitForTrigger)) {
+        } else if (waitTriggers) {
           const parsedTriggers = [];
-          for (const trigger of waitForTrigger) {
+          for (const trigger of waitTriggers) {
             const result = HATriggerSchema.safeParse(trigger);
             if (result.success) {
               parsedTriggers.push(result.data);
@@ -2311,19 +2234,20 @@ export class YamlParser {
       } else if (isEventAction(action)) {
         // Event action - fires a Home Assistant event
         const nodeId = getNextNodeId('action');
-        const act = action as Record<string, unknown>;
+        const { alias, event, event_data, enabled, ...extraProps } = action as Record<
+          string,
+          unknown
+        >;
         const actionNode: ActionNode = {
           id: nodeId,
           type: 'action',
           position: { x: 0, y: 0 },
           data: {
-            alias: typeof act.alias === 'string' ? act.alias : undefined,
-            event: typeof act.event === 'string' ? act.event : undefined,
-            event_data:
-              typeof act.event_data === 'object' && act.event_data !== null
-                ? (act.event_data as Record<string, unknown>)
-                : undefined,
-            enabled: getNodeEnabled(typeof act.enabled === 'boolean' ? act.enabled : undefined),
+            ...extraProps, // note, event_data_template and any other key the step carries
+            alias: typeof alias === 'string' ? alias : undefined,
+            event: typeof event === 'string' ? event : undefined,
+            event_data: isRecord(event_data) ? event_data : undefined,
+            enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
           },
         };
         nodes.push(actionNode);
@@ -2755,18 +2679,9 @@ export class YamlParser {
                   : typeof actionField === 'string'
                     ? actionField
                     : undefined,
-              target:
-                typeof target === 'object' && target !== null
-                  ? (target as {
-                      entity_id?: string | string[];
-                      area_id?: string | string[];
-                      device_id?: string | string[];
-                    })
-                  : undefined,
-              data:
-                typeof data === 'object' && data !== null
-                  ? (data as Record<string, unknown>)
-                  : undefined,
+              // `target` and `data` may also be one template that renders to a mapping.
+              target: isRecord(target) || typeof target === 'string' ? target : undefined,
+              data: isRecord(data) || typeof data === 'string' ? data : undefined,
               data_template:
                 typeof data_template === 'object' && data_template !== null
                   ? (data_template as Record<string, string>)
@@ -2793,19 +2708,23 @@ export class YamlParser {
       } else if (isSetConversationResponseAction(action)) {
         // set_conversation_response action - convert to service call format
         const nodeId = getNextNodeId('action');
-        const act = action as Record<string, unknown>;
+        const { alias, set_conversation_response, enabled, ...extraProps } = action as Record<
+          string,
+          unknown
+        >;
         const actionNode: ActionNode = {
           id: nodeId,
           type: 'action',
           position: { x: 0, y: 0 },
           data: {
-            alias: typeof act.alias === 'string' ? act.alias : undefined,
-            // Store the response as a special action
+            ...extraProps, // note and any other key the step carries
+            alias: typeof alias === 'string' ? alias : undefined,
+            // A string replies; null clears the reply (keep it: an empty step is invalid).
             set_conversation_response:
-              typeof act.set_conversation_response === 'string'
-                ? act.set_conversation_response
+              typeof set_conversation_response === 'string' || set_conversation_response === null
+                ? set_conversation_response
                 : undefined,
-            enabled: getNodeEnabled(typeof act.enabled === 'boolean' ? act.enabled : undefined),
+            enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
           },
         };
         nodes.push(actionNode);
@@ -2826,7 +2745,7 @@ export class YamlParser {
           data: {
             ...extraProps, // e.g. response_variable
             alias: typeof alias === 'string' ? alias : undefined,
-            stop: typeof stop === 'string' ? stop : '',
+            stop: typeof stop === 'string' || stop === null ? stop : '',
             ...(error === true ? { error: true } : {}),
             note: typeof note === 'string' ? note : undefined,
             enabled: stopEnabled,

@@ -1073,7 +1073,8 @@ export class StateMachineStrategy extends BaseStrategy {
       parts.push(`now().strftime('%H:%M:%S') < '${data.before}'`);
     }
     if (data.weekday && data.weekday.length > 0) {
-      const days = data.weekday.map((d) => `'${d}'`).join(', ');
+      const weekdays = Array.isArray(data.weekday) ? data.weekday : [data.weekday];
+      const days = weekdays.map((d) => `'${d}'`).join(', ');
       parts.push(`now().strftime('%a').lower()[:3] in [${days}]`);
     }
 

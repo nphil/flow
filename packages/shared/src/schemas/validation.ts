@@ -14,7 +14,7 @@ export const WaitNodeValidationSchema = z
   .object({
     wait_template: z.string().optional(),
     wait_for_trigger: z.array(z.any()).optional(),
-    timeout: z.union([z.string(), z.object({})]).optional(),
+    timeout: z.union([z.string(), z.number(), z.object({})]).optional(),
   })
   .passthrough()
   .refine(
@@ -306,7 +306,7 @@ export const TriggerNodeValidationSchema = z
  */
 export const DelayNodeValidationSchema = z
   .object({
-    delay: z.union([z.string(), z.object({})]),
+    delay: z.union([z.string(), z.number(), z.object({})]),
   })
   .passthrough()
   .refine(

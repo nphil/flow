@@ -150,6 +150,15 @@ function expandConditionShorthand(cond: Json): Json {
       }
     }
   }
+  // `condition: [ ... ]` is an implicit `and`; `condition: "{{ ... }}"` is a template condition.
+  if (isJsonObject(cond) && Array.isArray(cond.condition)) {
+    const { condition: group, ...rest } = cond;
+    return { ...rest, condition: 'and', conditions: group };
+  }
+  if (isJsonObject(cond) && typeof cond.condition === 'string' && /\{[{%]/.test(cond.condition)) {
+    const { condition: template, ...rest } = cond;
+    return { ...rest, condition: 'template', value_template: template };
+  }
   return cond;
 }
 
@@ -440,6 +449,15 @@ const PASSTHROUGH_KEYS = [
   'icon',
 ] as const;
 
+/** A trigger-list entry that holds only `triggers: [...]` is merged into the main list by HA. */
+function flattenNestedTriggers(list: Json[]): Json[] {
+  return list.flatMap((entry) =>
+    isJsonObject(entry) && Object.keys(entry).length === 1 && Array.isArray(entry.triggers)
+      ? flattenNestedTriggers(entry.triggers)
+      : [entry]
+  );
+}
+
 export function canonicalizeConfig(raw: Json, options: CanonOptions = {}): CanonicalConfig {
   const ctx: Ctx = { aliases: [], notes: [], strict: options.strict === true };
   const prose: Prose = ctx;
@@ -453,7 +471,9 @@ export function canonicalizeConfig(raw: Json, options: CanonOptions = {}): Canon
   if (kind === 'script') {
     canon.sequence = canonSequence(firstList(raw, 'sequence'), ctx);
   } else {
-    canon.triggers = firstList(raw, 'triggers', 'trigger').map((t) => canonTrigger(t, prose));
+    canon.triggers = flattenNestedTriggers(firstList(raw, 'triggers', 'trigger')).map((t) =>
+      canonTrigger(t, prose)
+    );
     canon.actions = canonSequence(firstList(raw, 'actions', 'action'), ctx);
     const conditions = canonConditions(firstList(raw, 'conditions', 'condition'), prose);
     if (conditions.length > 0) canon.conditions = conditions;

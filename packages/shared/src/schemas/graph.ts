@@ -31,7 +31,7 @@ export const FlowMetadataSchema = z.object({
    * Trace configuration
    */
   trace: z
-    .object({
+    .looseObject({
       stored_traces: z.number().optional(),
     })
     .optional(),

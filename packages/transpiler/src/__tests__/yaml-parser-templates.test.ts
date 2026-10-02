@@ -267,7 +267,7 @@ action:
     expect(secondTrigger.event_type).toBe('my_custom_event');
   });
 
-  it('normalizes templated structured delay fields into a string delay', async () => {
+  it('keeps a delay with templated units exactly as written', async () => {
     const yaml = `
 alias: Templated Delay Test
 triggers:
@@ -286,12 +286,13 @@ actions:
 
     const delayNode = result.graph?.nodes.find((node) => node.type === 'delay');
     expect(delayNode).toBeDefined();
-    expect(typeof delayNode?.data.delay).toBe('string');
-    expect(delayNode?.data.delay).toContain("{{ '%02d:%02d:%02d' | format(");
-    expect(delayNode?.data.delay).toContain('input_backup_timeout | int(60)');
+    // A rewrite into one generated format(...) template used to repeat every sub-expression three
+    // times, so a random() part could disagree with itself. The mapping now stays as written.
+    expect(delayNode?.data.delay).toEqual({ minutes: '{{ input_backup_timeout | int(60) }}' });
 
     const roundTrippedYaml = transpiler.toYaml(result.graph!);
-    expect(roundTrippedYaml).toContain("delay: \"{{ '%02d:%02d:%02d'");
-    expect(roundTrippedYaml).toContain('input_backup_timeout | int(60)');
+    expect(roundTrippedYaml).toContain('delay:');
+    expect(roundTrippedYaml).toContain('minutes: "{{ input_backup_timeout | int(60) }}"');
+    expect(roundTrippedYaml).not.toContain('format(');
   });
 });

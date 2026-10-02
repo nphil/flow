@@ -29,20 +29,9 @@ const FIXTURES_DIR = join(__dirname, '../../../../__tests__/ha-roundtrip-fixture
  * an empty list.
  */
 const KNOWN_GAPS: Record<string, string> = {
-  'automations/action-delay-fractional-seconds.yaml': 'numeric delay saved as a string',
-  'automations/action-delay-mapping-all-units.yaml': 'delay days dropped',
-  'automations/action-delay-mapping-with-templates.yaml':
-    'templated delay mapping rewritten as one long template',
-  'automations/action-delay-seconds-number.yaml': 'numeric delay saved as a string',
-  'automations/action-event-data-template.yaml': 'event_data_template dropped',
   'automations/action-scene-activate.yaml': 'scene step replaced by unknown.unknown',
-  'automations/action-service-data-template-string.yaml': 'data given as a template string dropped',
   'automations/action-service-service-template-legacy.yaml':
     'service_template step replaced by unknown.unknown',
-  'automations/action-service-target-template-string.yaml':
-    'target given as a template string dropped',
-  'automations/action-set-conversation-response-null.yaml':
-    'set_conversation_response: null saved as an empty step',
   'automations/action-stop-in-choose-branch.yaml':
     'choose/else-if with a stopping branch rewritten as sequential ifs',
   'automations/action-stop-in-choose-default.yaml':
@@ -51,15 +40,10 @@ const KNOWN_GAPS: Record<string, string> = {
     'guard that stops in else: the steps after the if are folded or reordered',
   'automations/action-stop-in-repeat.yaml':
     'stop moved out of its branch (stop becomes unconditional)',
-  'automations/action-stop-without-reason.yaml': 'stop: null saved as an empty string',
-  'automations/action-wait-for-trigger-single-mapping.yaml':
-    'single-mapping wait_for_trigger step vanishes',
   'automations/action-wait-for-trigger-then-choose-on-wait-trigger-id.yaml':
     'choose saved as a nested if/else ladder',
-  'automations/action-wait-template-timeout-number.yaml': 'numeric wait timeout dropped',
   'automations/action-wait-then-branch-on-wait-completed.yaml':
     'bare template condition corrupted into a character map',
-  'automations/action-wait-two-waits-sharing-one-timeout.yaml': 'numeric wait timeout dropped',
   'automations/alias-note-on-flow-control-step-kinds.yaml':
     'nested sequence step replaced by unknown.unknown',
   'automations/alias-note-on-simple-step-kinds.yaml': 'scene step replaced by unknown.unknown',
@@ -77,24 +61,6 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/choose-single-branch-only.yaml': 'first/only step hoisted into root conditions',
   'automations/choose-with-steps-before-and-after.yaml': 'choose saved as a nested if/else ladder',
   'automations/choose-without-default.yaml': 'choose saved as a nested if/else ladder',
-  'automations/condition-enabled-template.yaml':
-    '`enabled` template on a condition saved as a JSON template',
-  'automations/condition-group-alias-and-note.yaml': 'alias/note lost: Alex is home, It is cold',
-  'automations/condition-list-shorthand-condition-key.yaml':
-    '`condition:` holding a list saved as a JSON template',
-  'automations/condition-shorthand-and.yaml': 'shorthand and:/or:/not: conditions crash the parser',
-  'automations/condition-shorthand-bare-template-strings.yaml':
-    'bare template conditions collapse into one wrong condition',
-  'automations/condition-shorthand-nested-groups.yaml':
-    'shorthand and:/or:/not: conditions crash the parser',
-  'automations/condition-shorthand-not.yaml': 'shorthand and:/or:/not: conditions crash the parser',
-  'automations/condition-shorthand-or.yaml': 'shorthand and:/or:/not: conditions crash the parser',
-  'automations/condition-shorthand-single-template-string.yaml':
-    'conditions given as one template string crash the parser',
-  'automations/condition-state-attribute-number.yaml':
-    'state condition on a numeric attribute saved as a JSON template',
-  'automations/condition-trigger-index-id.yaml':
-    'trigger condition with an integer id saved as a JSON template',
   'automations/conditions-in-choose-groups.yaml':
     'not: shorthand in choose saved as a broken template condition',
   'automations/conditions-in-choose-leaf-types.yaml': 'choose saved as a nested if/else ladder',
@@ -149,22 +115,10 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/disabled-step-scene.yaml': 'scene step replaced by unknown.unknown',
   'automations/disabled-step-sequence-group.yaml':
     'nested sequence step replaced by unknown.unknown',
-  'automations/hide-entity-deprecated.yaml': 'hide_entity dropped',
   'automations/if-empty-then-with-else.yaml': 'first/only step hoisted into root conditions',
-  'automations/initial-state-true.yaml': 'initial_state: true dropped',
   'automations/kitchen-sink-every-construct.yaml':
     'bare template condition corrupted into a character map',
   'automations/kitchen-sink-legacy-spellings.yaml': 'choose saved as a nested if/else ladder',
-  'automations/max-exceeded-debug.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-error.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-fatal.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-info.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-notset.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-uppercase-silent.yaml':
-    'unsupported max_exceeded level resets mode to single',
-  'automations/max-exceeded-warn.yaml': 'unsupported max_exceeded level resets mode to single',
-  'automations/meta-all-top-level-options.yaml':
-    'unsupported max_exceeded level resets mode to single',
   'automations/parallel-branch-alias-and-note.yaml':
     'alias/note lost: Tell everyone at once, Light branch',
   'automations/parallel-in-choose-branch.yaml': 'parallel inside if/choose becomes sequential',
@@ -195,17 +149,8 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/structure-repeat-until-inside-repeat-while.yaml': 'inner repeat-until loop dropped',
   'automations/structure-stop-inside-while-loop-after-choose.yaml':
     'choose merged into the loop while-condition, loop body dropped',
-  'automations/trigger-fields-enabled-template.yaml': 'trigger enabled as a template is rejected',
-  'automations/trigger-purpose-area-list-with-options.yaml':
-    'purpose trigger without target.entity_id rejected',
   'automations/trigger-routing-by-trigger-id-with-choose.yaml':
     'choose saved as a nested if/else ladder',
-  'automations/trigger-state-attribute-from-to-numbers.yaml':
-    'numeric from/to on a state trigger rejected',
-  'automations/trigger-state-from-null.yaml': 'to: null / from: null dropped',
-  'automations/trigger-state-to-null.yaml': 'to: null / from: null dropped',
-  'automations/triggers-nested-list-flattened.yaml':
-    'nested triggers: list saved as a malformed trigger',
   'scripts/script-alias-icon-description.yaml': 'scripts cannot be opened (no trigger node)',
   'scripts/script-blueprint-instance.yaml': 'blueprint instance cannot be opened',
   'scripts/script-choose-and-if-flow.yaml': 'scripts cannot be opened (no trigger node)',

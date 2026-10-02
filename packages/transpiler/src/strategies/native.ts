@@ -8,7 +8,7 @@ import type {
   TriggerNode,
   WaitNode,
 } from '@flow/shared';
-import { isDeviceAction } from '@flow/shared';
+import { isDeviceAction, isRecord } from '@flow/shared';
 import { computePostDominators, type PostDominators } from '../analyzer/structure';
 import type { TopologyAnalysis } from '../analyzer/topology';
 import { findBackEdges } from '../analyzer/topology';
@@ -40,10 +40,6 @@ interface RepeatPattern {
 /** Step keys whose value is (or holds) a nested list of steps. */
 const NESTED_STEP_KEYS = ['then', 'else', 'default', 'sequence', 'parallel', 'choose', 'repeat'];
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /**
  * An empty `else: []` / `default: []` means the same as no else/default, but
  * clutters the YAML and shows up as an empty section in Home Assistant's own
@@ -54,12 +50,25 @@ function pruneEmptyBranches(step: unknown): void {
     for (const child of step) pruneEmptyBranches(child);
     return;
   }
-  if (!isPlainRecord(step)) return;
+  if (!isRecord(step)) return;
   for (const key of ['else', 'default']) {
     const branch = step[key];
     if (Array.isArray(branch) && branch.length === 0) delete step[key];
   }
   for (const key of NESTED_STEP_KEYS) pruneEmptyBranches(step[key]);
+}
+
+/**
+ * A trigger config without its unset fields. `from: null` and `to: null` are NOT unset: they limit
+ * a state trigger to real state changes (attribute-only updates stop firing it), so they stay.
+ */
+function cleanTrigger(trigger: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(trigger).filter(
+      ([key, value]) =>
+        value !== undefined && value !== '' && (value !== null || key === 'from' || key === 'to')
+    )
+  );
 }
 
 /**
@@ -221,8 +230,11 @@ export class NativeStrategy extends BaseStrategy {
     if (flow.metadata?.max_exceeded) {
       automation.max_exceeded = flow.metadata.max_exceeded;
     }
-    if (flow.metadata?.initial_state === false) {
-      automation.initial_state = false;
+    if (typeof flow.metadata?.initial_state === 'boolean') {
+      automation.initial_state = flow.metadata.initial_state;
+    }
+    if (typeof flow.metadata?.hide_entity === 'boolean') {
+      automation.hide_entity = flow.metadata.hide_entity;
     }
     if (flow.metadata?.trace) {
       automation.trace = flow.metadata.trace;
@@ -678,7 +690,7 @@ export class NativeStrategy extends BaseStrategy {
   private extractTriggers(flow: FlowGraph): unknown[] {
     return flow.nodes
       .filter((n): n is TriggerNode => n.type === 'trigger')
-      .map((node) => this.buildTrigger(node));
+      .map((node) => cleanTrigger({ ...node.data }));
   }
 
   /**
@@ -802,18 +814,6 @@ export class NativeStrategy extends BaseStrategy {
     }
 
     return { conditions, nextNodeIds: currentId ? [currentId] : [], visitedIds };
-  }
-
-  /**
-   * Build a single trigger configuration
-   */
-  private buildTrigger(node: TriggerNode): Record<string, unknown> {
-    const trigger: Record<string, unknown> = { ...node.data };
-
-    // Clean up undefined/empty values
-    return Object.fromEntries(
-      Object.entries(trigger).filter(([, v]) => v !== undefined && v !== '' && v !== null)
-    );
   }
 
   /**
@@ -1361,20 +1361,23 @@ export class NativeStrategy extends BaseStrategy {
 
     // Check if this is a fire event action
     if (typeof node.data.event === 'string' && node.data.event.trim() !== '') {
-      const action: Record<string, unknown> = { event: node.data.event };
-      if (node.data.alias) action.alias = node.data.alias;
-      if (node.data.event_data && Object.keys(node.data.event_data).length > 0) {
-        action.event_data = node.data.event_data;
-      }
-      if (node.data.enabled === false) action.enabled = false;
-      if (typeof node.data.note === 'string') action.note = node.data.note;
+      // `id` is dropped like on every other step; event_data_template, note, ... stay.
+      const { event, alias, event_data, enabled, id: _id, ...extraProps } = node.data;
+      const action: Record<string, unknown> = { ...extraProps, event };
+      if (alias) action.alias = alias;
+      if (event_data && Object.keys(event_data).length > 0) action.event_data = event_data;
+      if (enabled === false) action.enabled = false;
       return action;
     }
 
     // Check if this is a stop action
     if ('stop' in node.data) {
       const { stop, error, alias, note, enabled, id: _id, ...extraProps } = node.data;
-      const action: Record<string, unknown> = { stop: stop ?? '', ...extraProps };
+      // `stop: null` (no reason given) is not the same text as `stop: ""`; keep what was written.
+      const action: Record<string, unknown> = {
+        stop: stop === undefined ? '' : stop,
+        ...extraProps,
+      };
       if (alias) action.alias = alias;
       if (error === true) action.error = true;
       if (enabled === false) action.enabled = false;
@@ -1476,15 +1479,12 @@ export class NativeStrategy extends BaseStrategy {
     if (wait_template) {
       wait.wait_template = wait_template;
     } else if (wait_for_trigger) {
-      wait.wait_for_trigger = wait_for_trigger.map((triggerData) => {
-        const trigger: Record<string, unknown> = { ...triggerData };
-        return Object.fromEntries(
-          Object.entries(trigger).filter(([, v]) => v !== undefined && v !== '' && v !== null)
-        );
-      });
+      wait.wait_for_trigger = wait_for_trigger.map((triggerData) =>
+        cleanTrigger({ ...triggerData })
+      );
     }
 
-    if (timeout) {
+    if (timeout !== undefined && timeout !== '') {
       wait.timeout = timeout;
     }
 

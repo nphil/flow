@@ -3,6 +3,7 @@ import {
   isActionNode,
   isConditionNode,
   isDelayNode,
+  isRecord,
   isSetVariablesNode,
   isTriggerNode,
 } from '@flow/shared';
@@ -93,7 +94,8 @@ mode: single
       (n) =>
         isActionNode(n) &&
         n.data.service === 'light.turn_on' &&
-        n.data.target?.entity_id === 'light.living_room'
+        isRecord(n.data.target) &&
+        n.data.target.entity_id === 'light.living_room'
     );
     const elseAction = findNode(
       graph.nodes,
@@ -101,11 +103,14 @@ mode: single
     );
     const parallelFan = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'switch.fan'
+      (n) => isActionNode(n) && isRecord(n.data.target) && n.data.target.entity_id === 'switch.fan'
     );
     const parallelHumidifier = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'switch.humidifier'
+      (n) =>
+        isActionNode(n) &&
+        isRecord(n.data.target) &&
+        n.data.target.entity_id === 'switch.humidifier'
     );
     const whileCondition = findNode(
       graph.nodes,
@@ -113,7 +118,8 @@ mode: single
     );
     const repeatBodyAction = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'light.hallway'
+      (n) =>
+        isActionNode(n) && isRecord(n.data.target) && n.data.target.entity_id === 'light.hallway'
     );
 
     // Exactly these 10 nodes should exist.
@@ -207,7 +213,7 @@ mode: restart
     );
     const branch0Action = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.data?.temperature === 22
+      (n) => isActionNode(n) && isRecord(n.data.data) && n.data.data.temperature === 22
     );
     const branch1Condition = findNode(
       graph.nodes,
@@ -215,11 +221,11 @@ mode: restart
     );
     const branch1Action = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.data?.temperature === 18
+      (n) => isActionNode(n) && isRecord(n.data.data) && n.data.data.temperature === 18
     );
     const defaultAction = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.data?.temperature === 20
+      (n) => isActionNode(n) && isRecord(n.data.data) && n.data.data.temperature === 20
     );
 
     expect(map.pathToNode['action/0']).toBe(branch0Condition.id);
@@ -280,7 +286,8 @@ mode: single
     );
     const countBodyAction = findNode(
       graph.nodes,
-      (n) => isActionNode(n) && n.data.target?.entity_id === 'light.strobe'
+      (n) =>
+        isActionNode(n) && isRecord(n.data.target) && n.data.target.entity_id === 'light.strobe'
     );
     // The count-repeat's synthetic counter-init node is a set_variables node
     // whose single variable starts at 0; the increment node (also

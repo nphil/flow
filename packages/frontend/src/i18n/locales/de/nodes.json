@@ -98,6 +98,7 @@
     "string": "Zeichenkette",
     "object": "Objekt",
     "placeholder": "00:00:05.500",
+    "days": "Tage",
     "hours": "Stunden",
     "minutes": "Minuten",
     "seconds": "Sekunden",

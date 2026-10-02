@@ -1,3 +1,4 @@
+import type { DurationParts } from '@flow/shared';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '@/components/forms/FormField';
@@ -5,14 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
-export type DurationValue =
-  | string
-  | {
-      hours?: number | string;
-      minutes?: number | string;
-      seconds?: number | string;
-      milliseconds?: number | string;
-    };
+/** HH:MM:SS text, a bare number of seconds, or a mapping of units (any unit may be a template). */
+export type DurationValue = string | number | DurationParts;
 
 export interface DurationInputProps {
   value: DurationValue;
@@ -25,15 +20,18 @@ export interface DurationInputProps {
  */
 export function DurationInput({ value, onChange }: DurationInputProps) {
   const { t } = useTranslation(['common', 'nodes']);
-  const isString = typeof value === 'string';
-  const obj = !isString && typeof value === 'object' && value !== null ? value : {};
+  // A bare number of seconds is shown (and edited) as text.
+  const text = typeof value === 'number' ? String(value) : typeof value === 'string' ? value : null;
+  const isString = text !== null;
+  const obj: DurationParts = typeof value === 'object' && value !== null ? value : {};
   const [useString, setUseString] = useState(isString);
 
   const handleToggle = (checked: boolean) => {
     setUseString(checked);
     if (checked) {
-      // Convert object to string (default HH:MM:SS)
-      const h = obj.hours ?? 0;
+      // Convert object to string (default HH:MM:SS); whole days fold into the hours.
+      const dayHours = Number(obj.days ?? 0) * 24;
+      const h = dayHours > 0 ? Number(obj.hours ?? 0) + dayHours : (obj.hours ?? 0);
       const m = obj.minutes ?? 0;
       const s = obj.seconds ?? 0;
       const ms = obj.milliseconds ?? 0;
@@ -42,10 +40,8 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
       onChange(str);
     } else {
       // Convert string to object (parse HH:MM:SS[.ms])
-      if (isString) {
-        const match = /^([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})(?:\.(\d{1,3}))?$/.exec(
-          value as string
-        );
+      if (text !== null) {
+        const match = /^([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})(?:\.(\d{1,3}))?$/.exec(text);
         if (match) {
           const [, h, m, s, ms] = match;
           onChange({
@@ -61,7 +57,10 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
     }
   };
 
-  const handleObjChange = (field: 'hours' | 'minutes' | 'seconds' | 'milliseconds', v: string) => {
+  const handleObjChange = (
+    field: 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds',
+    v: string
+  ) => {
     const num = v === '' ? undefined : Number(v);
     const updated = {
       ...obj,
@@ -86,12 +85,23 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
       {useString ? (
         <Input
           type="text"
-          value={isString ? value : ''}
+          value={text ?? ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t('nodes:durationField.placeholder')}
         />
       ) : (
         <div className="flow-field-grid-4">
+          <div>
+            <Label className="text-flow-text-muted text-xs">{t('nodes:durationField.days')}</Label>
+            <Input
+              type="number"
+              min={0}
+              value={obj.days ?? ''}
+              onChange={(e) => handleObjChange('days', e.target.value)}
+              placeholder="0"
+              className="mt-1"
+            />
+          </div>
           <div>
             <Label className="text-flow-text-muted text-xs">{t('nodes:durationField.hours')}</Label>
             <Input

@@ -42,5 +42,20 @@ export type Handle = z.infer<typeof HandleSchema>;
 export const AutomationModeSchema = z.enum(['single', 'restart', 'queued', 'parallel']);
 export type AutomationMode = z.infer<typeof AutomationModeSchema>;
 
-export const MaxExceededSchema = z.enum(['silent', 'warning', 'critical']);
+/**
+ * What to log when a run is dropped because `max` is reached. Home Assistant reads the value
+ * case-insensitively: `silent` or any log level (critical, fatal, error, warning, warn, info,
+ * debug, notset). Kept verbatim so saving never changes the author's spelling.
+ */
+export const MaxExceededSchema = z.string();
 export type MaxExceeded = z.infer<typeof MaxExceededSchema>;
+
+/** The levels the editor offers; a value outside this list (hand-written YAML) is kept as is. */
+export const MAX_EXCEEDED_LEVELS = [
+  'silent',
+  'warning',
+  'error',
+  'info',
+  'debug',
+  'critical',
+] as const;
