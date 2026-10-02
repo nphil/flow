@@ -106,20 +106,22 @@ conditions:
   - condition: template
     value_template: "{{ (state_attr('media_player.tv','media_content_type') or '') | lower == 'movie' }}"
 actions:
-  - if:
-      - condition: template
-        value_template: "{{ states('cover.velux_blind') != 'closed' }}"
-    then:
-      - service: cover.close_cover
-        target:
-          entity_id: cover.velux_blind
-  - if:
-      - condition: template
-        value_template: "{{ states('cover.main_blind') != 'closed' }}"
-    then:
-      - service: cover.close_cover
-        target:
-          entity_id: cover.main_blind
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ states('cover.velux_blind') != 'closed' }}"
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: cover.velux_blind
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ states('cover.main_blind') != 'closed' }}"
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: cover.main_blind
 mode: single
 variables:
   _cafe_metadata:
@@ -163,23 +165,23 @@ triggers:
     entity_id: binary_sensor.occupancy
     for: "00:05:00"
 actions:
-  - if:
-      - condition: and
-        conditions:
-          - condition: state
-            entity_id: binary_sensor.occupancy
-            state: "on"
-          - condition: time
-            after: "08:00:00"
-            before: "22:00:00"
-    then:
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.main
-        data:
-          temperature: 22
-    else:
-      - if:
+  - choose:
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.occupancy
+                state: "on"
+              - condition: time
+                after: "08:00:00"
+                before: "22:00:00"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.main
+            data:
+              temperature: 22
+      - conditions:
           - condition: and
             conditions:
               - condition: state
@@ -187,18 +189,18 @@ actions:
                 state: "on"
               - condition: time
                 after: "22:00:00"
-        then:
+        sequence:
           - service: climate.set_temperature
             target:
               entity_id: climate.main
             data:
               temperature: 20
-        else:
-          - service: climate.set_temperature
-            target:
-              entity_id: climate.main
-            data:
-              temperature: 18
+    default:
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.main
+        data:
+          temperature: 18
 mode: restart
 variables:
   _cafe_metadata:
@@ -362,42 +364,41 @@ triggers:
 conditions:
   - condition: template
     value_template: "{{ trigger.payload == 1 }}"
+actions:
   - condition: template
     value_template: "{{ target_light is not none }}"
-actions:
   - wait_template: "{{ is_state(target_light, 'on') }}"
     timeout: "00:00:03"
-  - if:
-      - condition: template
-        value_template: "{{ is_state(target_light, 'on') }}"
-    then:
-      - action: light.turn_on
-        target:
-          entity_id: "{{ target_light }}"
-        data:
-          brightness_pct: 100
-          transition: 0
-      - delay:
-          milliseconds: 500
-      - variables:
-          color_before: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-      - action: adaptive_lighting.apply
-        data:
-          entity_id: switch.adaptive_lighting_adapt_color_dali
-          lights:
-            - "{{ target_light }}"
-          turn_on_lights: false
-          adapt_brightness: false
-          adapt_color: true
-          transition: 0
-      - delay:
-          milliseconds: 350
-      - variables:
-          color_after_1: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-      - if:
+  - condition: template
+    value_template: "{{ is_state(target_light, 'on') }}"
+  - action: light.turn_on
+    target:
+      entity_id: "{{ target_light }}"
+    data:
+      brightness_pct: 100
+      transition: 0
+  - delay:
+      milliseconds: 500
+  - variables:
+      color_before: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+  - action: adaptive_lighting.apply
+    data:
+      entity_id: switch.adaptive_lighting_adapt_color_dali
+      lights:
+        - "{{ target_light }}"
+      turn_on_lights: false
+      adapt_brightness: false
+      adapt_color: true
+      transition: 0
+  - delay:
+      milliseconds: 350
+  - variables:
+      color_after_1: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+  - choose:
+      - conditions:
           - condition: template
             value_template: "{{ is_state(target_light, 'on') and (color_after_1 == color_before) }}"
-        then:
+        sequence:
           - action: adaptive_lighting.apply
             data:
               entity_id: switch.adaptive_lighting_adapt_color_dali
@@ -409,12 +410,13 @@ actions:
               transition: 0
           - delay:
               milliseconds: 350
-      - variables:
-          color_after_2: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-      - if:
+  - variables:
+      color_after_2: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+  - choose:
+      - conditions:
           - condition: template
             value_template: "{{ is_state(target_light, 'on') and (color_after_2 == color_before) }}"
-        then:
+        sequence:
           - action: adaptive_lighting.apply
             data:
               entity_id: switch.adaptive_lighting_adapt_color_dali
@@ -548,33 +550,33 @@ triggers:
     attribute: current_temperature
     id: temp_limit_reached
 actions:
-  - if:
-      - condition: trigger
-        id: arriving
-      - condition: template
-        value_template: |
-          {{ (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed)) > 3600 }}
-    then:
-      - if:
-          - condition: numeric_state
-            entity_id: water_heater.altherma
-            above: 39
-            attribute: current_temperature
-        then:
-          - action: notify.mobile_app_iphone_maria
-            data:
-              title: 🚿 Hot Water Ready
-              message: Welcome back! There is plenty of hot water waiting for you.
-        else:
-          - action: water_heater.turn_on
-            target:
-              entity_id: water_heater.altherma
-          - action: notify.mobile_app_iphone_maria
-            data:
-              title: 🚿 Heating Water
-              message: Welcome back! Turning on the water heater now.
-    else:
-      - if:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: arriving
+          - condition: template
+            value_template: |
+              {{ (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed)) > 3600 }}
+        sequence:
+          - if:
+              - condition: numeric_state
+                entity_id: water_heater.altherma
+                above: 39
+                attribute: current_temperature
+            then:
+              - action: notify.mobile_app_iphone_maria
+                data:
+                  title: 🚿 Hot Water Ready
+                  message: Welcome back! There is plenty of hot water waiting for you.
+            else:
+              - action: water_heater.turn_on
+                target:
+                  entity_id: water_heater.altherma
+              - action: notify.mobile_app_iphone_maria
+                data:
+                  title: 🚿 Heating Water
+                  message: Welcome back! Turning on the water heater now.
+      - conditions:
           - condition: or
             conditions:
               - condition: trigger
@@ -590,7 +592,7 @@ actions:
               - condition: zone
                 entity_id: person.maria
                 zone: zone.city_limits
-        then:
+        sequence:
           - action: water_heater.turn_off
             target:
               entity_id: water_heater.altherma
@@ -669,22 +671,22 @@ conditions:
     after: sunset
     after_offset: "00:05:00"
 actions:
-  - if:
-      - condition: trigger
-        id: playing
-    then:
-      - action: light.turn_off
-        target:
-          entity_id:
-            - light.0a12b58eadb1ae45d36fdb96e025444d
-            - light.751314eaa8749ab751d478948a65b33e
-        data:
-          transition: 2
-    else:
-      - if:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: playing
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id:
+                - light.0a12b58eadb1ae45d36fdb96e025444d
+                - light.751314eaa8749ab751d478948a65b33e
+            data:
+              transition: 2
+      - conditions:
           - condition: trigger
             id: paused
-        then:
+        sequence:
           - action: light.turn_on
             target:
               entity_id: light.751314eaa8749ab751d478948a65b33e
@@ -871,103 +873,104 @@ triggers:
       - "off"
     id: fan-switch-toggled-off
 actions:
-  - alias: Off at night
-    if:
-      - condition: trigger
-        id:
-          - NightOff
-    then:
-      - if:
-          - condition: state
-            entity_id: switch.ensuite
-            state:
-              - "on"
-        then:
-          - wait_for_trigger:
-              - trigger: state
-                entity_id:
-                  - switch.ensuite
-                to:
-                  - "off"
-            timeout:
-              hours: 0
-              minutes: 20
-              seconds: 0
-              milliseconds: 0
-          - metadata: {}
-            action: switch.turn_off
-            target:
-              entity_id:
-                - switch.ensuite_fan
-                - switch.ensuite_fan_boost
-            data: {}
-        else:
-          - metadata: {}
-            action: switch.turn_off
-            target:
-              entity_id:
-                - switch.ensuite_fan
-                - switch.ensuite_fan_boost
-            data: {}
-    else:
-      - if:
+  - choose:
+      - alias: Off at night
+        conditions:
+          - condition: trigger
+            id:
+              - NightOff
+        sequence:
+          - if:
+              - condition: state
+                entity_id: switch.ensuite
+                state:
+                  - "on"
+            then:
+              - wait_for_trigger:
+                  - trigger: state
+                    entity_id:
+                      - switch.ensuite
+                    to:
+                      - "off"
+                timeout:
+                  hours: 0
+                  minutes: 20
+                  seconds: 0
+                  milliseconds: 0
+              - metadata: {}
+                action: switch.turn_off
+                target:
+                  entity_id:
+                    - switch.ensuite_fan
+                    - switch.ensuite_fan_boost
+                data: {}
+            else:
+              - metadata: {}
+                action: switch.turn_off
+                target:
+                  entity_id:
+                    - switch.ensuite_fan
+                    - switch.ensuite_fan_boost
+                data: {}
+      - conditions:
           - condition: trigger
             id:
               - light-toggled-on
               - fan-switch-toggled-on
+        sequence:
+          - if:
+              - condition: time
+                after: "05:45:00"
+                before: "21:00:00"
+              - condition: state
+                entity_id: light.ensuite
+                state:
+                  - "on"
+              - condition: state
+                entity_id: switch.ensuite_fan
+                state:
+                  - "off"
+            then:
+              - metadata: {}
+                action: switch.turn_on
+                target:
+                  entity_id: switch.ensuite_fan
+                data: {}
+      - conditions:
+          - condition: trigger
+            id:
+              - light-toggled-off
+              - fan-switch-toggled-off
           - condition: time
             after: "05:45:00"
             before: "21:00:00"
-          - condition: state
-            entity_id: light.ensuite
-            state:
-              - "on"
-          - condition: state
-            entity_id: switch.ensuite_fan
-            state:
-              - "off"
-        then:
-          - metadata: {}
-            action: switch.turn_on
-            target:
-              entity_id: switch.ensuite_fan
-            data: {}
-        else:
+        sequence:
           - if:
               - condition: trigger
                 id:
                   - light-toggled-off
-                  - fan-switch-toggled-off
-              - condition: time
-                after: "05:45:00"
-                before: "21:00:00"
             then:
-              - if:
-                  - condition: trigger
-                    id:
-                      - light-toggled-off
-                then:
-                  - delay:
-                      hours: 0
-                      minutes: 30
-                      seconds: 0
-                      milliseconds: 0
-                  - metadata: {}
-                    action: switch.turn_off
-                    target:
-                      entity_id: switch.ensuite_fan
-                    data: {}
-                else:
-                  - delay:
-                      hours: 1
-                      minutes: 0
-                      seconds: 0
-                      milliseconds: 0
-                  - metadata: {}
-                    action: switch.turn_off
-                    target:
-                      entity_id: switch.ensuite_fan
-                    data: {}
+              - delay:
+                  hours: 0
+                  minutes: 30
+                  seconds: 0
+                  milliseconds: 0
+              - metadata: {}
+                action: switch.turn_off
+                target:
+                  entity_id: switch.ensuite_fan
+                data: {}
+            else:
+              - delay:
+                  hours: 1
+                  minutes: 0
+                  seconds: 0
+                  milliseconds: 0
+              - metadata: {}
+                action: switch.turn_off
+                target:
+                  entity_id: switch.ensuite_fan
+                data: {}
 mode: restart
 variables:
   _cafe_metadata:
@@ -1065,30 +1068,30 @@ triggers:
     below: 2
     id: machine_off
 actions:
-  - if:
-      - condition: trigger
-        id: machine_on
-      - condition: state
-        entity_id: input_boolean.wasmachine_status
-        state: "off"
-    then:
-      - action: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.wasmachine_status
-        data: {}
-      - action: input_number.set_value
-        target:
-          entity_id: input_number.wasmachine_energie_start_cyclus
-        data:
-          value: "{{ states('sensor.noord_wasplaats_energie_wasmachine') }}"
-    else:
-      - if:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: machine_on
+          - condition: state
+            entity_id: input_boolean.wasmachine_status
+            state: "off"
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.wasmachine_status
+            data: {}
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.wasmachine_energie_start_cyclus
+            data:
+              value: "{{ states('sensor.noord_wasplaats_energie_wasmachine') }}"
+      - conditions:
           - condition: trigger
             id: machine_off
           - condition: state
             entity_id: input_boolean.wasmachine_status
             state: "on"
-        then:
+        sequence:
           - action: input_boolean.turn_off
             target:
               entity_id: input_boolean.wasmachine_status
@@ -1165,63 +1168,68 @@ triggers:
     from: "off"
     to: "on"
     id: ZapfenstreichAn
-conditions:
-  - condition: and
-    conditions:
-      - condition: state
-        entity_id: input_boolean.zapfenstreich
-        state: "on"
-      - condition: trigger
-        id:
-          - ZapfenstreichAn
 actions:
-  - action: input_boolean.turn_off
-    target:
-      entity_id: input_boolean.gartenbeleuchtung
-    data: {}
-  - device_id: 5c52f5c8c8e59972a9f7d359a5bcaf2f
-    domain: switch
-    type: turn_off
-    entity_id: 4906302ad1fd63fb7a358ce3e30146e4
-  - device_id: ee8b0db24fc5d9ca7cf1e9ad4d406e45
-    domain: switch
-    type: turn_off
-    entity_id: 616e70061d2add8d6295bd2204b25f7d
-  - device_id: b8ac21757194c9fba5cac089fd8ede51
-    domain: switch
-    type: turn_off
-    entity_id: cace6d6a39ec897bc6560f945c7fc689
-  - device_id: 8255c85496be5b6962a278ebdd7411e8
-    domain: switch
-    type: turn_off
-    entity_id: 62f9263c0006b6f9acdf12a35139e095
-  - parallel:
-      - device_id: ad7a2c892d7118cbfcdc89d2e2b3323d
-        domain: cover
-        type: close
-        entity_id: 63bff85b1243e4da6edf77f186725bc6
-      - - delay:
-            hours: 0
-            minutes: 0
-            seconds: 10
-            milliseconds: 0
-        - device_id: e2a191a70faa1f7d07a4068b51b417fb
-          domain: light
-          type: turn_off
-          entity_id: fe1b6aecf59b3bdd146aec7d8e589496
-        - action: input_boolean.turn_off
-          target:
-            entity_id: input_boolean.zapfenstreich
-          data: {}
-      - metadata: {}
-        action: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.gartenbeleuchtung
-        data: {}
-  - device_id: 38156e5e85c33bd4d2129e9c7a67c5af
-    domain: switch
-    type: turn_off
-    entity_id: f7cbd6770bbb3bb5276c3d8e991e9b4d
+  - alias: WoZi und Flur Aus und Rollade runter
+    choose:
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: state
+                entity_id: input_boolean.zapfenstreich
+                state: "on"
+              - condition: trigger
+                id:
+                  - ZapfenstreichAn
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.gartenbeleuchtung
+            data: {}
+          - device_id: 5c52f5c8c8e59972a9f7d359a5bcaf2f
+            domain: switch
+            type: turn_off
+            entity_id: 4906302ad1fd63fb7a358ce3e30146e4
+          - device_id: ee8b0db24fc5d9ca7cf1e9ad4d406e45
+            domain: switch
+            type: turn_off
+            entity_id: 616e70061d2add8d6295bd2204b25f7d
+          - device_id: b8ac21757194c9fba5cac089fd8ede51
+            domain: switch
+            type: turn_off
+            entity_id: cace6d6a39ec897bc6560f945c7fc689
+          - device_id: 8255c85496be5b6962a278ebdd7411e8
+            domain: switch
+            type: turn_off
+            entity_id: 62f9263c0006b6f9acdf12a35139e095
+          - parallel:
+              - device_id: ad7a2c892d7118cbfcdc89d2e2b3323d
+                domain: cover
+                type: close
+                entity_id: 63bff85b1243e4da6edf77f186725bc6
+              - alias: Licht Esstisch nach x Sek ausschalten
+                sequence:
+                  - delay:
+                      hours: 0
+                      minutes: 0
+                      seconds: 10
+                      milliseconds: 0
+                  - device_id: e2a191a70faa1f7d07a4068b51b417fb
+                    domain: light
+                    type: turn_off
+                    entity_id: fe1b6aecf59b3bdd146aec7d8e589496
+                  - action: input_boolean.turn_off
+                    target:
+                      entity_id: input_boolean.zapfenstreich
+                    data: {}
+              - metadata: {}
+                action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.gartenbeleuchtung
+                data: {}
+          - device_id: 38156e5e85c33bd4d2129e9c7a67c5af
+            domain: switch
+            type: turn_off
+            entity_id: f7cbd6770bbb3bb5276c3d8e991e9b4d
 mode: single
 variables:
   _cafe_metadata:
@@ -1702,16 +1710,16 @@ actions:
       area_key: "{{ sofabaton_area }}"
       data_payload: "{{ incoming_payload }}"
       overrides: {}
-  - if:
-      - condition: template
-        enabled: false
-        value_template: "{{ action_type == 'activity_call' }}"
-    then:
-      - alias: Execute Universal Activity Orchestrator
-        action: script.universal_media_activity_orchestrator
-        data:
-          activity_key: "{{ action_value }}"
-        enabled: false
+  - enabled: false
+    choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ action_type == 'activity_call' }}"
+        sequence:
+          - alias: Execute Universal Activity Orchestrator
+            action: script.universal_media_activity_orchestrator
+            data:
+              activity_key: "{{ action_value }}"
 mode: single
 variables:
   _cafe_metadata:

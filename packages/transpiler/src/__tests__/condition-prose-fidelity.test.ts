@@ -287,10 +287,8 @@ mode: single
   });
 });
 
-describe("a choose branch's own note (bonus coverage)", () => {
-  // Flow canonically converts `choose:`/`default:` into nested if/then/else
-  // on save; a choose branch's own `note:` must survive that conversion the
-  // same way its `alias:` already did, riding on the converted if-step.
+describe("a choose branch's own alias and note (bonus coverage)", () => {
+  // A `choose` stays a `choose` on save, and every branch keeps its own `alias:` and `note:`.
   const YAML = `
 alias: Choose note test
 triggers:
@@ -320,15 +318,17 @@ actions:
 mode: single
 `;
 
-  it('round-trips the branch note via the converted if-step', async () => {
+  it('keeps the alias and note on their branch of the choose', async () => {
     const transpiler = new FlowTranspiler();
     const result = await transpiler.fromYaml(YAML);
     expect(result.success).toBe(true);
 
     const yaml = transpiler.toYaml(result.graph!);
-    const parsed = yamlLoad(yaml) as { actions: YamlStep[] };
-    const step = parsed.actions[0];
-    expect(step.alias).toBe('Branch A');
-    expect(step.note).toBe('Explains branch A reasoning');
+    const parsed = yamlLoad(yaml) as { actions: { choose: YamlStep[] }[] };
+    const [branchA, branchB] = parsed.actions[0].choose;
+    expect(branchA.alias).toBe('Branch A');
+    expect(branchA.note).toBe('Explains branch A reasoning');
+    expect(branchB.alias).toBe('Branch B');
+    expect(branchB.note).toBeUndefined();
   });
 });

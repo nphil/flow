@@ -80,6 +80,21 @@ export {
   VALID_WEEKDAYS,
   type Weekday,
 } from './ha-schemas';
+// Node hints: the internal keys the parser writes so the generator can rebuild the original tree
+export {
+  BlockEnabledSchema,
+  INTERNAL_NODE_KEYS,
+  type LoopRole,
+  LoopRoleSchema,
+  type NodeHints,
+  NodeHintsSchema,
+  type ParallelBlockProps,
+  ParallelBlockPropsSchema,
+  type ParallelBranchHint,
+  ParallelBranchHintSchema,
+  readNodeHints,
+  stripInternalKeys,
+} from './node-hints';
 // Node schemas
 export {
   type ActionNode,

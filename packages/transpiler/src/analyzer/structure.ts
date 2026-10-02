@@ -1,4 +1,4 @@
-import type { FlowGraph } from '@flow/shared';
+import type { FlowEdge, FlowGraph, FlowNode } from '@flow/shared';
 
 /**
  * Structured control flow.
@@ -20,11 +20,20 @@ export const EXIT_NODE = '__exit__';
 export interface PostDominators {
   /** Immediate post-dominator of every node; `EXIT_NODE` when paths only meet at the end. */
   readonly ipdom: ReadonlyMap<string, string>;
+  /** Nodes after which the run always ends: an enabled `stop`, or every path leads to one. */
+  readonly dead: ReadonlySet<string>;
   /**
-   * The nearest node that every path from all of `starts` passes through, or
-   * null when they only meet at the end of the run (e.g. one branch stops).
+   * Where the branches that START at `starts` come together again, or null when they never do.
+   * A branch that always ends in `stop` never comes back, so it does not count: the join of a
+   * branch that stops and one that goes on is nothing (the one that goes on simply continues),
+   * and a stopping branch does not hide the join of the others.
    */
   joinOf(starts: readonly string[]): string | null;
+}
+
+/** A `stop` that is switched on ends the run; a disabled one does nothing. */
+export function isEnabledStop(node: FlowNode): boolean {
+  return node.type === 'action' && 'stop' in node.data && node.data.enabled !== false;
 }
 
 /** Forward adjacency (targets deduplicated) ignoring the given edges, e.g. loop back-edges. */
@@ -63,10 +72,13 @@ function postOrder(nodeIds: readonly string[], successors: Map<string, string[]>
   return order;
 }
 
-export function computePostDominators(
-  flow: FlowGraph,
-  ignoredEdgeIds: ReadonlySet<string> = new Set()
-): PostDominators {
+interface PostDominatorTree {
+  ipdom: Map<string, string>;
+  joinOf(starts: readonly string[]): string | null;
+}
+
+/** The post-dominator tree of the forward edges. */
+function buildTree(flow: FlowGraph, ignoredEdgeIds: ReadonlySet<string>): PostDominatorTree {
   const { successors } = forwardAdjacency(flow, ignoredEdgeIds);
   const ipdom = new Map<string, string>([[EXIT_NODE, EXIT_NODE]]);
   const depth = new Map<string, number>([[EXIT_NODE, 0]]);
@@ -107,6 +119,68 @@ export function computePostDominators(
         join = join === undefined ? start : meet(join, start);
       }
       return join === undefined || join === EXIT_NODE ? null : join;
+    },
+  };
+}
+
+/**
+ * The nodes after which the run always ends: an enabled `stop`, or a node whose every way on
+ * leads to one (a condition only counts when both of its handles lead somewhere: with one of
+ * them free, the run can fall out of the sequence on the other).
+ */
+function findDeadNodes(flow: FlowGraph, ignoredEdgeIds: ReadonlySet<string>): Set<string> {
+  const outgoing = new Map<string, FlowEdge[]>();
+  for (const edge of flow.edges) {
+    if (ignoredEdgeIds.has(edge.id)) continue;
+    outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge]);
+  }
+  const byId = new Map(flow.nodes.map((node) => [node.id, node]));
+  const dead = new Set<string>();
+  const live = new Set<string>();
+  const inProgress = new Set<string>();
+
+  const isDead = (id: string): boolean => {
+    if (dead.has(id)) return true;
+    const node = byId.get(id);
+    if (!node || live.has(id) || inProgress.has(id)) return false;
+    let result = isEnabledStop(node);
+    const out = outgoing.get(id) ?? [];
+    if (!result && out.length > 0) {
+      inProgress.add(id);
+      const handles = new Set(out.map((edge) => edge.sourceHandle));
+      const everyWayOn = node.type !== 'condition' || (handles.has('true') && handles.has('false'));
+      result = everyWayOn && out.every((edge) => isDead(edge.target));
+      inProgress.delete(id);
+    }
+    (result ? dead : live).add(id);
+    return result;
+  };
+
+  for (const node of flow.nodes) isDead(node.id);
+  return dead;
+}
+
+export function computePostDominators(
+  flow: FlowGraph,
+  ignoredEdgeIds: ReadonlySet<string> = new Set()
+): PostDominators {
+  const tree = buildTree(flow, ignoredEdgeIds);
+  const dead = findDeadNodes(flow, ignoredEdgeIds);
+  // Paths that lead into a dead node do not count when looking for where the live branches meet.
+  const deadEdgeIds = flow.edges.filter((edge) => dead.has(edge.target)).map((edge) => edge.id);
+  const liveTree =
+    deadEdgeIds.length === 0 ? tree : buildTree(flow, new Set([...ignoredEdgeIds, ...deadEdgeIds]));
+
+  return {
+    ipdom: tree.ipdom,
+    dead,
+    joinOf(starts) {
+      const distinct = [...new Set(starts)];
+      if (distinct.length < 2) return null;
+      // Branches that all reach one node (even a `stop`) end there; only when they do not, the
+      // branches that stop on their own are left out.
+      const live = distinct.filter((start) => !dead.has(start));
+      return tree.joinOf(distinct) ?? (live.length < 2 ? null : liveTree.joinOf(live));
     },
   };
 }

@@ -387,8 +387,9 @@ function canonStep(step: Json, ctx: Ctx): Json {
     return canonRepeat(step, step.repeat, ctx);
   }
 
-  // bare condition step (gates everything after it in its sequence)
-  if ('condition' in step && !('action' in step) && !('service' in step)) {
+  // bare condition step (gates everything after it in its sequence), long form or shorthand group
+  const isCondition = 'condition' in step || SHORTHAND_GROUP_KEYS.some((key) => key in step);
+  if (isCondition && !('action' in step) && !('service' in step)) {
     return { __condition: canonCondition(step, ctx) };
   }
 
