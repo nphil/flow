@@ -201,9 +201,14 @@ export function isStructuredFlow(
   for (const [branchId, targets] of successors) {
     if (targets.length < 2) continue;
     const join = postDominators.ipdom.get(branchId) ?? EXIT_NODE;
+    // When the other branches stop, what follows the block hangs off the one branch that goes on:
+    // that branch is the continuation, not a region of its own.
+    const live = targets.filter((id) => !postDominators.dead.has(id));
+    const seeds =
+      join === EXIT_NODE && live.length === 1 ? targets.filter((id) => id !== live[0]) : targets;
 
     const region = new Set<string>();
-    const pending = [...targets];
+    const pending = [...seeds];
     for (let id = pending.pop(); id !== undefined; id = pending.pop()) {
       if (id === join || region.has(id)) continue;
       region.add(id);

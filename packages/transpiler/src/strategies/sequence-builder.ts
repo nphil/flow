@@ -36,6 +36,8 @@ export interface BuiltActions {
   rootConditions: unknown[] | null;
   actions: unknown[];
   warnings: string[];
+  /** Nodes the triggers lead to that no step was written for (a graph the builder cannot nest). */
+  unplaced: string[];
 }
 
 interface Ctx {
@@ -138,6 +140,25 @@ export class SequenceBuilder {
 
   /** The root conditions and the actions that follow the trigger nodes. */
   buildActions(triggerIds: string[]): BuiltActions {
+    const built = this.buildActionList(triggerIds);
+    return { ...built, unplaced: this.unplacedNodes(triggerIds) };
+  }
+
+  /** Every node reachable from the triggers (loop edges included) that was never written. */
+  private unplacedNodes(triggerIds: string[]): string[] {
+    const reached = new Set<string>(triggerIds);
+    const queue = [...triggerIds];
+    for (let id = queue.pop(); id !== undefined; id = queue.pop()) {
+      for (const edge of this.flow.edges) {
+        if (edge.source !== id || reached.has(edge.target)) continue;
+        reached.add(edge.target);
+        queue.push(edge.target);
+      }
+    }
+    return [...reached].filter((id) => !triggerIds.includes(id) && !this.emitted.has(id));
+  }
+
+  private buildActionList(triggerIds: string[]): Omit<BuiltActions, 'unplaced'> {
     const firstActions = unique(triggerIds.flatMap((id) => this.targets(id)));
 
     if (firstActions.length === 1) {
@@ -393,7 +414,7 @@ export class SequenceBuilder {
     const results = branchStarts.map((branch) => this.buildSequence(branch, branchCtx, pathIndex));
 
     if (join !== null) return { results, next: [join] };
-    const pending = live.length === 1 ? results.find((result) => result.end !== null)?.end : null;
+    const pending = results.find((result) => result.end !== null)?.end;
     return { results, next: pending ? [pending] : [] };
   }
 

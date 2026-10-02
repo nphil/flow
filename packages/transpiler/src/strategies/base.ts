@@ -21,6 +21,11 @@ export interface HAYamlOutput {
    * The strategy used for transpilation
    */
   strategy: string;
+  /**
+   * True when some node the triggers lead to has no step in the output: the strategy could not
+   * express this graph, and the caller should use a more general one.
+   */
+  incomplete?: boolean;
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { FlowEdge, FlowGraph } from '@flow/shared';
 import graphlib from 'graphlib';
+import { readNodeHints } from '@flow/shared';
 import { computePostDominators, isStructuredFlow } from './structure';
 
 const { Graph, alg } = graphlib;
@@ -203,10 +204,16 @@ export function analyzeTopology(flow: FlowGraph): TopologyAnalysis {
   // - No divergent trigger paths (all triggers lead to the same actions)
   // - Either the legacy tree shape (no cross-links, no true convergence beyond
   //   the cases the generator special-cases) or a properly nested structure
+  // A graph the parser made from nested steps (every step node knows its level) is nested by
+  // construction. If an edit broke that, the native strategy reports nodes it could not place and
+  // the transpiler falls back to the state machine.
+  const isFromSteps = flow.nodes.every(
+    (node) => node.type === 'trigger' || readNodeHints(node.data).stepDepth !== undefined
+  );
   const isTree =
     !hasCycles &&
     !hasDivergentTriggerPaths &&
-    ((!hasCrossLinks && !hasConvergingPaths) || isStructured);
+    ((!hasCrossLinks && !hasConvergingPaths) || isStructured || isFromSteps);
 
   // Determine recommended strategy
   const recommendedStrategy = isTree ? 'native' : 'state-machine';

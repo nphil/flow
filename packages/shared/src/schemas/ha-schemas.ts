@@ -403,7 +403,7 @@ export function isCafeMetadata(obj: unknown): obj is CafeMetadata {
  * Zod schema for choose option in HA actions.
  */
 export const HAChooseOptionSchema: z.ZodType<HAChooseOption> = z.lazy(() =>
-  z.object({
+  z.looseObject({
     conditions: z.union([HAConditionSchema, z.array(HAConditionSchema)]),
     sequence: z.union([HAActionSchema, z.array(HAActionSchema)]),
     alias: z.string().optional(),

@@ -44,6 +44,11 @@ export interface StepsResult {
   entryIds: string[];
   /** Where control leaves the list (see above). */
   exits: Exit[];
+  /**
+   * Only when the list has no exit: the `stop` nodes it ends in. Steps written after such a list
+   * can never run, but they are still part of the automation, so they hang off these.
+   */
+  deadEnds: Exit[];
 }
 
 export interface StepsOptions {
@@ -67,6 +72,7 @@ interface BlockResult {
   nodes: FlowNode[];
   edges: FlowEdge[];
   exits: Exit[];
+  deadEnds: Exit[];
 }
 
 const GROUP_KEYS = ['and', 'or', 'not'];
@@ -89,6 +95,12 @@ function uniqueExits(exits: Exit[]): Exit[] {
     seen[key] = true;
     return true;
   });
+}
+
+/** A block's exits and, when it never continues, the `stop` nodes its lists end in. */
+function closeBlock(exits: Exit[], lists: StepsResult[]): { exits: Exit[]; deadEnds: Exit[] } {
+  const unique = uniqueExits(exits);
+  return { exits: unique, deadEnds: unique.length === 0 ? lists.flatMap((l) => l.deadEnds) : [] };
 }
 
 /** The record without its undefined entries. */
@@ -178,13 +190,17 @@ export class StepParser {
     const edges: FlowEdge[] = [];
     /** Where the steps parsed so far leave from. */
     let current: Exit[] = previous;
+    /** The dead ends of the last step, when it is a block that never continues. */
+    let lastDeadEnds: Exit[] = [];
     /** Inline conditions: when one fails, the list ends and control leaves through its false handle. */
     const gateExits: Exit[] = [];
     /** True while the last step parsed is a `stop`. */
     let ended = false;
 
     const linkFromCurrent = (targetId: string): void => {
-      for (const exit of current) edges.push(createEdge(exit.id, targetId, exit.handle));
+      // Steps after a block that never continues (dead code) hang off its stops.
+      const sources = current.length > 0 ? current : lastDeadEnds;
+      for (const exit of sources) edges.push(createEdge(exit.id, targetId, exit.handle));
     };
 
     /** A plain step: one node, connected after everything before it. */
@@ -193,12 +209,14 @@ export class StepParser {
       this.services.recorder.record(node.id, tracePath);
       linkFromCurrent(node.id);
       current = [{ id: node.id }];
+      lastDeadEnds = [];
     };
 
     const takeBlock = (block: BlockResult): void => {
       nodes.push(...block.nodes);
       edges.push(...block.edges);
       current = block.exits;
+      lastDeadEnds = block.deadEnds;
     };
 
     actions.forEach((raw, index) => {
@@ -357,11 +375,13 @@ export class StepParser {
     for (const node of nodes) {
       if (!Object.hasOwn(node.data, 'stepDepth')) setHints(node, { stepDepth: depth });
     }
+    const exits = uniqueExits([...(ended ? [] : current), ...gateExits]);
     return {
       nodes,
       edges,
       entryIds,
-      exits: uniqueExits([...(ended ? [] : current), ...gateExits]),
+      exits,
+      deadEnds: exits.length > 0 ? [] : ended ? current : lastDeadEnds,
     };
   }
 
@@ -616,11 +636,13 @@ export class StepParser {
     }
     const unconsumed = routed === null ? [] : previous.filter((exit) => !isRouted(exit.id));
 
+    const lists: StepsResult[] = [];
     const thenResult = this.parseActions(thenSteps, {
       previous: [{ id: last.id, handle: 'true' }],
       depth: depth + 1,
       pathPrefix: `${pathPrefix}/then`,
     });
+    lists.push(thenResult);
     nodes.push(...thenResult.nodes);
     edges.push(...thenResult.edges);
     // An empty `then` leaves straight through the true handle.
@@ -634,6 +656,7 @@ export class StepParser {
         depth: depth + 1,
         pathPrefix: `${pathPrefix}/else`,
       });
+      lists.push(elseResult);
       nodes.push(...elseResult.nodes);
       edges.push(...elseResult.edges);
       exits.push(...elseResult.exits);
@@ -642,7 +665,7 @@ export class StepParser {
       for (const node of chain.nodes) exits.push({ id: node.id, handle: 'false' });
     }
 
-    return { nodes, edges, exits: uniqueExits(exits), unconsumed };
+    return { nodes, edges, ...closeBlock(exits, lists), unconsumed };
   }
 
   // ---------------------------------------------------------------------------
@@ -669,6 +692,7 @@ export class StepParser {
     const nodes: FlowNode[] = [];
     const edges: FlowEdge[] = [];
     const exits: Exit[] = [];
+    const lists: StepsResult[] = [];
     // Where the next branch (and finally the default) connects from.
     let from: Exit[] = previous;
     let entryNodeId: string | null = null;
@@ -711,6 +735,7 @@ export class StepParser {
         depth: depth + 1,
         pathPrefix: `${branchPath}/sequence`,
       });
+      lists.push(sequence);
       nodes.push(...sequence.nodes);
       edges.push(...sequence.edges);
       // An empty sequence leaves straight through the true handle.
@@ -727,6 +752,7 @@ export class StepParser {
       depth: depth + 1,
       pathPrefix: `${pathPrefix}/choose/default`,
     });
+    lists.push(defaultResult);
     nodes.push(...defaultResult.nodes);
     edges.push(...defaultResult.edges);
     if (defaultResult.nodes.length > 0) {
@@ -744,7 +770,7 @@ export class StepParser {
       // The choose step's own trace step has no node of its own; it maps to the first condition.
       recorder.record(entryNodeId, pathPrefix);
     }
-    return { nodes, edges, exits: uniqueExits(exits) };
+    return { nodes, edges, ...closeBlock(exits, lists) };
   }
 
   // ---------------------------------------------------------------------------
@@ -764,6 +790,7 @@ export class StepParser {
     const edges: FlowEdge[] = [];
     const exits: Exit[] = [];
     const branches: { entryIds: string[]; nodes: FlowNode[]; alias?: string; note?: string }[] = [];
+    const lists: StepsResult[] = [];
 
     items.forEach((item, branchIndex) => {
       const { steps, alias, note } = parallelBranch(item);
@@ -777,10 +804,11 @@ export class StepParser {
       nodes.push(...result.nodes);
       edges.push(...result.edges);
       exits.push(...result.exits);
+      lists.push(result);
       branches.push({ entryIds: result.entryIds, nodes: result.nodes, alias, note });
     });
 
-    if (branches.length === 0) return { nodes, edges, exits: previous };
+    if (branches.length === 0) return { nodes, edges, exits: previous, deadEnds: [] };
 
     const block: ParallelBlockProps = {
       alias: str(step.alias),
@@ -807,7 +835,7 @@ export class StepParser {
         });
       }
     });
-    return { nodes, edges, exits: uniqueExits(exits) };
+    return { nodes, edges, ...closeBlock(exits, lists) };
   }
 
   // ---------------------------------------------------------------------------
@@ -887,6 +915,7 @@ export class StepParser {
       nodes: [...chain.nodes, ...body.nodes],
       edges,
       exits: [{ id: first.id, handle: 'false' }],
+      deadEnds: [],
     };
   }
 
@@ -930,7 +959,9 @@ export class StepParser {
     const edges: FlowEdge[] = [...body.edges, ...chain.edges];
     if (hasBody) {
       // Everything that leaves the body reaches the first test.
-      for (const exit of body.exits) edges.push(createEdge(exit.id, first.id, exit.handle));
+      // (A body that always stops leaves from its stops: the tests are dead code but still there.)
+      const bodyEnds = body.exits.length > 0 ? body.exits : body.deadEnds;
+      for (const exit of bodyEnds) edges.push(createEdge(exit.id, first.id, exit.handle));
       // EVERY test loops back on its false handle: until = AND of the tests, any failure repeats.
       for (const node of chain.nodes) {
         for (const entryId of body.entryIds) edges.push(createEdge(node.id, entryId, 'false'));
@@ -943,6 +974,7 @@ export class StepParser {
       nodes: [...body.nodes, ...chain.nodes],
       edges,
       exits: [{ id: last.id, handle: 'true' }],
+      deadEnds: [],
     };
   }
 
@@ -998,7 +1030,9 @@ export class StepParser {
         loopRole: 'count-step',
       },
     };
-    const exitsOfBody: Exit[] = body.nodes.length > 0 ? body.exits : [{ id: counterId }];
+    // A body that always stops leaves from its stops: the increment is dead code but still there.
+    const bodyEnds = body.exits.length > 0 ? body.exits : body.deadEnds;
+    const exitsOfBody: Exit[] = body.nodes.length > 0 ? bodyEnds : [{ id: counterId }];
     for (const exit of exitsOfBody) edges.push(createEdge(exit.id, increment.id, exit.handle));
 
     const check: ConditionNode = {
@@ -1020,6 +1054,7 @@ export class StepParser {
       nodes: [init, ...body.nodes, increment, check],
       edges,
       exits: [{ id: check.id, handle: 'false' }],
+      deadEnds: [],
     };
   }
 
@@ -1050,6 +1085,7 @@ export class StepParser {
       nodes: [node],
       edges: previous.map((exit) => createEdge(exit.id, node.id, exit.handle)),
       exits: [{ id: node.id }],
+      deadEnds: [],
     };
   }
 }

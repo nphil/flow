@@ -1,4 +1,9 @@
-import { type FlowGraph, FlowGraphSchema, validateGraphStructure } from '@flow/shared';
+import {
+  type FlowGraph,
+  FlowGraphSchema,
+  readNodeHints,
+  validateGraphStructure,
+} from '@flow/shared';
 import { ZodError } from 'zod';
 
 /**
@@ -76,14 +81,17 @@ export function validateFlowGraph(input: unknown): ValidationResult {
 function validateSemantics(graph: FlowGraph): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // Check that all condition nodes have both true and false edges
+  // A condition drawn on the canvas with nothing after it is unfinished. One that came from a
+  // Home Assistant step (it carries its `stepDepth`) may legitimately end the run: an inline
+  // condition as the last step, an `if` with nothing in it.
   const conditionNodes = graph.nodes.filter((n) => n.type === 'condition');
   for (const node of conditionNodes) {
     const outgoingEdges = graph.edges.filter((e) => e.source === node.id);
     const hasTrue = outgoingEdges.some((e) => e.sourceHandle === 'true');
     const hasFalse = outgoingEdges.some((e) => e.sourceHandle === 'false');
+    const fromYaml = readNodeHints(node.data).stepDepth !== undefined;
 
-    if (!hasTrue && !hasFalse) {
+    if (!hasTrue && !hasFalse && !fromYaml) {
       errors.push({
         code: 'CONDITION_NO_EDGES',
         message: `Condition node "${node.id}" has no outgoing edges`,

@@ -1,4 +1,4 @@
-import type { FlowGraph } from '@flow/shared';
+import { type FlowGraph, INTERNAL_NODE_KEYS } from '@flow/shared';
 import { dump as yamlDump } from 'js-yaml';
 import { analyzeTopology, type TopologyAnalysis } from './analyzer/topology';
 import { type ValidationResult, validateFlowGraph } from './analyzer/validator';
@@ -54,6 +54,15 @@ export interface TranspileResult {
    * Warnings from transpilation
    */
   warnings: string[];
+}
+
+/** The graph without the parser's node hints, for a strategy that does not read them. */
+function withoutHints(flow: FlowGraph): FlowGraph {
+  const copy = structuredClone(flow);
+  for (const node of copy.nodes) {
+    for (const key of INTERNAL_NODE_KEYS) Reflect.deleteProperty(node.data, key);
+  }
+  return copy;
 }
 
 /**
@@ -128,8 +137,15 @@ export class FlowTranspiler {
       }
     }
 
-    // Step 4: Generate YAML output
-    const output = strategy.generate(flow, analysis);
+    // Step 4: Generate YAML output. A native build that could not place every node (a graph that
+    // is not nested after all) is redone by the general strategy.
+    let output = strategy.generate(flow, analysis);
+    if (output.incomplete && !options.forceStrategy) {
+      strategy = new StateMachineStrategy();
+    }
+    if (strategy instanceof StateMachineStrategy) {
+      output = strategy.generate(withoutHints(flow), analysis);
+    }
     warnings.push(...output.warnings);
 
     // Step 5: Inject _cafe_metadata metadata with node positions

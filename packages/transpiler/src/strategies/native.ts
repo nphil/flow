@@ -71,7 +71,7 @@ export class NativeStrategy extends BaseStrategy {
       buildNodeAction: (node) => this.buildNodeAction(node),
       buildCondition: (node) => this.buildCondition(node),
     });
-    const { rootConditions, actions, warnings } = builder.buildActions(
+    const { rootConditions, actions, warnings, unplaced } = builder.buildActions(
       flow.nodes.filter((node) => node.type === 'trigger').map((node) => node.id)
     );
 
@@ -113,6 +113,7 @@ export class NativeStrategy extends BaseStrategy {
       automation,
       warnings,
       strategy: this.name,
+      incomplete: unplaced.length > 0,
     };
   }
 
