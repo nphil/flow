@@ -7,10 +7,14 @@ export type { ValidationError, ValidationResult } from './analyzer/validator';
 export { formatValidationErrors, validateFlowGraph } from './analyzer/validator';
 export type { TranspileResult, YamlOptions } from './FlowTranspiler';
 export { FlowTranspiler, transpiler } from './FlowTranspiler';
+// Readability assistant (findings + one-click fixes for the open automation)
+export * from './lint';
 export { applyHeuristicLayout } from './parser/layout';
 export type { ParseResult } from './parser/YamlParser';
 // Parser
 export * from './parser/YamlParser';
+// Semantic round-trip comparison (acceptance gate + regression fixtures)
+export * from './semantic';
 export type { HAYamlOutput, TranspilerStrategy } from './strategies/base';
 // Strategies
 export { BaseStrategy } from './strategies/base';
@@ -19,5 +23,3 @@ export { StateMachineStrategy } from './strategies/state-machine';
 export type { TracePathMap } from './utils/tracePathMap';
 // Utils
 export { resolveTracePath } from './utils/tracePathMap';
-// Semantic round-trip comparison (acceptance gate + regression fixtures)
-export * from './semantic';
