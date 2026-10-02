@@ -250,7 +250,7 @@ jobs:
       - name: Create or update the GitHub Release
         run: |
           set -euo pipefail
-          existing=$(gh release list --limit 200 --json tagName --jq '.[].tagName')
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[].tag_name')
           if grep -Fxq "$TAG" <<< "$existing"; then
             echo "Release $TAG exists: replacing its files, leaving its title and notes alone."
             gh release upload "$TAG" release/flow.zip release/flow.tar.gz --clobber
@@ -309,8 +309,8 @@ jobs:
           # latest follows the highest stable release, so neither a pre-release nor a re-run of an
           # old release can move it.
           if [ "$PRERELEASE" != true ]; then
-            others=$(gh release list --limit 200 --json tagName,isPrerelease,isDraft \
-              --jq '.[] | select((.isPrerelease or .isDraft) | not) | .tagName' | sed 's/^v//')
+            others=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+              --jq '.[] | select((.prerelease or .draft) | not) | .tag_name' | sed 's/^v//')
             highest=$({ printf '%s\n' "$VERSION"; printf '%s\n' "$others"; } | sort -V | tail -n 1)
             if [ "$highest" = "$VERSION" ]; then tags+=(--tag "$image:latest"); fi
           fi
