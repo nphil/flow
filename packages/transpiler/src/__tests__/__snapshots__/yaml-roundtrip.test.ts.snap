@@ -1556,6 +1556,7 @@ triggers:
     entity_id:
       - climate.CLIMATE_ENTITY
     from: "off"
+    to: null
 actions:
   - delay:
       hours: 0

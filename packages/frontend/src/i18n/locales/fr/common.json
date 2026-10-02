@@ -195,6 +195,9 @@
     "maxExceededOptions": {
       "silent": "Silencieux",
       "warning": "Avertissement",
+      "error": "Erreur",
+      "info": "Info",
+      "debug": "Débogage",
       "critical": "Critique"
     }
   },

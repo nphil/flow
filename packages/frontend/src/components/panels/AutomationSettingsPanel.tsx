@@ -1,4 +1,4 @@
-import type { AutomationMode, MaxExceeded } from '@flow/shared';
+import { type AutomationMode, MAX_EXCEEDED_LEVELS } from '@flow/shared';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '@/components/forms/FormField';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useFlowStore } from '@/store/flow-store';
 
 const AUTOMATION_MODES: AutomationMode[] = ['single', 'restart', 'queued', 'parallel'];
-const MAX_EXCEEDED_OPTIONS: MaxExceeded[] = ['silent', 'warning', 'critical'];
 const MODES_WITH_MAX = new Set<AutomationMode>(['queued', 'parallel']);
 
 export function AutomationSettingsPanel() {
@@ -52,11 +51,7 @@ export function AutomationSettingsPanel() {
   };
 
   const handleMaxExceededChange = (value: string) => {
-    if (value === 'none') {
-      setFlowMetadata({ max_exceeded: undefined });
-    } else {
-      setFlowMetadata({ max_exceeded: value as MaxExceeded });
-    }
+    setFlowMetadata({ max_exceeded: value === 'none' ? undefined : value });
   };
 
   return (
@@ -135,11 +130,18 @@ export function AutomationSettingsPanel() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t('placeholders.none')}</SelectItem>
-                  {MAX_EXCEEDED_OPTIONS.map((opt) => (
+                  {MAX_EXCEEDED_LEVELS.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {t(`automationSettings.maxExceededOptions.${opt}`)}
                     </SelectItem>
                   ))}
+                  {/* Hand-written YAML may use another spelling (WARN, fatal): keep it as is. */}
+                  {flowMetadata.max_exceeded &&
+                    !MAX_EXCEEDED_LEVELS.some((opt) => opt === flowMetadata.max_exceeded) && (
+                      <SelectItem value={flowMetadata.max_exceeded}>
+                        {flowMetadata.max_exceeded}
+                      </SelectItem>
+                    )}
                 </SelectContent>
               </Select>
             </FormField>

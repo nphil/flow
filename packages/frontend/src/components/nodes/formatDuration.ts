@@ -1,5 +1,6 @@
 // Shared duration formatting for Delay/Wait nodes and the plain-English node descriptions.
 export interface DurationObject {
+  days?: number | string;
   hours?: number | string;
   minutes?: number | string;
   seconds?: number | string;
@@ -11,6 +12,7 @@ export type DurationValue = string | number | DurationObject;
 const MS_PER_SECOND = 1_000;
 const MS_PER_MINUTE = 60_000;
 const MS_PER_HOUR = 3_600_000;
+const MS_PER_DAY = 86_400_000;
 
 /** True for Jinja templates (`{{ ... }}` / `{% ... %}`), whose value is only known at run time. */
 export function isTemplateString(value: unknown): boolean {
@@ -33,14 +35,27 @@ export function durationToMs(val: DurationValue | undefined | null): number | nu
   if (val == null) return null;
   if (typeof val === 'number') return Number.isFinite(val) ? Math.round(val * MS_PER_SECOND) : null;
   if (typeof val === 'object') {
+    const days = fieldToNumber(val.days);
     const hours = fieldToNumber(val.hours);
     const minutes = fieldToNumber(val.minutes);
     const seconds = fieldToNumber(val.seconds);
     const milliseconds = fieldToNumber(val.milliseconds);
-    if (hours === null || minutes === null || seconds === null || milliseconds === null) {
+    if (
+      days === null ||
+      hours === null ||
+      minutes === null ||
+      seconds === null ||
+      milliseconds === null
+    ) {
       return null;
     }
-    return hours * MS_PER_HOUR + minutes * MS_PER_MINUTE + seconds * MS_PER_SECOND + milliseconds;
+    return (
+      days * MS_PER_DAY +
+      hours * MS_PER_HOUR +
+      minutes * MS_PER_MINUTE +
+      seconds * MS_PER_SECOND +
+      milliseconds
+    );
   }
   const parts = val.split(':');
   if (parts.length > 3 || parts.some((part) => part.trim() === '')) return null;
@@ -55,11 +70,13 @@ export function durationToMs(val: DurationValue | undefined | null): number | nu
 /** Spells a millisecond count out compactly: `5 min`, `1 h 30 min`, `2 min 30 s`, `500 ms`. */
 function humanizeMs(ms: number): string {
   if (ms <= 0) return '0 s';
-  const hours = Math.floor(ms / MS_PER_HOUR);
+  const days = Math.floor(ms / MS_PER_DAY);
+  const hours = Math.floor((ms % MS_PER_DAY) / MS_PER_HOUR);
   const minutes = Math.floor((ms % MS_PER_HOUR) / MS_PER_MINUTE);
   const seconds = Math.floor((ms % MS_PER_MINUTE) / MS_PER_SECOND);
   const milliseconds = Math.round(ms % MS_PER_SECOND);
   const parts: string[] = [];
+  if (days) parts.push(`${days} d`);
   if (hours) parts.push(`${hours} h`);
   if (minutes) parts.push(`${minutes} min`);
   if (seconds) parts.push(`${seconds} s`);
@@ -68,6 +85,7 @@ function humanizeMs(ms: number): string {
 }
 
 const OBJECT_UNITS = [
+  ['days', 'd'],
   ['hours', 'h'],
   ['minutes', 'min'],
   ['seconds', 's'],

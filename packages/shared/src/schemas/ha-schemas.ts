@@ -7,6 +7,20 @@ import { z } from 'zod';
 export const VALID_WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 export type Weekday = (typeof VALID_WEEKDAYS)[number];
 
+/** A value a `state` condition can compare with: attributes are often numbers or booleans. */
+export type ConditionScalar = string | number | boolean;
+export const ConditionScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
+
+/** A duration written as a mapping; any unit may also be a template, and `days` is allowed. */
+export const DurationPartsSchema = z.looseObject({
+  days: z.union([z.number(), z.string()]).optional(),
+  hours: z.union([z.number(), z.string()]).optional(),
+  minutes: z.union([z.number(), z.string()]).optional(),
+  seconds: z.union([z.number(), z.string()]).optional(),
+  milliseconds: z.union([z.number(), z.string()]).optional(),
+});
+export type DurationParts = z.infer<typeof DurationPartsSchema>;
+
 /**
  * Zod schema for Home Assistant condition objects.
  * Supports recursive conditions for and/or/not groups.
@@ -42,14 +56,15 @@ export const HAConditionSchema: z.ZodType<
     blockAlias?: string;
     /** A `repeat.until`/`repeat.while` block's own `note:`, carried the same way as `blockAlias`. */
     blockNote?: string;
-    enabled?: boolean;
+    /** `false` disables the condition; HA also accepts a limited template that renders a boolean. */
+    enabled?: boolean | string;
     note?: string;
     entity_id?: string | string[];
-    state?: string | string[];
+    state?: ConditionScalar | ConditionScalar[];
     value_template?: string;
     after?: string;
     before?: string;
-    weekday?: Weekday[];
+    weekday?: Weekday | Weekday[];
     after_offset?: string;
     before_offset?: string;
     zone?: string;
@@ -57,7 +72,7 @@ export const HAConditionSchema: z.ZodType<
     above?: string | number;
     below?: string | number;
     attribute?: string;
-    id?: string | string[];
+    id?: string | number | (string | number)[];
     // Purpose-specific ("integration") condition fields (A3, HA 2026.x — e.g.
     // `battery.is_level`, `climate.is_heating`, `motion.is_detected`). These
     // conditions use `target` + `options` instead of entity_id/above/below.
@@ -82,14 +97,14 @@ export const HAConditionSchema: z.ZodType<
   blockAlias: z.string().optional(),
   blockNote: z.string().optional(),
   condition: z.string().optional(),
-  enabled: z.boolean().optional(),
+  enabled: z.union([z.boolean(), z.string()]).optional(),
   note: z.string().optional(),
   entity_id: z.union([z.string(), z.array(z.string())]).optional(),
-  state: z.union([z.string(), z.array(z.string())]).optional(),
+  state: z.union([ConditionScalarSchema, z.array(ConditionScalarSchema)]).optional(),
   value_template: z.string().optional(),
   after: z.string().optional(),
   before: z.string().optional(),
-  weekday: z.array(z.enum(VALID_WEEKDAYS)).optional(),
+  weekday: z.union([z.enum(VALID_WEEKDAYS), z.array(z.enum(VALID_WEEKDAYS))]).optional(),
   after_offset: z.string().optional(),
   before_offset: z.string().optional(),
   zone: z.string().optional(),
@@ -98,7 +113,7 @@ export const HAConditionSchema: z.ZodType<
   below: z.union([z.string(), z.number()]).optional(),
   attribute: z.string().optional(),
   // Support both string and array for trigger conditions
-  id: z.union([z.string(), z.array(z.string())]).optional(),
+  id: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))]).optional(),
   // Purpose-specific ("integration") condition fields (A3) — see type above.
   target: z
     .looseObject({
@@ -150,24 +165,17 @@ export const HATriggerSchema = z
     alias: z.string().optional(),
     platform: z.string().optional(),
     trigger: z.string().optional(),
-    target: z.looseObject({ entity_id: z.union([z.string(), z.array(z.string())]) }).optional(),
+    // Purpose-specific triggers may target only areas/floors/labels/devices, so no key is required.
+    target: z
+      .looseObject({ entity_id: z.union([z.string(), z.array(z.string())]).optional() })
+      .optional(),
     options: z.looseObject({}).optional(),
     entity_id: z.union([z.string(), z.array(z.string())]).optional(),
-    // Home Assistant supports both string, array, and null for from/to fields
-    from: z.union([z.string(), z.array(z.string()), z.null()]).optional(),
-    to: z.union([z.string(), z.array(z.string()), z.null()]).optional(),
-    for: z
-      .union([
-        z.string(),
-        z.number(),
-        z.object({
-          hours: z.union([z.number(), z.string()]).optional(),
-          minutes: z.union([z.number(), z.string()]).optional(),
-          seconds: z.union([z.number(), z.string()]).optional(),
-          milliseconds: z.union([z.number(), z.string()]).optional(),
-        }),
-      ])
-      .optional(),
+    // Home Assistant supports strings, lists, null (state changes only, no attribute-only
+    // updates) and, for attribute triggers, numbers and booleans in from/to.
+    from: z.union([ConditionScalarSchema, z.array(ConditionScalarSchema), z.null()]).optional(),
+    to: z.union([ConditionScalarSchema, z.array(ConditionScalarSchema), z.null()]).optional(),
+    for: z.union([z.string(), z.number(), DurationPartsSchema]).optional(),
     at: z.unknown().optional(),
     offset: z.string().optional(),
     event: z.string().optional(),
@@ -180,10 +188,10 @@ export const HATriggerSchema = z
     webhook_id: z.string().optional(),
     zone: z.string().optional(),
     topic: z.string().optional(),
-    payload: z.string().optional(),
+    payload: ConditionScalarSchema.optional(),
     // Conversation trigger fields
     command: z.union([z.string(), z.array(z.string())]).optional(),
-    enabled: z.boolean().optional(),
+    enabled: z.union([z.boolean(), z.string()]).optional(),
     note: z.string().optional(),
     // geo_location trigger fields (A1)
     source: z.string().optional(),
@@ -223,11 +231,11 @@ export interface HATriggerInput {
   alias?: string;
   platform?: string;
   trigger?: string;
-  target?: { entity_id?: string | string[] };
+  target?: { entity_id?: string | string[]; [key: string]: unknown };
   options?: Record<string, unknown>;
   entity_id?: string | string[];
-  from?: string | string[] | null;
-  to?: string | string[] | null;
+  from?: ConditionScalar | ConditionScalar[] | null;
+  to?: ConditionScalar | ConditionScalar[] | null;
   for?: string | { hours?: number; minutes?: number; seconds?: number };
   at?: string | string[] | { entity_id: string; offset?: string };
   offset?: string;
@@ -241,9 +249,9 @@ export interface HATriggerInput {
   webhook_id?: string;
   zone?: string;
   topic?: string;
-  payload?: string;
+  payload?: ConditionScalar;
   command?: string | string[];
-  enabled?: boolean;
+  enabled?: boolean | string;
   note?: string;
   // geo_location (A1)
   source?: string;
@@ -265,8 +273,10 @@ export interface HAAction {
   event_data?: Record<string, unknown>;
   id?: string;
   alias?: string;
-  target?: Record<string, unknown>;
-  data?: Record<string, unknown>;
+  /** A mapping, or one template that renders to a mapping. */
+  target?: Record<string, unknown> | string;
+  /** A mapping, or one template that renders to a mapping. */
+  data?: Record<string, unknown> | string;
   data_template?: Record<string, unknown>;
   response_variable?: string;
   continue_on_error?: boolean;
@@ -283,9 +293,9 @@ export interface HAAction {
    * instead of a custom key — see packages/transpiler round-trip test.
    */
   note?: string;
-  delay?: string | number | { hours?: number; minutes?: number; seconds?: number };
+  delay?: string | number | DurationParts;
   wait_template?: string | Record<string, unknown>;
-  timeout?: string | number | Record<string, number>;
+  timeout?: string | number | DurationParts;
   continue_on_timeout?: boolean;
   wait_for_trigger?: HATrigger | HATrigger[];
   choose?: HAChooseOption | HAChooseOption[];
@@ -318,10 +328,10 @@ export interface HAChooseOption {
 export const FlowGraphMetadataSchema = z.object({
   mode: z.enum(['single', 'restart', 'queued', 'parallel']).default('single'),
   max: z.number().optional(),
-  max_exceeded: z.enum(['silent', 'warning', 'critical']).optional(),
+  max_exceeded: z.string().optional(),
   initial_state: z.boolean().optional(),
   hide_entity: z.boolean().optional(),
-  trace: z.object({ stored_traces: z.number().optional() }).optional(),
+  trace: z.looseObject({ stored_traces: z.number().optional() }).optional(),
 });
 
 export type FlowGraphMetadata = z.infer<typeof FlowGraphMetadataSchema>;
@@ -411,16 +421,16 @@ export const HAActionSchema: z.ZodType<HAAction> = z.lazy(() =>
     event_data: z.record(z.string(), z.unknown()).optional(),
     id: z.string().optional(),
     alias: z.string().optional(),
-    target: z.record(z.string(), z.unknown()).optional(),
-    data: z.record(z.string(), z.unknown()).optional(),
+    target: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+    data: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
     data_template: z.record(z.string(), z.unknown()).optional(),
     response_variable: z.string().optional(),
     continue_on_error: z.boolean().optional(),
     enabled: z.boolean().optional(),
     note: z.string().optional(),
-    delay: z.union([z.string(), z.number(), z.record(z.string(), z.number())]).optional(),
+    delay: z.union([z.string(), z.number(), DurationPartsSchema]).optional(),
     wait_template: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-    timeout: z.union([z.string(), z.number(), z.record(z.string(), z.number())]).optional(),
+    timeout: z.union([z.string(), z.number(), DurationPartsSchema]).optional(),
     continue_on_timeout: z.boolean().optional(),
     wait_for_trigger: z.union([HATriggerSchema, z.array(HATriggerSchema)]).optional(),
     choose: z.union([HAChooseOptionSchema, z.array(HAChooseOptionSchema)]).optional(),
@@ -454,7 +464,7 @@ export const HAAutomationSchema = z.object({
   action: z.union([HAActionSchema, z.array(HAActionSchema)]),
   mode: z.enum(['single', 'restart', 'queued', 'parallel']).optional().default('single'),
   max: z.number().optional(),
-  max_exceeded: z.enum(['silent', 'warning']).optional(),
+  max_exceeded: z.string().optional(),
   initial_state: z.boolean().optional(),
   hide_entity: z.boolean().optional(),
   trace: z.record(z.string(), z.unknown()).optional(),
@@ -484,15 +494,7 @@ export const HADelaySchema = z.looseObject({
   alias: z.string().optional(),
   enabled: z.boolean().optional(),
   note: z.string().optional(),
-  delay: z.union([
-    z.string(),
-    z.looseObject({
-      hours: z.union([z.number(), z.string()]).optional(),
-      minutes: z.union([z.number(), z.string()]).optional(),
-      seconds: z.union([z.number(), z.string()]).optional(),
-      milliseconds: z.union([z.number(), z.string()]).optional(),
-    }),
-  ]),
+  delay: z.union([z.string(), z.number(), DurationPartsSchema]),
 });
 export type HADelay = z.infer<typeof HADelaySchema>;
 
@@ -507,17 +509,7 @@ export const HAWaitSchema = z
     note: z.string().optional(),
     wait_template: z.string().optional(),
     wait_for_trigger: z.array(HATriggerSchema).optional(),
-    timeout: z
-      .union([
-        z.string(),
-        z.looseObject({
-          hours: z.union([z.number(), z.string()]).optional(),
-          minutes: z.union([z.number(), z.string()]).optional(),
-          seconds: z.union([z.number(), z.string()]).optional(),
-          milliseconds: z.union([z.number(), z.string()]).optional(),
-        }),
-      ])
-      .optional(),
+    timeout: z.union([z.string(), z.number(), DurationPartsSchema]).optional(),
     continue_on_timeout: z.boolean().optional(),
   })
   .refine(

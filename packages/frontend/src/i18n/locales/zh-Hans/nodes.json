@@ -98,6 +98,7 @@
     "string": "字符串",
     "object": "对象",
     "placeholder": "00:00:05.500",
+    "days": "天",
     "hours": "小时",
     "minutes": "分钟",
     "seconds": "秒",
