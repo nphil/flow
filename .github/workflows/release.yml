@@ -40,7 +40,7 @@ concurrency:
 jobs:
   prepare:
     name: Check version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -150,7 +150,7 @@ jobs:
   package:
     name: Package
     needs: [prepare, ci]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
@@ -228,7 +228,7 @@ jobs:
     name: Publish release
     needs: [prepare, package]
     if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
@@ -272,7 +272,7 @@ jobs:
   image:
     name: Container image
     needs: [prepare, package]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -320,7 +320,8 @@ jobs:
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             .
           echo "IMAGE=$image" >> "$GITHUB_ENV"
-          echo "Built $image with tags: ${tags[*]//--tag /}"
+          echo "Built:"
+          docker image ls --format '  {{.Repository}}:{{.Tag}}' "$image"
 
       - name: Smoke test the image
         run: scripts/smoke-test-image.sh "$IMAGE:$VERSION"
