@@ -52,13 +52,14 @@ export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
 
   // Design doc §5 "scrollable tab strip": keep the active tab in view when it's selected
   // programmatically (e.g. opening a node jumps to Properties) rather than only on click.
-  // `tab` is the intentional re-run trigger; the body reads the DOM, not the value.
+  // `tab` is the intentional re-run trigger (the readability count too: its badge widens the
+  // active tab); the body reads the DOM, not the values.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
   useEffect(() => {
     tabsListRef.current
       ?.querySelector<HTMLElement>('[data-state="active"]')
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-  }, [tab, tabsListRef]);
+  }, [tab, tabsListRef, readability.total]);
 
   return (
     <Tabs
