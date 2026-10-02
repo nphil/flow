@@ -175,7 +175,7 @@ sequence:
 
     expect(aliasOf('sequence/0')).toBe('first');
     expect(aliasOf('sequence/1/choose/0/sequence/0')).toBe('second');
-    expect(aliasOf('sequence/1/choose/default/0')).toBe('third');
+    expect(aliasOf('sequence/1/default/0')).toBe('third');
     expect(aliasOf('sequence/2')).toBe('fourth');
     // An automation's `action/...` paths mean nothing in a script.
     expect(map.pathToNode['action/0']).toBeUndefined();

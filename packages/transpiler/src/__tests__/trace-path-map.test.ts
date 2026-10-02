@@ -233,7 +233,8 @@ mode: restart
     expect(map.pathToNode['action/0/choose/0/sequence/0']).toBe(branch0Action.id);
     expect(map.pathToNode['action/0/choose/1/conditions/0']).toBe(branch1Condition.id);
     expect(map.pathToNode['action/0/choose/1/sequence/0']).toBe(branch1Action.id);
-    expect(map.pathToNode['action/0/choose/default/0']).toBe(defaultAction.id);
+    // Home Assistant traces the default branch as `<step>/default/N`, next to `choose`.
+    expect(map.pathToNode['action/0/default/0']).toBe(defaultAction.id);
 
     // resolveTracePath resolves an unrecorded child of a mapped branch via ancestor walk.
     expect(resolveTracePath(map, 'action/0/choose/0/sequence/0/extra')).toBe(branch0Action.id);

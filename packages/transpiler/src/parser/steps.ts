@@ -746,11 +746,13 @@ export class StepParser {
       from = [{ id: first.id, handle: 'false' }];
     });
 
+    // Home Assistant traces the default branch next to `choose`, not under it (`action/0/default/0`,
+    // see `_async_step_choose` in homeassistant/helpers/script.py).
     const defaultSteps = toStepList(step.default);
     const defaultResult = this.parseActions(defaultSteps, {
       previous: from,
       depth: depth + 1,
-      pathPrefix: `${pathPrefix}/choose/default`,
+      pathPrefix: `${pathPrefix}/default`,
     });
     lists.push(defaultResult);
     nodes.push(...defaultResult.nodes);
