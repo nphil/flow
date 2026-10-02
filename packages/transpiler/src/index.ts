@@ -19,3 +19,5 @@ export { StateMachineStrategy } from './strategies/state-machine';
 export type { TracePathMap } from './utils/tracePathMap';
 // Utils
 export { resolveTracePath } from './utils/tracePathMap';
+// Semantic round-trip comparison (acceptance gate + regression fixtures)
+export * from './semantic';

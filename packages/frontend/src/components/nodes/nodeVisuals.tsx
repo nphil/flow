@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { MarqueeText } from '@/components/ui/MarqueeText';
+import type { NodeDescription } from '@/lib/describeNode';
 import { cn } from '@/lib/utils';
 import type { NodeKind } from '@/utils/nodeData';
 import { NodeTraceBadge } from './NodeTraceBadge';
@@ -55,8 +55,8 @@ export function handleKindClass(kind: NodeKind): string {
 export interface NodeShellProps {
   kind: NodeKind;
   icon: LucideIcon;
-  title: string;
-  subtitle?: string;
+  /** Plain-English title / subtitle / detail lines (see lib/describeNode.ts). */
+  description: NodeDescription;
   selected?: boolean;
   disabled?: boolean;
   hasErrors?: boolean;
@@ -73,15 +73,15 @@ export interface NodeShellProps {
 
 /**
  * Shared card chrome for every canvas node type (design doc §5): 12px-radius
- * bg-elevated card, kind-colored left rail + icon chip, mono title + muted
- * subtitle, selected/disabled/error/trace-status treatment. Node components
- * supply only their icon, derived title/subtitle, and handles/extra content.
+ * bg-elevated card, kind-colored left rail + icon chip, plain-English title +
+ * muted subtitle/detail lines, selected/disabled/error/trace-status treatment.
+ * Node components supply only their icon, `describeNode` description, and
+ * handles/extra content.
  */
 export function NodeShell({
   kind,
   icon: Icon,
-  title,
-  subtitle,
+  description,
   selected,
   disabled,
   hasErrors,
@@ -142,11 +142,17 @@ export function NodeShell({
         >
           <Icon className="h-4 w-4" />
         </span>
-        <MarqueeText
-          text={title}
-          active={selected}
-          className="font-medium font-mono text-flow-text text-sm"
-        />
+        <span
+          className={cn(
+            'line-clamp-4 min-w-0 break-words font-medium text-sm leading-snug',
+            description.tone === 'danger' ? 'text-flow-danger' : 'text-flow-text'
+          )}
+          title={[description.title, description.subtitle, ...(description.detail ?? [])]
+            .filter(Boolean)
+            .join('\n')}
+        >
+          {description.title}
+        </span>
         {stepNumber != null && (
           <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-flow-accent font-mono font-semibold text-[10px] text-flow-on-accent">
             {stepNumber}
@@ -154,13 +160,20 @@ export function NodeShell({
         )}
       </div>
 
-      {subtitle && (
-        <MarqueeText
-          text={subtitle}
-          active={selected}
-          className="mt-1 ml-1 text-flow-text-muted text-xs"
-        />
+      {description.subtitle && (
+        <p className="mt-1 ml-1 line-clamp-2 break-words text-flow-text-muted text-xs">
+          {description.subtitle}
+        </p>
       )}
+
+      {description.detail?.map((line) => (
+        <p
+          key={line}
+          className="mt-0.5 ml-1 line-clamp-2 break-words text-[11px] text-flow-text-muted leading-snug"
+        >
+          {line}
+        </p>
+      ))}
 
       {children}
     </div>

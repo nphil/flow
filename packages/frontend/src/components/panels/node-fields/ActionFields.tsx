@@ -43,12 +43,15 @@ export function ActionFields({ node, onChange }: ActionFieldsProps) {
   const responseVariable = getNodeDataString(node, 'response_variable');
   const [showResponseVariable, setShowResponseVariable] = useState(!!responseVariable);
   const target = getNodeDataObject<TargetIds>(node, 'target', {});
-  const repeatData = getNodeDataObject<{ for_each?: unknown[]; sequence?: unknown[] }>(
+  const repeatData = getNodeDataObject<{ for_each?: unknown[] | string; sequence?: unknown[] }>(
     node,
     'repeat',
     {}
   );
-  const forEachItems = Array.isArray(repeatData.for_each) ? repeatData.for_each : [];
+  const forEachValue =
+    Array.isArray(repeatData.for_each) || typeof repeatData.for_each === 'string'
+      ? repeatData.for_each
+      : [];
 
   // Determine action type: stop > event > repeat (for_each) > service
   const actionType =
@@ -114,8 +117,8 @@ export function ActionFields({ node, onChange }: ActionFieldsProps) {
     onChange('target', newTarget);
   };
 
-  const handleForEachItemsChange = (items: unknown[]) => {
-    onChange('repeat', { ...repeatData, for_each: items });
+  const handleForEachChange = (forEach: unknown[] | string) => {
+    onChange('repeat', { ...repeatData, for_each: forEach });
   };
 
   const handleDataFieldChange = (fieldName: string, value: unknown) => {
@@ -180,7 +183,7 @@ export function ActionFields({ node, onChange }: ActionFieldsProps) {
           </FormField>
         </>
       ) : actionType === 'repeat' ? (
-        <ForEachEditor nodeId={node.id} items={forEachItems} onChange={handleForEachItemsChange} />
+        <ForEachEditor nodeId={node.id} value={forEachValue} onChange={handleForEachChange} />
       ) : (
         <>
           {/* Call service fields */}

@@ -4,8 +4,8 @@ import { memo } from 'react';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { TriggerNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { getNodeSummary } from '@/utils/nodeData';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface TriggerNodeProps extends NodeProps {
@@ -17,14 +17,13 @@ export const TriggerNode = memo(function TriggerNode({ id, data, selected }: Tri
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const { title, subtitle } = getNodeSummary('trigger', data);
+  const description = useNodeDescription('trigger', data);
 
   return (
     <NodeShell
       kind="trigger"
       icon={Zap}
-      title={title}
-      subtitle={subtitle}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

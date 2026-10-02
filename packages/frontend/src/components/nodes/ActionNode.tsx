@@ -4,8 +4,9 @@ import { memo } from 'react';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { ActionNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { getNodeKind, getNodeSummary } from '@/utils/nodeData';
+import { getNodeKind } from '@/utils/nodeData';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface ActionNodeProps extends NodeProps {
@@ -18,7 +19,7 @@ export const ActionNode = memo(function ActionNode({ id, data, selected }: Actio
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
   const kind = getNodeKind('action', data);
-  const { title, subtitle } = getNodeSummary('action', data);
+  const description = useNodeDescription('action', data);
   // A `stop` action halts the automation — it has no outgoing edge, unlike
   // every other flow-control/action shape (repeat/parallel continue after).
   const isStop = typeof data.stop === 'string';
@@ -28,8 +29,7 @@ export const ActionNode = memo(function ActionNode({ id, data, selected }: Actio
     <NodeShell
       kind={kind}
       icon={Icon}
-      title={title}
-      subtitle={subtitle}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

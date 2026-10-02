@@ -1,0 +1,112 @@
+# A self-healing automation: re-check trigger, root conditions, a guard that
+# stops the run (`if ... then: [..., stop]` followed by more steps), a
+# wait_template with timeout + continue_on_timeout, a choose with default,
+# wait_for_trigger with timeout, and a nested escalation.
+id: fixture_self_healing
+alias: Fixture - self healing wait and guard
+description: Restarts a service when its bridge drops, waiting for the hardware first.
+triggers:
+  - id: dropped
+    alias: Bridge offline for 2 min
+    trigger: state
+    entity_id: binary_sensor.bridge_connection
+    to:
+      - "off"
+      - unavailable
+    for:
+      minutes: 2
+  - id: recheck
+    alias: Re-check every 15 min while still down
+    note: A state trigger cannot re-fire while the sensor stays off.
+    trigger: time_pattern
+    minutes: /15
+conditions:
+  - alias: Bridge is down right now
+    note: Gates the re-check so it is a no-op when everything is healthy.
+    condition: state
+    entity_id: binary_sensor.bridge_connection
+    state:
+      - "off"
+      - unavailable
+    for:
+      minutes: 2
+actions:
+  - alias: Brake - stop trying after 2 hours down
+    note: Beyond two hours this is not self-healing.
+    if:
+      - condition: template
+        value_template: "{{ (now() - states.binary_sensor.bridge_connection.last_changed).total_seconds() > 7200 }}"
+    then:
+      - alias: Notify once, then stop
+        action: persistent_notification.create
+        data:
+          title: Bridge down over 2 hours
+          message: Automatic recovery stopped.
+          notification_id: fixture_autoheal
+      - stop: Outage older than 2 hours
+  - alias: Wait for the coordinator to answer (up to 30 min)
+    note: Restarting while the coordinator is down would waste the restart.
+    wait_template: "{{ states('sensor.coordinator_temp') not in ['unavailable', 'unknown'] }}"
+    timeout:
+      minutes: 30
+    continue_on_timeout: true
+  - choose:
+      - alias: Coordinator is back - restart, then verify
+        conditions:
+          - alias: Coordinator temperature sensor is answering
+            condition: template
+            value_template: "{{ states('sensor.coordinator_temp') not in ['unavailable', 'unknown'] }}"
+        sequence:
+          - alias: Restart the add-on
+            action: hassio.addon_restart
+            data:
+              addon: example_bridge
+          - alias: Did the bridge come back? (up to 5 min)
+            wait_for_trigger:
+              - trigger: state
+                entity_id: binary_sensor.bridge_connection
+                to: "on"
+            timeout:
+              minutes: 5
+            continue_on_timeout: true
+          - alias: Escalate only on observed failure
+            if:
+              - alias: Bridge did not come back
+                condition: state
+                entity_id: binary_sensor.bridge_connection
+                state:
+                  - "off"
+                  - unavailable
+              - alias: Not already rebooted within the last hour
+                condition: template
+                value_template: "{{ states('button.coordinator_restart') in ['unknown', 'unavailable'] }}"
+            then:
+              - alias: Reboot the coordinator
+                action: button.press
+                target:
+                  entity_id: button.coordinator_restart
+              - alias: Let the radios finish initialising
+                delay:
+                  seconds: 30
+              - alias: Notify - escalated
+                action: persistent_notification.create
+                data:
+                  title: Radio wedged - coordinator rebooted
+                  message: Restarting the add-on was not enough.
+            else:
+              - alias: Notify - restart was enough
+                action: persistent_notification.create
+                data:
+                  title: Bridge auto-restarted
+                  message: Recovered after one restart.
+    default:
+      - alias: Notify - coordinator down, no restart tried
+        action: persistent_notification.create
+        data:
+          title: Coordinator unreachable
+          message: No restart was attempted.
+  - alias: Cooldown 3 min
+    note: Stops a flapping adapter from restarting over and over.
+    delay:
+      minutes: 3
+mode: single

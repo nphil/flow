@@ -9,6 +9,7 @@ import type {
   WaitNode,
 } from '@flow/shared';
 import { isDeviceAction } from '@flow/shared';
+import { computePostDominators, type PostDominators } from '../analyzer/structure';
 import type { TopologyAnalysis } from '../analyzer/topology';
 import { findBackEdges } from '../analyzer/topology';
 import { BaseStrategy, type HAYamlOutput } from './base';
@@ -36,6 +37,31 @@ interface RepeatPattern {
   exitNodeId: string | null;
 }
 
+/** Step keys whose value is (or holds) a nested list of steps. */
+const NESTED_STEP_KEYS = ['then', 'else', 'default', 'sequence', 'parallel', 'choose', 'repeat'];
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * An empty `else: []` / `default: []` means the same as no else/default, but
+ * clutters the YAML and shows up as an empty section in Home Assistant's own
+ * editor. Remove them, recursively, from a generated step tree.
+ */
+function pruneEmptyBranches(step: unknown): void {
+  if (Array.isArray(step)) {
+    for (const child of step) pruneEmptyBranches(child);
+    return;
+  }
+  if (!isPlainRecord(step)) return;
+  for (const key of ['else', 'default']) {
+    const branch = step[key];
+    if (Array.isArray(branch) && branch.length === 0) delete step[key];
+  }
+  for (const key of NESTED_STEP_KEYS) pruneEmptyBranches(step[key]);
+}
+
 /**
  * Native strategy for simple tree-shaped automations
  * Generates standard nested Home Assistant YAML with choose blocks
@@ -54,12 +80,15 @@ export class NativeStrategy extends BaseStrategy {
   private repeatInternalNodeIds: Set<string> = new Set();
   /** Set of back-edge IDs detected via DFS */
   private backEdgeIds: Set<string> = new Set();
+  /** Where branches of the current flow meet again (nested block joins) */
+  private postDominators: PostDominators = { ipdom: new Map(), joinOf: () => null };
 
   generate(flow: FlowGraph, analysis: TopologyAnalysis): HAYamlOutput {
     const warnings: string[] = [];
 
     // Structurally detect back-edges using DFS
     this.backEdgeIds = findBackEdges(flow);
+    this.postDominators = computePostDominators(flow, this.backEdgeIds);
 
     // Pre-detect repeat patterns from structural back-edges
     this.repeatPatterns = this.detectRepeatPatterns(flow);
@@ -181,6 +210,7 @@ export class NativeStrategy extends BaseStrategy {
       automation.conditions = rootConditions;
     }
 
+    pruneEmptyBranches(actions);
     automation.actions = actions;
     automation.mode = flow.metadata?.mode ?? 'single';
 
@@ -288,9 +318,7 @@ export class NativeStrategy extends BaseStrategy {
           flow.edges
             .filter(
               (e) =>
-                this.backEdgeIds.has(e.id) &&
-                e.sourceHandle === 'false' &&
-                e.target === firstBodyId
+                this.backEdgeIds.has(e.id) && e.sourceHandle === 'false' && e.target === firstBodyId
             )
             .map((e) => e.source)
         );
@@ -810,11 +838,19 @@ export class NativeStrategy extends BaseStrategy {
   }
 
   /**
-   * Recursively build action sequence from a node
+   * Recursively build the action sequence that starts at `nodeId`.
+   *
+   * `joinId` is where the enclosing block ends (its join): building stops
+   * there, because that node belongs to the steps AFTER the block.
    */
-  private buildSequenceFromNode(flow: FlowGraph, nodeId: string, visited: Set<string>): unknown[] {
-    if (visited.has(nodeId)) {
-      return []; // Avoid infinite loops
+  private buildSequenceFromNode(
+    flow: FlowGraph,
+    nodeId: string,
+    visited: Set<string>,
+    joinId?: string
+  ): unknown[] {
+    if (visited.has(nodeId) || nodeId === joinId) {
+      return []; // Avoid infinite loops / stop at the end of the enclosing block
     }
 
     const node = this.getNode(flow, nodeId);
@@ -840,8 +876,8 @@ export class NativeStrategy extends BaseStrategy {
       visited.add(nodeId);
       const thenSequence =
         node.type === 'condition'
-          ? this.buildSequenceFromNode(flow, nodeId, new Set()) // Process this condition node fresh
-          : this.buildSequenceFromNode(flow, nodeId, new Set(visited));
+          ? this.buildSequenceFromNode(flow, nodeId, new Set(), joinId) // Process this condition node fresh
+          : this.buildSequenceFromNode(flow, nodeId, new Set(visited), joinId);
 
       // For OR conditions, prepend the current node's action to the then sequence if it's not a condition
       let finalThenSequence: unknown[];
@@ -873,8 +909,8 @@ export class NativeStrategy extends BaseStrategy {
       visited.add(nodeId);
       const thenSequence =
         node.type === 'condition'
-          ? this.buildSequenceFromNode(flow, nodeId, new Set())
-          : this.buildSequenceFromNode(flow, nodeId, new Set(visited));
+          ? this.buildSequenceFromNode(flow, nodeId, new Set(), joinId)
+          : this.buildSequenceFromNode(flow, nodeId, new Set(visited), joinId);
 
       // For OR conditions, prepend the current node's action to the then sequence if it's not a condition
       let finalThenSequence: unknown[];
@@ -906,7 +942,8 @@ export class NativeStrategy extends BaseStrategy {
           const afterRepeat = this.buildSequenceFromNode(
             flow,
             repeatPattern.exitNodeId,
-            new Set(visited)
+            new Set(visited),
+            joinId
           );
           sequence.push(...afterRepeat);
         }
@@ -1012,48 +1049,38 @@ export class NativeStrategy extends BaseStrategy {
         chooseAction.note = node.data.stepNote;
       }
 
-      // Find convergence point between then and else branches.
-      // When both branches lead to the same continuation node, that node should
-      // appear AFTER the if/then/else block, not duplicated inside each branch.
-      const allBranchStarts = [...thenNodeIds, ...elseNodeIds];
-      const convergencePoint =
-        thenNodeIds.length > 0 && elseNodeIds.length > 0
-          ? this.findConvergencePoint(flow, allBranchStarts)
-          : null;
+      // The join is where the branches meet again (the nearest node every path
+      // from both of them passes through). It belongs AFTER the if/then/else
+      // block rather than being duplicated inside each branch. Branches that
+      // never meet (one of them stops the run) have no join.
+      const join = this.findJoin([...thenNodeIds, ...elseNodeIds]);
+      const branchJoin = join ?? joinId;
 
-      if (convergencePoint) {
-        // Build each branch only up to the convergence point
-        if (thenNodeIds.length > 0) {
-          const thenActions = thenNodeIds.flatMap((id) =>
-            this.buildSequenceUntilNode(flow, id, convergencePoint, new Set(visited))
-          );
-          chooseAction.then = thenActions;
-        }
-        if (elseNodeIds.length > 0) {
-          const elseActions = elseNodeIds.flatMap((id) =>
-            this.buildSequenceUntilNode(flow, id, convergencePoint, new Set(visited))
-          );
-          chooseAction.else = elseActions;
-        }
-        sequence.push(chooseAction);
-        // Continue from the convergence point after the condition block
-        const afterCondition = this.buildSequenceFromNode(flow, convergencePoint, new Set(visited));
-        sequence.push(...afterCondition);
+      const thenActions = thenNodeIds.flatMap((id) =>
+        this.buildSequenceFromNode(flow, id, new Set(visited), branchJoin)
+      );
+      const elseActions = elseNodeIds.flatMap((id) =>
+        this.buildSequenceFromNode(flow, id, new Set(visited), branchJoin)
+      );
+      chooseAction.then = thenActions;
+
+      const isGuardClause =
+        join === null &&
+        elseNodeIds.length > 0 &&
+        thenNodeIds.length > 0 &&
+        thenNodeIds.every((id) => this.endsInStop(flow, id));
+      if (isGuardClause) {
+        // `if <condition> then: [..., stop]` followed by the rest: what follows
+        // runs only when the condition fails, so it stays a sibling instead of
+        // being nested into an `else:`.
+        sequence.push(chooseAction, ...elseActions);
       } else {
-        // No convergence — build each branch independently
-        if (thenNodeIds.length > 0) {
-          const thenActions = thenNodeIds.flatMap((id) =>
-            this.buildSequenceFromNode(flow, id, new Set(visited))
-          );
-          chooseAction.then = thenActions;
-        }
-        if (elseNodeIds.length > 0) {
-          const elseActions = elseNodeIds.flatMap((id) =>
-            this.buildSequenceFromNode(flow, id, new Set(visited))
-          );
-          chooseAction.else = elseActions;
-        }
+        chooseAction.else = elseActions;
         sequence.push(chooseAction);
+        if (join) {
+          // Continue from the join after the condition block
+          sequence.push(...this.buildSequenceFromNode(flow, join, new Set(visited), joinId));
+        }
       }
     } else {
       // ===== Default Logic for Non-Condition Nodes =====
@@ -1064,217 +1091,67 @@ export class NativeStrategy extends BaseStrategy {
 
       if (outgoing.length === 1) {
         // Single outgoing edge - continue the sequence
-        const nextActions = this.buildSequenceFromNode(flow, outgoing[0].target, new Set(visited));
-        sequence.push(...nextActions);
-      } else if (outgoing.length > 1) {
-        // Multiple outgoing edges (parallel paths)
-        const convergencePoint = this.findConvergencePoint(
-          flow,
-          outgoing.map((e) => e.target)
-        );
-
-        if (convergencePoint) {
-          const parallelActions = outgoing.map((edge) =>
-            this.buildSequenceUntilNode(flow, edge.target, convergencePoint, new Set(visited))
-          );
-          const filteredBranches = parallelActions.filter((a) => a.length > 0);
-          if (filteredBranches.length > 0) {
-            // Flatten single-action branches to avoid double-nesting (- - service:)
-            const flattenedBranches = filteredBranches.map((branch) =>
-              branch.length === 1 ? branch[0] : branch
-            );
-            sequence.push({
-              parallel: flattenedBranches,
-            });
-          }
-          const afterParallel = this.buildSequenceFromNode(
-            flow,
-            convergencePoint,
-            new Set(visited)
-          );
-          sequence.push(...afterParallel);
-        } else {
-          const parallelActions = outgoing.map((edge) =>
-            this.buildSequenceFromNode(flow, edge.target, new Set(visited))
-          );
-          const filteredBranches = parallelActions.filter((a) => a.length > 0);
-          if (filteredBranches.length > 0) {
-            // Flatten single-action branches to avoid double-nesting (- - service:)
-            const flattenedBranches = filteredBranches.map((branch) =>
-              branch.length === 1 ? branch[0] : branch
-            );
-            sequence.push({
-              parallel: flattenedBranches,
-            });
-          }
-        }
-      }
-    }
-
-    return sequence;
-  }
-
-  /**
-   * Find the convergence point where multiple branches meet
-   * Returns the node ID if all branches converge, null otherwise
-   */
-  private findConvergencePoint(flow: FlowGraph, branchStarts: string[]): string | null {
-    if (branchStarts.length < 2) return null;
-
-    // For each branch, find all reachable nodes
-    const reachableSets = branchStarts.map((startId) => {
-      const reachable = new Set<string>();
-      const queue = [startId];
-      while (queue.length > 0) {
-        const nodeId = queue.shift()!;
-        if (reachable.has(nodeId)) continue;
-        reachable.add(nodeId);
-        const outgoing = this.getOutgoingEdges(flow, nodeId);
-        for (const edge of outgoing) {
-          queue.push(edge.target);
-        }
-      }
-      return reachable;
-    });
-
-    // Find nodes that are reachable from ALL branches
-    const firstSet = reachableSets[0];
-    const commonNodes = [...firstSet].filter((nodeId) =>
-      reachableSets.every((set) => set.has(nodeId))
-    );
-
-    if (commonNodes.length === 0) return null;
-
-    // Find the earliest common node (closest to the branch starts)
-    // by checking which node has the minimum maximum distance from any branch start
-    let bestNode: string | null = null;
-    let bestMaxDistance = Number.POSITIVE_INFINITY;
-
-    for (const nodeId of commonNodes) {
-      const distances = branchStarts.map((startId) =>
-        this.getShortestDistance(flow, startId, nodeId)
-      );
-      const maxDist = Math.max(...distances);
-      if (maxDist < bestMaxDistance) {
-        bestMaxDistance = maxDist;
-        bestNode = nodeId;
-      }
-    }
-
-    return bestNode;
-  }
-
-  /**
-   * Get shortest distance from start to target node using BFS
-   */
-  private getShortestDistance(flow: FlowGraph, startId: string, targetId: string): number {
-    if (startId === targetId) return 0;
-
-    const visited = new Set<string>();
-    const queue: Array<{ nodeId: string; distance: number }> = [{ nodeId: startId, distance: 0 }];
-
-    while (queue.length > 0) {
-      const { nodeId, distance } = queue.shift()!;
-      if (visited.has(nodeId)) continue;
-      visited.add(nodeId);
-
-      const outgoing = this.getOutgoingEdges(flow, nodeId);
-      for (const edge of outgoing) {
-        if (edge.target === targetId) {
-          return distance + 1;
-        }
-        if (!visited.has(edge.target)) {
-          queue.push({ nodeId: edge.target, distance: distance + 1 });
-        }
-      }
-    }
-
-    return Number.POSITIVE_INFINITY;
-  }
-
-  /**
-   * Build sequence from a node until reaching the stop node (exclusive)
-   */
-  private buildSequenceUntilNode(
-    flow: FlowGraph,
-    nodeId: string,
-    stopNodeId: string,
-    visited: Set<string>
-  ): unknown[] {
-    if (nodeId === stopNodeId) {
-      return []; // Don't include the stop node
-    }
-
-    if (visited.has(nodeId)) {
-      return []; // Avoid infinite loops
-    }
-    visited.add(nodeId);
-
-    const node = this.getNode(flow, nodeId);
-    if (!node) {
-      return [];
-    }
-
-    const sequence: unknown[] = [];
-
-    // Build the current node's action
-    const action = this.buildNodeAction(node);
-    if (action) {
-      sequence.push(action);
-    }
-
-    // Get outgoing edges (excluding repeat back-edges)
-    const outgoing = this.getOutgoingEdges(flow, nodeId).filter((e) => !this.backEdgeIds.has(e.id));
-
-    if (node.type === 'condition') {
-      // Condition nodes are handled specially
-      const chooseAction = action as Record<string, unknown>;
-      const truePath = outgoing.filter((edge) => edge.sourceHandle === 'true');
-      const falsePath = outgoing.filter((edge) => edge.sourceHandle === 'false');
-
-      if (truePath.length > 0) {
-        const thenActions = truePath.flatMap((edge) =>
-          this.buildSequenceUntilNode(flow, edge.target, stopNodeId, new Set(visited))
-        );
-        chooseAction.then = thenActions;
-      }
-
-      if (falsePath.length > 0) {
-        const elseActions = falsePath.flatMap((edge) =>
-          this.buildSequenceUntilNode(flow, edge.target, stopNodeId, new Set(visited))
-        );
-        chooseAction.else = elseActions;
-      }
-    } else if (outgoing.length === 1) {
-      // Single outgoing edge - continue if not at stop node
-      if (outgoing[0].target !== stopNodeId) {
-        const nextActions = this.buildSequenceUntilNode(
+        const nextActions = this.buildSequenceFromNode(
           flow,
           outgoing[0].target,
-          stopNodeId,
-          new Set(visited)
+          new Set(visited),
+          joinId
         );
         sequence.push(...nextActions);
-      }
-    } else if (outgoing.length > 1) {
-      // Multiple outgoing edges - this is a nested parallel inside a parallel
-      // For now, just build all branches until stop node
-      const parallelActions = outgoing.map((edge) =>
-        this.buildSequenceUntilNode(flow, edge.target, stopNodeId, new Set(visited))
-      );
-      const filteredBranches = parallelActions.filter((a) => a.length > 0);
-      if (filteredBranches.length > 0) {
-        // Flatten single-action branches to avoid double-nesting (- - service:)
-        const flattenedBranches = filteredBranches.map((branch) =>
-          branch.length === 1 ? branch[0] : branch
-        );
-        sequence.push({
-          parallel: flattenedBranches,
-        });
+      } else if (outgoing.length > 1) {
+        // Multiple outgoing edges (parallel paths) that meet again at their join
+        const join = this.findJoin(outgoing.map((e) => e.target));
+        const branchJoin = join ?? joinId;
+        const filteredBranches = outgoing
+          .map((edge) =>
+            this.buildSequenceFromNode(flow, edge.target, new Set(visited), branchJoin)
+          )
+          .filter((branch) => branch.length > 0);
+        if (filteredBranches.length > 0) {
+          // Flatten single-action branches to avoid double-nesting (- - service:)
+          sequence.push({
+            parallel: filteredBranches.map((branch) => (branch.length === 1 ? branch[0] : branch)),
+          });
+        }
+        if (join) {
+          sequence.push(...this.buildSequenceFromNode(flow, join, new Set(visited), joinId));
+        }
       }
     }
 
     return sequence;
+  }
+
+  /**
+   * The join of the given branch starts: where they meet again, or null when
+   * they only meet at the end of the run (a branch stops, or there is a single
+   * branch).
+   */
+  private findJoin(branchStarts: string[]): string | null {
+    if (branchStarts.length < 2) return null;
+    return this.postDominators.joinOf(branchStarts);
+  }
+
+  /**
+   * True when every path that starts at `startId` ends in an enabled `stop`,
+   * i.e. control can never fall through to whatever follows the branch.
+   */
+  private endsInStop(flow: FlowGraph, startId: string, seen = new Set<string>()): boolean {
+    if (seen.has(startId)) return false;
+    seen.add(startId);
+    const node = this.getNode(flow, startId);
+    if (!node) return false;
+    if (node.type === 'action' && 'stop' in node.data && node.data.enabled !== false) return true;
+
+    const outgoing = this.getOutgoingEdges(flow, startId).filter(
+      (e) => !this.backEdgeIds.has(e.id)
+    );
+    if (outgoing.length === 0) return false;
+    // A condition with only one exit falls out of the sequence on the other
+    if (node.type === 'condition' && new Set(outgoing.map((e) => e.sourceHandle)).size < 2) {
+      return false;
+    }
+    return outgoing.every((e) => this.endsInStop(flow, e.target, new Set(seen)));
   }
 
   /**
@@ -1496,11 +1373,12 @@ export class NativeStrategy extends BaseStrategy {
 
     // Check if this is a stop action
     if ('stop' in node.data) {
-      const action: Record<string, unknown> = { stop: node.data.stop ?? '' };
-      if (node.data.alias) action.alias = node.data.alias;
-      if (node.data.error === true) action.error = true;
-      if (node.data.enabled === false) action.enabled = false;
-      if (typeof node.data.note === 'string') action.note = node.data.note;
+      const { stop, error, alias, note, enabled, id: _id, ...extraProps } = node.data;
+      const action: Record<string, unknown> = { stop: stop ?? '', ...extraProps };
+      if (alias) action.alias = alias;
+      if (error === true) action.error = true;
+      if (enabled === false) action.enabled = false;
+      if (typeof note === 'string') action.note = note;
       return action;
     }
 

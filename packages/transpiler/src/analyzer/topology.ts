@@ -1,5 +1,6 @@
 import type { FlowEdge, FlowGraph } from '@flow/shared';
 import graphlib from 'graphlib';
+import { computePostDominators, isStructuredFlow } from './structure';
 
 const { Graph, alg } = graphlib;
 
@@ -85,6 +86,14 @@ export interface TopologyAnalysis {
    * True if paths merge back together (diamond patterns)
    */
   hasConvergingPaths: boolean;
+  /**
+   * True if every branching node opens a region that is entered only at the
+   * branch and left only at its join (or by `stop`), i.e. the graph is nested
+   * blocks and can be written as nested YAML even when the legacy
+   * cross-link / convergence heuristics object (long branches, joins fed by
+   * several nested blocks, branches that stop).
+   */
+  isStructured: boolean;
   /**
    * True if different triggers lead to different action paths
    * (e.g., trigger A → action 1, trigger B → action 2)
@@ -183,13 +192,21 @@ export function analyzeTopology(flow: FlowGraph): TopologyAnalysis {
   // Check for divergent trigger paths (different triggers → different actions)
   const hasDivergentTriggerPaths = detectDivergentTriggerPaths(g, filteredFlow);
 
-  // A tree structure has:
+  // Properly nested blocks are expressible natively whatever the legacy
+  // level/convergence heuristics think of them.
+  const isStructured =
+    !hasCycles &&
+    isStructuredFlow(flow, repeatBackEdgeIds, computePostDominators(flow, repeatBackEdgeIds));
+
+  // A native (nested YAML) flow has:
   // - No cycles
-  // - Single entry point
-  // - No cross-links
-  // - No converging paths (except for condition branches that merge)
-  // - No divergent trigger paths (all triggers lead to same actions)
-  const isTree = !hasCycles && !hasCrossLinks && !hasConvergingPaths && !hasDivergentTriggerPaths;
+  // - No divergent trigger paths (all triggers lead to the same actions)
+  // - Either the legacy tree shape (no cross-links, no true convergence beyond
+  //   the cases the generator special-cases) or a properly nested structure
+  const isTree =
+    !hasCycles &&
+    !hasDivergentTriggerPaths &&
+    ((!hasCrossLinks && !hasConvergingPaths) || isStructured);
 
   // Determine recommended strategy
   const recommendedStrategy = isTree ? 'native' : 'state-machine';
@@ -200,6 +217,7 @@ export function analyzeTopology(flow: FlowGraph): TopologyAnalysis {
     hasMultipleEntryPoints: entryNodes.length > 1,
     hasCrossLinks,
     hasConvergingPaths,
+    isStructured,
     hasDivergentTriggerPaths,
     entryNodes,
     exitNodes,

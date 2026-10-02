@@ -1,0 +1,117 @@
+# A parallel-mode automation with root conditions, step-level `variables`
+# lookup tables, a nested guard (`if` whose then contains another `if` and a
+# `stop`), a delay, a verify step and a final if/else. `max` and
+# `max_exceeded` must survive.
+id: fixture_parallel_heal
+alias: Fixture - parallel heal with lookup variables
+description: >-
+  Detect a ghost link, free it, verify, and escalate.
+triggers:
+  - trigger: numeric_state
+    entity_id:
+      - sensor.room_a_orphan_rate
+      - sensor.room_b_orphan_rate
+    above: 20
+    for:
+      minutes: 3
+    id: orphan_stream
+  - trigger: time_pattern
+    minutes: /20
+    id: recheck
+conditions:
+  - alias: Some sensor is streaming right now
+    condition: template
+    value_template: >-
+      {{ ['sensor.room_a_orphan_rate', 'sensor.room_b_orphan_rate']
+         | map('states') | map('float', 0) | select('>', 20) | list | count > 0 }}
+  - alias: A held link must actually be down
+    condition: or
+    conditions:
+      - condition: state
+        entity_id: sensor.device_one_connection
+        state:
+          - disconnected
+          - unavailable
+          - unknown
+      - condition: state
+        entity_id: sensor.device_two_connection
+        state:
+          - disconnected
+          - unavailable
+          - unknown
+actions:
+  - alias: "Static maps (own step: a variable may only use ones defined in an EARLIER step)"
+    variables:
+      key_by_sensor:
+        sensor.room_a_orphan_rate: room_a
+        sensor.room_b_orphan_rate: room_b
+      held_links:
+        sensor.device_one_connection: Device one
+        sensor.device_two_connection: Device two
+  - alias: Identify the sensor and the stuck devices
+    variables:
+      rate_entity: "{% if trigger is defined and trigger.entity_id is defined %}{{ trigger.entity_id }}{% else %}{{ key_by_sensor | first }}{% endif %}"
+      is_recheck: "{{ trigger is defined and trigger.id is defined and trigger.id == 'recheck' }}"
+  - alias: Held back by a rail - report with the fix attached
+    if:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.auto_heal_enabled
+            state: "off"
+          - condition: numeric_state
+            entity_id: counter.heals_today
+            above: 5
+    then:
+      - alias: Only the crossing trigger notifies
+        if:
+          - condition: template
+            value_template: "{{ not is_recheck }}"
+        then:
+          - action: notify.example_phone
+            data:
+              title: Ghost link
+              message: Not healed automatically.
+      - stop: Auto-heal withheld by a safety rail.
+  - alias: Record the attempt
+    action: input_text.set_value
+    target:
+      entity_id: input_text.heal_log
+    data:
+      value: "{{ now().strftime('%m-%d %H:%M') }} ghost"
+  - action: counter.increment
+    target:
+      entity_id: counter.heals_today
+  - alias: Let the counter complete a clean window
+    delay:
+      seconds: 150
+  - alias: Verify - judged by the ghost itself
+    variables:
+      rate_now: "{{ states(rate_entity) | int(0) }}"
+  - if:
+      - condition: template
+        value_template: "{{ rate_now <= 20 }}"
+    then:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.heal_log
+        data:
+          value: "healed OK"
+      - action: notify.example_phone
+        data:
+          title: Ghost cleared
+          message: Nothing for you to do.
+    else:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.heal_log
+        data:
+          value: "heal FAILED"
+      - alias: Escalate with the remaining rungs as buttons
+        action: notify.example_phone
+        data:
+          title: Ghost persists
+          message: Next - reboot the proxy.
+mode: parallel
+max: 9
+max_exceeded: silent

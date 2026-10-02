@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDescribeNode } from '@/components/nodes/useNodeDescription';
 import { useHass } from '@/contexts/HassContext';
 import { useLiveTrace } from '@/hooks/useLiveTrace';
 import { getHomeAssistantAPI, type ScriptExecutionState, type TraceListItem } from '@/lib/ha-api';
@@ -95,6 +96,7 @@ export interface DebugTabProps {
  */
 export function DebugTab({ className }: DebugTabProps) {
   const { t } = useTranslation(['common', 'dialogs', 'nodes', 'simulator']);
+  const describeNode = useDescribeNode();
   const { hass, entities } = useHass();
   const {
     automationId,
@@ -298,24 +300,7 @@ export function DebugTab({ className }: DebugTabProps) {
 
   const nodeLabel = (nodeId: string): string => {
     const node = nodes.find((candidate) => candidate.id === nodeId);
-    if (!node) return nodeId;
-    if (node.data.alias) return node.data.alias;
-    switch (node.type) {
-      case 'trigger':
-        return t('nodes:types.trigger');
-      case 'condition':
-        return t('nodes:types.condition');
-      case 'action':
-        return t('nodes:types.action');
-      case 'delay':
-        return t('nodes:types.delay');
-      case 'wait':
-        return t('nodes:types.wait');
-      case 'set_variables':
-        return t('nodes:types.set_variables');
-      default:
-        return nodeId;
-    }
+    return node ? describeNode(node.type, node.data).title : nodeId;
   };
 
   if (!automationId) {

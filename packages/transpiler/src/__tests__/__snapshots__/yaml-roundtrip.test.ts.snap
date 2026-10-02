@@ -113,7 +113,6 @@ actions:
       - service: cover.close_cover
         target:
           entity_id: cover.velux_blind
-    else: []
   - if:
       - condition: template
         value_template: "{{ states('cover.main_blind') != 'closed' }}"
@@ -121,7 +120,6 @@ actions:
       - service: cover.close_cover
         target:
           entity_id: cover.main_blind
-    else: []
 mode: single
 variables:
   _cafe_metadata:
@@ -361,165 +359,71 @@ triggers:
       - 0/0/142
       - 0/0/248
       - 0/0/1
+conditions:
+  - condition: template
+    value_template: "{{ trigger.payload == 1 }}"
+  - condition: template
+    value_template: "{{ target_light is not none }}"
 actions:
-  - variables:
-      current_node: condition_test_1_127
-      flow_context: {}
-  - alias: State Machine Loop
-    repeat:
-      until: "{{ current_node == \\"END\\" }}"
-      sequence:
-        - choose:
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"condition_test_1_127\\" }}"
-              sequence:
-                - variables:
-                    current_node: "{% if trigger.payload == 1 %}condition_test_2_128{% else %}END{% endif %}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"condition_test_2_128\\" }}"
-              sequence:
-                - variables:
-                    current_node: "{% if target_light is not none %}wait_test_3_129{% else %}END{% endif %}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"wait_test_3_129\\" }}"
-              sequence:
-                - wait_template: "{{ is_state(target_light, 'on') }}"
-                  timeout: "00:00:03"
-                - variables:
-                    current_node: condition_test_4_130
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"condition_test_4_130\\" }}"
-              sequence:
-                - variables:
-                    current_node: "{% if is_state(target_light, 'on') %}action_test_5_131{% else %}END{% endif %}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"action_test_5_131\\" }}"
-              sequence:
-                - service: light.turn_on
-                  target:
-                    entity_id: "{{ target_light }}"
-                  data:
-                    brightness_pct: 100
-                    transition: 0
-                - variables:
-                    current_node: delay_test_6_132
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"delay_test_6_132\\" }}"
-              sequence:
-                - delay:
-                    milliseconds: 500
-                - variables:
-                    current_node: set_variables_test_7_133
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"set_variables_test_7_133\\" }}"
-              sequence:
-                - variables:
-                    color_before: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-                - variables:
-                    current_node: action_test_8_134
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"action_test_8_134\\" }}"
-              sequence:
-                - service: adaptive_lighting.apply
-                  data:
-                    entity_id: switch.adaptive_lighting_adapt_color_dali
-                    lights:
-                      - "{{ target_light }}"
-                    turn_on_lights: false
-                    adapt_brightness: false
-                    adapt_color: true
-                    transition: 0
-                - variables:
-                    current_node: delay_test_9_135
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"delay_test_9_135\\" }}"
-              sequence:
-                - delay:
-                    milliseconds: 350
-                - variables:
-                    current_node: set_variables_test_10_136
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"set_variables_test_10_136\\" }}"
-              sequence:
-                - variables:
-                    color_after_1: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-                - variables:
-                    current_node: condition_test_11_137
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"condition_test_11_137\\" }}"
-              sequence:
-                - variables:
-                    current_node: "{% if is_state(target_light, 'on') and (color_after_1 == color_before) %}action_test_12_138{% else %}set_variables_test_14_140{% endif %}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"action_test_12_138\\" }}"
-              sequence:
-                - service: adaptive_lighting.apply
-                  data:
-                    entity_id: switch.adaptive_lighting_adapt_color_dali
-                    lights:
-                      - "{{ target_light }}"
-                    turn_on_lights: false
-                    adapt_brightness: false
-                    adapt_color: true
-                    transition: 0
-                - variables:
-                    current_node: delay_test_13_139
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"delay_test_13_139\\" }}"
-              sequence:
-                - delay:
-                    milliseconds: 350
-                - variables:
-                    current_node: set_variables_test_14_140
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"set_variables_test_14_140\\" }}"
-              sequence:
-                - variables:
-                    color_after_2: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
-                - variables:
-                    current_node: condition_test_15_141
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"condition_test_15_141\\" }}"
-              sequence:
-                - variables:
-                    current_node: "{% if is_state(target_light, 'on') and (color_after_2 == color_before) %}action_test_16_142{% else %}END{% endif %}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ current_node == \\"action_test_16_142\\" }}"
-              sequence:
-                - service: adaptive_lighting.apply
-                  data:
-                    entity_id: switch.adaptive_lighting_adapt_color_dali
-                    lights:
-                      - "{{ target_light }}"
-                    turn_on_lights: false
-                    adapt_brightness: false
-                    adapt_color: true
-                    transition: 0
-                - variables:
-                    current_node: END
-          default:
-            - service: system_log.write
-              data:
-                message: "Flow: Unknown state \\"{{ current_node }}\\", ending flow"
-                level: warning
-            - variables:
-                current_node: END
+  - wait_template: "{{ is_state(target_light, 'on') }}"
+    timeout: "00:00:03"
+  - if:
+      - condition: template
+        value_template: "{{ is_state(target_light, 'on') }}"
+    then:
+      - service: light.turn_on
+        target:
+          entity_id: "{{ target_light }}"
+        data:
+          brightness_pct: 100
+          transition: 0
+      - delay:
+          milliseconds: 500
+      - variables:
+          color_before: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+      - service: adaptive_lighting.apply
+        data:
+          entity_id: switch.adaptive_lighting_adapt_color_dali
+          lights:
+            - "{{ target_light }}"
+          turn_on_lights: false
+          adapt_brightness: false
+          adapt_color: true
+          transition: 0
+      - delay:
+          milliseconds: 350
+      - variables:
+          color_after_1: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_state(target_light, 'on') and (color_after_1 == color_before) }}"
+        then:
+          - service: adaptive_lighting.apply
+            data:
+              entity_id: switch.adaptive_lighting_adapt_color_dali
+              lights:
+                - "{{ target_light }}"
+              turn_on_lights: false
+              adapt_brightness: false
+              adapt_color: true
+              transition: 0
+          - delay:
+              milliseconds: 350
+      - variables:
+          color_after_2: "{% set a = state_attr(target_light, 'hs_color') %} {% set b = state_attr(target_light, 'xy_color') %} {% set c = state_attr(target_light, 'color_temp_kelvin') %} {% set d = state_attr(target_light, 'color_temp') %} {{ [a, b, c, d] }}"
+      - if:
+          - condition: template
+            value_template: "{{ is_state(target_light, 'on') and (color_after_2 == color_before) }}"
+        then:
+          - service: adaptive_lighting.apply
+            data:
+              entity_id: switch.adaptive_lighting_adapt_color_dali
+              lights:
+                - "{{ target_light }}"
+              turn_on_lights: false
+              adapt_brightness: false
+              adapt_color: true
+              transition: 0
 mode: single
 variables:
   ga_to_light:
@@ -590,7 +494,7 @@ variables:
         "y": 32.5
     graph_id: a18b0fbb-d966-432c-aba7-4f7361da8d29
     graph_version: 1
-    strategy: state-machine
+    strategy: native
 "
 `;
 
@@ -690,7 +594,6 @@ actions:
           - service: water_heater.turn_off
             target:
               entity_id: water_heater.altherma
-        else: []
 mode: single
 variables:
   _cafe_metadata:
@@ -788,7 +691,6 @@ actions:
             data:
               brightness_pct: 5
               transition: 3
-        else: []
 mode: restart
 variables:
   _cafe_metadata:
@@ -1066,7 +968,6 @@ actions:
                     target:
                       entity_id: switch.ensuite_fan
                     data: {}
-            else: []
 mode: restart
 variables:
   _cafe_metadata:
@@ -1207,7 +1108,6 @@ actions:
                 - media_player.kitchen_speaker
                 - media_player.zithoek_speaker
               message: Het wasmachine is gereed en moet leeg gemaakt worden
-        else: []
 mode: single
 variables:
   _cafe_metadata:
@@ -1811,7 +1711,6 @@ actions:
         data:
           activity_key: "{{ action_value }}"
         enabled: false
-    else: []
 mode: single
 variables:
   _cafe_metadata:

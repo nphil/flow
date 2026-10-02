@@ -1,11 +1,11 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react';
 import { Variable } from 'lucide-react';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { SetVariablesNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface SetVariablesNodeProps extends NodeProps {
@@ -17,19 +17,17 @@ export const SetVariablesNode = memo(function SetVariablesNode({
   data,
   selected,
 }: SetVariablesNodeProps) {
-  const { t } = useTranslation(['nodes']);
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const variableCount = Object.keys(data.variables || {}).length;
+  const description = useNodeDescription('set_variables', data);
 
   return (
     <NodeShell
       kind="data"
       icon={Variable}
-      title={data.alias || 'Set Variables'}
-      subtitle={t('nodes:variables.variableCount', { count: variableCount })}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

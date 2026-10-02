@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { DelayNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { durationToMs, formatDuration } from './formatDuration';
+import { durationToMs } from './formatDuration';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 import { useTraceCountdown } from './useTraceCountdown';
 
@@ -21,7 +22,7 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
 
-  const delayDisplay = formatDuration(data.delay);
+  const description = useNodeDescription('delay', data);
 
   // Live countdown: prefer the resolved delay from the trace step result
   // (templates already evaluated by HA), fall back to the configured value.
@@ -39,8 +40,7 @@ export const DelayNode = memo(function DelayNode({ id, data, selected }: DelayNo
     <NodeShell
       kind="timing"
       icon={Clock}
-      title={data.alias || 'Delay'}
-      subtitle={delayDisplay}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

@@ -259,6 +259,15 @@ function isEventAction(action: unknown): action is Record<string, unknown> {
   );
 }
 
+/** The steps of one `parallel` branch: a bare list, a `{sequence: [...]}` wrapper, or one step. */
+function parallelBranchSteps(branch: unknown): unknown[] {
+  if (Array.isArray(branch)) return branch;
+  if (typeof branch === 'object' && branch !== null && 'sequence' in branch) {
+    if (Array.isArray(branch.sequence)) return branch.sequence;
+  }
+  return [branch];
+}
+
 /**
  * Matches the synthetic node id the state-machine strategy generates for a
  * trigger with multiple targets (see `generateParallelEntryBlocks`). These
@@ -563,6 +572,25 @@ interface ParseOptions {
    * `${pathPrefix}/${index}`.
    */
   pathPrefix: string;
+}
+
+/**
+ * Where a parsed block hands control to the step that follows it.
+ */
+interface ParsedExits {
+  /** Nodes the next step continues from. Empty when the block ends in `stop`. */
+  nodeIds: string[];
+  /** Subset of `nodeIds`: condition nodes that continue via their FALSE handle. */
+  falseIds: string[];
+}
+
+interface ParsedActions {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  /** Nodes the next step continues from. Empty when the sequence ends in `stop`. */
+  terminalNodeIds: string[];
+  /** Subset of `terminalNodeIds`: condition nodes that continue via their FALSE handle. */
+  terminalFalseIds: string[];
 }
 
 /**
@@ -1896,10 +1924,7 @@ export class YamlParser {
   /**
    * Parse action sequences (including choose blocks, delays, etc.)
    */
-  private parseActions(
-    actions: (HAAction | HACondition)[],
-    options: ParseOptions
-  ): { nodes: FlowNode[]; edges: FlowEdge[]; terminalNodeIds: string[] } {
+  private parseActions(actions: (HAAction | HACondition)[], options: ParseOptions): ParsedActions {
     const {
       warnings,
       previousNodeIds,
@@ -1921,6 +1946,9 @@ export class YamlParser {
     // must know that an upstream if/choose condition continues via its FALSE
     // handle, or they emit handle-less condition edges that fail validation.
     const falsePathConditionIds = new Set<string>(options.falsePathConditionIds);
+    // True when the LAST step of this sequence is a `stop`: control never reaches
+    // whatever follows the sequence, so the sequence has no exits.
+    let endsWithStop = false;
 
     // Helper to compute the enabled state for a node
     const getNodeEnabled = (nodeEnabled: boolean | undefined): boolean | undefined => {
@@ -1945,9 +1973,23 @@ export class YamlParser {
       }
     };
 
+    // Remember how a nested block's exits continue so the NEXT step's edges use
+    // the right handle: FALSE for the else-less branch of a condition, TRUE for
+    // any other condition node, none for plain nodes.
+    const adoptExits = (exits: ParsedExits, blockNodes: FlowNode[]): void => {
+      for (const id of exits.nodeIds) {
+        if (exits.falseIds.includes(id)) {
+          falsePathConditionIds.add(id);
+        } else if (blockNodes.some((n) => n.id === id && n.type === 'condition')) {
+          localConditionNodeIds.add(id);
+        }
+      }
+    };
+
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: large dispatch switch, refactoring deferred
     actions.forEach((action, index) => {
       const actionPath = `${pathPrefix}/${index}`;
+      endsWithStop = false;
 
       if (!action || typeof action !== 'object') {
         // Unknown action type - create unknown node
@@ -2124,21 +2166,16 @@ export class YamlParser {
         });
         nodes.push(...chooseResult.nodes);
         edges.push(...chooseResult.edges);
-        // Add any new condition nodes to our tracking set
-        // But NOT condition nodes that are outputs via FALSE path (no default choose)
-        for (const outId of chooseResult.outputNodeIds) {
-          const outNode = chooseResult.nodes.find((n) => n.id === outId);
-          if (outNode?.type === 'condition') {
-            if (chooseResult.falsePathOutputIds.includes(outId)) {
-              // This condition's FALSE path should connect to subsequent actions
-              falsePathConditionIds.add(outId);
-            } else {
-              // This condition's TRUE path should connect to subsequent actions
-              localConditionNodeIds.add(outId);
-            }
-          }
+        adoptExits(
+          { nodeIds: chooseResult.outputNodeIds, falseIds: chooseResult.falsePathOutputIds },
+          chooseResult.nodes
+        );
+        // A choose that parsed nothing (no valid branch, no default) changes nothing;
+        // one whose every branch ends in `stop` has no exits.
+        if (chooseResult.nodes.length > 0) {
+          currentNodeIds = chooseResult.outputNodeIds;
+          endsWithStop = currentNodeIds.length === 0;
         }
-        currentNodeIds = chooseResult.outputNodeIds;
       } else if (isIfThenAction(action)) {
         // Handle if/then/else blocks
         const act = action as Record<string, unknown>;
@@ -2166,19 +2203,10 @@ export class YamlParser {
         });
         nodes.push(...ifResult.nodes);
         edges.push(...ifResult.edges);
-        // Route condition outputs to the correct handle tracking set
-        for (const outId of ifResult.outputNodeIds) {
-          const outNode = ifResult.nodes.find((n) => n.id === outId);
-          if (outNode?.type === 'condition') {
-            if (ifResult.falsePathOutputIds.includes(outId)) {
-              // This condition's FALSE path should connect to subsequent actions
-              falsePathConditionIds.add(outId);
-            } else {
-              // This condition's TRUE path should connect to subsequent actions
-              localConditionNodeIds.add(outId);
-            }
-          }
-        }
+        adoptExits(
+          { nodeIds: ifResult.outputNodeIds, falseIds: ifResult.falsePathOutputIds },
+          ifResult.nodes
+        );
         // For trigger-id routing: merge unconsumed trigger nodes (those that didn't match
         // this if block's trigger id) back into currentNodeIds so they are available
         // as entry points for the next if block.
@@ -2186,6 +2214,7 @@ export class YamlParser {
           currentNodeIds = ifResult.unconsumedPreviousIds;
         } else {
           currentNodeIds = ifResult.outputNodeIds;
+          endsWithStop = currentNodeIds.length === 0;
         }
       } else if (isDeviceAction(action)) {
         // Device action (type + device_id + domain)
@@ -2244,21 +2273,14 @@ export class YamlParser {
 
         // Store the starting nodes - all parallel branches connect FROM these
         const parallelStartNodes = [...currentNodeIds];
-        // Collect the end nodes from all branches
+        // Where each branch hands control back; the steps after the block follow all of them
         const allBranchEndNodes: string[] = [];
-        // HA indexes parallel branches by their position in the `parallel:`
-        // array regardless of shape, so track it alongside the existing loop.
-        let parallelBranchIndex = 0;
+        let anyBranchHasNodes = false;
 
-        // Parse each parallel branch - each starts from the same source
-        for (const parallelItem of parallelActions) {
-          // HA wraps every parallel branch in a sequence, even a single action.
-          const branchPathPrefix = `${actionPath}/parallel/${parallelBranchIndex}/sequence`;
-          parallelBranchIndex++;
-
-          if (Array.isArray(parallelItem)) {
-            // It's a sequence array
-            const seqResult = this.parseActions(parallelItem as Record<string, unknown>[], {
+        parallelActions.forEach((parallelItem, branchIndex) => {
+          const branchResult = this.parseActions(
+            parallelBranchSteps(parallelItem) as Record<string, unknown>[],
+            {
               warnings,
               previousNodeIds: parallelStartNodes,
               getNextNodeId,
@@ -2266,63 +2288,26 @@ export class YamlParser {
               falsePathConditionIds,
               inheritedEnabled,
               recorder,
-              pathPrefix: branchPathPrefix,
-            });
-            if (seqResult.nodes.length > 0) {
-              nodes.push(...seqResult.nodes);
-              edges.push(...seqResult.edges);
-              // Find the last nodes of this branch
-              const nodesWithOutgoing = new Set(seqResult.edges.map((e) => e.source));
-              const lastNodes = seqResult.nodes.filter((n) => !nodesWithOutgoing.has(n.id));
-              allBranchEndNodes.push(...lastNodes.map((n) => n.id));
+              // HA wraps every parallel branch in a sequence, even a single action.
+              pathPrefix: `${actionPath}/parallel/${branchIndex}/sequence`,
             }
-          } else if (typeof parallelItem === 'object' && parallelItem !== null) {
-            const item = parallelItem as Record<string, unknown>;
-            if ('sequence' in item && Array.isArray(item.sequence)) {
-              // Nested sequence in parallel
-              const seqResult = this.parseActions(item.sequence as Record<string, unknown>[], {
-                warnings,
-                previousNodeIds: parallelStartNodes,
-                getNextNodeId,
-                conditionNodeIds: localConditionNodeIds,
-                falsePathConditionIds,
-                inheritedEnabled,
-                recorder,
-                pathPrefix: branchPathPrefix,
-              });
-              if (seqResult.nodes.length > 0) {
-                nodes.push(...seqResult.nodes);
-                edges.push(...seqResult.edges);
-                const nodesWithOutgoing = new Set(seqResult.edges.map((e) => e.source));
-                const lastNodes = seqResult.nodes.filter((n) => !nodesWithOutgoing.has(n.id));
-                allBranchEndNodes.push(...lastNodes.map((n) => n.id));
-              }
-            } else {
-              // Single action in parallel - parse it as a single-item array
-              const singleResult = this.parseActions([parallelItem] as Record<string, unknown>[], {
-                warnings,
-                previousNodeIds: parallelStartNodes,
-                getNextNodeId,
-                conditionNodeIds: localConditionNodeIds,
-                falsePathConditionIds,
-                inheritedEnabled,
-                recorder,
-                pathPrefix: branchPathPrefix,
-              });
-              if (singleResult.nodes.length > 0) {
-                nodes.push(...singleResult.nodes);
-                edges.push(...singleResult.edges);
-                // For a single action, the last node is just the last one parsed
-                const lastNode = singleResult.nodes[singleResult.nodes.length - 1];
-                allBranchEndNodes.push(lastNode.id);
-              }
-            }
-          }
-        }
+          );
+          if (branchResult.nodes.length === 0) return;
+          anyBranchHasNodes = true;
+          nodes.push(...branchResult.nodes);
+          edges.push(...branchResult.edges);
+          adoptExits(
+            { nodeIds: branchResult.terminalNodeIds, falseIds: branchResult.terminalFalseIds },
+            branchResult.nodes
+          );
+          allBranchEndNodes.push(...branchResult.terminalNodeIds);
+        });
 
-        // After parallel block, all branch end nodes become the current nodes
-        // (subsequent actions will connect from all of them)
+        // After the parallel block, all branch end nodes become the current nodes
+        // (subsequent actions will connect from all of them). If every branch
+        // stops, nothing after the block can run.
         currentNodeIds = allBranchEndNodes.length > 0 ? allBranchEndNodes : parallelStartNodes;
+        endsWithStop = anyBranchHasNodes && allBranchEndNodes.length === 0;
       } else if (isEventAction(action)) {
         // Event action - fires a Home Assistant event
         const nodeId = getNextNodeId('action');
@@ -2692,7 +2677,7 @@ export class YamlParser {
           // Output continues from condition's FALSE path
           currentNodeIds = [condId];
           falsePathConditionIds.add(condId);
-        } else if (Array.isArray(repeat.for_each)) {
+        } else if (Array.isArray(repeat.for_each) || typeof repeat.for_each === 'string') {
           // ── repeat.for_each ──
           // Represented as a single opaque action node (not exploded into a
           // loop-back subgraph like while/until/count): the per-iteration
@@ -2825,25 +2810,30 @@ export class YamlParser {
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
       } else if (isStopAction(action)) {
-        // Stop action - halts automation execution
+        // Stop action - halts the run. Nothing after it in the same sequence can
+        // run, so it hands control to no one (see `endsWithStop`) unless disabled.
         const nodeId = getNextNodeId('action');
-        const act = action as Record<string, unknown>;
+        const stopStep = action as Record<string, unknown>;
+        const { alias, stop, error, note, enabled, ...extraProps } = stopStep;
+        const stopEnabled = getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined);
         const actionNode: ActionNode = {
           id: nodeId,
           type: 'action',
           position: { x: 0, y: 0 },
           data: {
-            alias: typeof act.alias === 'string' ? act.alias : undefined,
-            stop: typeof act.stop === 'string' ? act.stop : '',
-            ...(act.error === true ? { error: true } : {}),
-            note: typeof act.note === 'string' ? act.note : undefined,
-            enabled: getNodeEnabled(typeof act.enabled === 'boolean' ? act.enabled : undefined),
+            ...extraProps, // e.g. response_variable
+            alias: typeof alias === 'string' ? alias : undefined,
+            stop: typeof stop === 'string' ? stop : '',
+            ...(error === true ? { error: true } : {}),
+            note: typeof note === 'string' ? note : undefined,
+            enabled: stopEnabled,
           },
         };
         nodes.push(actionNode);
         recorder.record(nodeId, actionPath);
         createEdgesFromCurrent(nodeId);
         currentNodeIds = [nodeId];
+        endsWithStop = stopEnabled !== false;
       } else {
         // Unknown action type - create unknown node
         warnings.push(`Unknown action type (${JSON.stringify(action)}) at index ${index}`);
@@ -2864,7 +2854,13 @@ export class YamlParser {
       }
     });
 
-    return { nodes, edges, terminalNodeIds: currentNodeIds };
+    const terminalNodeIds = endsWithStop ? [] : currentNodeIds;
+    return {
+      nodes,
+      edges,
+      terminalNodeIds,
+      terminalFalseIds: terminalNodeIds.filter((id) => falsePathConditionIds.has(id)),
+    };
   }
 
   /**
@@ -3091,9 +3087,9 @@ export class YamlParser {
           if (trueEdge) {
             trueEdge.sourceHandle = 'true';
           }
-          // The last node in the sequence is the output
-          const lastNodeId = sequenceResult.nodes[sequenceResult.nodes.length - 1].id;
-          outputNodeIds.push(lastNodeId);
+          // Where the branch hands control back (nothing when it ends in `stop`)
+          outputNodeIds.push(...sequenceResult.terminalNodeIds);
+          falsePathOutputIds.push(...sequenceResult.terminalFalseIds);
         } else {
           // Empty sequence - last condition itself is output
           outputNodeIds.push(lastConditionId);
@@ -3135,9 +3131,13 @@ export class YamlParser {
         if (falseEdge && localConditionIds.has(lastConditionId)) {
           falseEdge.sourceHandle = 'false';
         }
-        // The last node in the default sequence is the output
-        const lastNodeId = defaultResult.nodes[defaultResult.nodes.length - 1].id;
-        outputNodeIds.push(lastNodeId);
+        // Where the default hands control back (nothing when it ends in `stop`)
+        outputNodeIds.push(...defaultResult.terminalNodeIds);
+        falsePathOutputIds.push(...defaultResult.terminalFalseIds);
+      } else if (currentPreviousIds.length > 0) {
+        // An empty default: the last choice's FALSE path falls straight through
+        outputNodeIds.push(currentPreviousIds[0]);
+        falsePathOutputIds.push(currentPreviousIds[0]);
       }
       // No branches ever ran (e.g. every choice was invalid) - the default
       // sequence's first node is this block's entry point instead.
@@ -3196,6 +3196,10 @@ export class YamlParser {
     const edges: FlowEdge[] = [];
     const outputNodeIds: string[] = [];
     const falsePathOutputIds: string[] = [];
+    // An empty `else: []` (which Flow itself used to write) is no else at all
+    const hasElseSteps = Array.isArray(ifAction.else) && ifAction.else.length > 0;
+    // True when a branch ends in `stop`: the block then has fewer exits than branches
+    let anyBranchStops = false;
     const localConditionIds = new Set(conditionNodeIds);
 
     // Compute effective enabled state: if parent is disabled or this block is disabled
@@ -3306,7 +3310,7 @@ export class YamlParser {
     // Detect trigger-id routing: a single `condition: trigger` with no else.
     // The `id` field can be a string or an array of strings in HA YAML.
     const triggerConditionIds: string[] | null = (() => {
-      if (ifAction.else || ifConditions.length !== 1) return null;
+      if (hasElseSteps || ifConditions.length !== 1) return null;
       const cond = ifConditions[0] as Record<string, unknown>;
       if (cond?.condition !== 'trigger') return null;
       const rawId = cond?.id;
@@ -3371,14 +3375,17 @@ export class YamlParser {
       }
 
       // Track all terminal nodes from then branch (not just the last created node,
-      // as the last action in the sequence may itself be an if/then/else with multiple exits)
+      // as the last action in the sequence may itself be an if/then/else with multiple exits).
+      // A branch ending in `stop` has none: control never continues from it.
       outputNodeIds.push(...thenResult.terminalNodeIds);
+      falsePathOutputIds.push(...thenResult.terminalFalseIds);
+      if (thenResult.terminalNodeIds.length === 0) anyBranchStops = true;
     }
 
     // Parse 'else' sequence (false branch) - connects from FIRST condition only
     // (This matches the expected behavior: only the first condition handles the else path)
-    if (ifAction.else) {
-      const elseSequence = Array.isArray(ifAction.else) ? ifAction.else : [ifAction.else];
+    if (hasElseSteps) {
+      const elseSequence = ifAction.else ?? [];
       // For else branch, we need to connect from first condition with 'false' handle
       const elseResult = this.parseActions(elseSequence, {
         warnings,
@@ -3410,6 +3417,8 @@ export class YamlParser {
 
       // Track all terminal nodes from else branch
       outputNodeIds.push(...elseResult.terminalNodeIds);
+      falsePathOutputIds.push(...elseResult.terminalFalseIds);
+      if (elseResult.terminalNodeIds.length === 0) anyBranchStops = true;
     } else if (triggerConditionIds !== null) {
       // Trigger-id routing: this if block is a dedicated branch for one trigger.
       // There is no sequential false-path continuation — subsequent if blocks are
@@ -3425,8 +3434,9 @@ export class YamlParser {
       }
     }
 
-    // If no outputs were added (empty then + else branch), the last condition is the output
-    if (outputNodeIds.length === 0 && triggerConditionIds === null) {
+    // If no outputs were added (empty then + else branch), the last condition is the output.
+    // When a branch ends in `stop` the block simply has fewer exits; nothing is invented.
+    if (outputNodeIds.length === 0 && triggerConditionIds === null && !anyBranchStops) {
       outputNodeIds.push(lastConditionId);
       falsePathOutputIds.push(lastConditionId);
     }

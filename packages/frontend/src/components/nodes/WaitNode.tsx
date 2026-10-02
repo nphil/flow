@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { useNodeErrors } from '@/hooks/useNodeErrors';
 import type { WaitNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { durationToMs, formatDuration } from './formatDuration';
+import { durationToMs } from './formatDuration';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 import { useTraceCountdown } from './useTraceCountdown';
 
@@ -15,22 +16,13 @@ interface WaitNodeProps extends NodeProps {
 }
 
 export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeProps) {
-  const { t } = useTranslation(['common', 'nodes']);
+  const { t } = useTranslation(['nodes']);
   const activeNodeId = useFlowStore((s) => s.activeNodeId);
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
 
-  const timeoutDisplay = formatDuration(data.timeout);
-  const subtitle = data.wait_template
-    ? data.wait_template.length > 40
-      ? `${data.wait_template.slice(0, 40)}…`
-      : data.wait_template
-    : data.wait_for_trigger
-      ? t('nodes:wait.waitsForNTrigger', { count: data.wait_for_trigger.length })
-      : timeoutDisplay
-        ? `${t('nodes:wait.timeoutLabel')} ${timeoutDisplay}`
-        : t('nodes:types.wait');
+  const description = useNodeDescription('wait', data);
 
   // Live countdown: count down towards the configured timeout when one is
   // set, otherwise count up while the wait is pending.
@@ -42,8 +34,7 @@ export const WaitNode = memo(function WaitNode({ id, data, selected }: WaitNodeP
     <NodeShell
       kind="timing"
       icon={Hourglass}
-      title={data.alias || 'Wait for'}
-      subtitle={subtitle}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

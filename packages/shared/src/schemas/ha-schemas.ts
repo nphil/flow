@@ -298,8 +298,8 @@ export interface HAAction {
     count?: string | number;
     while?: HACondition[];
     until?: string | string[] | HACondition[];
-    /** repeat.for_each (additive parity fix) — items may be scalars or objects. */
-    for_each?: unknown[];
+    /** repeat.for_each: a literal list (scalars or objects) or a template that renders to a list. */
+    for_each?: unknown[] | string;
     sequence: HAAction[];
   };
   [key: string]: unknown;
@@ -434,7 +434,7 @@ export const HAActionSchema: z.ZodType<HAAction> = z.lazy(() =>
         count: z.union([z.string(), z.number()]).optional(),
         while: z.array(HAConditionSchema).optional(),
         until: z.union([z.string(), z.array(z.string()), z.array(HAConditionSchema)]).optional(),
-        for_each: z.array(z.unknown()).optional(),
+        for_each: z.union([z.string(), z.array(z.unknown())]).optional(),
         sequence: z.array(HAActionSchema),
       })
       .optional(),

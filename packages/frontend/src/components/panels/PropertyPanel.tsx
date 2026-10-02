@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Copy, CopyPlus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldError } from '@/components/forms/FieldError';
+import { useNodeDescription } from '@/components/nodes/useNodeDescription';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,9 @@ const KIND_VAR: Record<NodeKind, string> = {
   flowctl: '--node-flowctl',
   unknown: '--node-unknown',
 };
+
+/** Stable stand-in while no node is selected, so the description hook keeps a steady input. */
+const NO_NODE_DATA: Record<string, unknown> = {};
 
 interface PropertyPanelProps {
   className?: string;
@@ -118,6 +122,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
   const kind: NodeKind = selectedNode
     ? getNodeKind(selectedNode.type, selectedNode.data as Record<string, unknown>)
     : 'unknown';
+  const description = useNodeDescription(selectedNode?.type, selectedNode?.data ?? NO_NODE_DATA);
 
   if (!selectedNode) {
     return <AutomationSettingsPanel />;
@@ -179,6 +184,21 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
           placeholder={t('placeholders.optionalDisplayName')}
           className="h-auto border-none bg-transparent px-0 font-medium text-base text-flow-text shadow-none focus-visible:ring-0"
         />
+
+        {/* What the step does, in words: the alias never hides this. */}
+        <div className="flex flex-col gap-0.5 rounded-flow-control bg-flow-elevated px-2.5 py-2 text-flow-text-secondary text-xs">
+          <span className="font-medium text-[10px] text-flow-text-muted uppercase tracking-wide">
+            {t('nodes:panel.whatItDoes')}
+          </span>
+          <span className={cn(description.tone === 'danger' && 'text-flow-danger')}>
+            {description.subtitle ?? description.title}
+          </span>
+          {description.detail?.map((line) => (
+            <span key={line} className="text-flow-text-muted">
+              {line}
+            </span>
+          ))}
+        </div>
 
         {/* ID field — triggers only. Home Assistant's action-step schemas
             (service call, delay, wait, set_variables, ...) don't support a

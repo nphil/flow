@@ -56,9 +56,7 @@ describe('repeat.until after an if-guard', () => {
     expect(res.success).toBe(true);
     expect(res.errors ?? []).toEqual([]);
     const g = res.graph!;
-    const conditionIds = new Set(
-      g.nodes.filter((n) => n.type === 'condition').map((n) => n.id)
-    );
+    const conditionIds = new Set(g.nodes.filter((n) => n.type === 'condition').map((n) => n.id));
     for (const e of g.edges) {
       if (!conditionIds.has(e.source)) continue;
       expect(['true', 'false']).toContain(e.sourceHandle);

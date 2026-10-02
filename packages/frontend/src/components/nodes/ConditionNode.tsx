@@ -5,8 +5,8 @@ import { useNodeErrors } from '@/hooks/useNodeErrors';
 import { cn } from '@/lib/utils';
 import type { ConditionNodeData } from '@/store/flow-store';
 import { useFlowStore } from '@/store/flow-store';
-import { getNodeSummary } from '@/utils/nodeData';
 import { handleKindClass, NodeShell } from './nodeVisuals';
+import { useNodeDescription } from './useNodeDescription';
 import { useNodeTraceStatus } from './useNodeTraceStatus';
 
 interface ConditionNodeProps extends NodeProps {
@@ -22,14 +22,13 @@ export const ConditionNode = memo(function ConditionNode({
   const getExecutionStepNumber = useFlowStore((s) => s.getExecutionStepNumber);
   const { hasErrors, errorMessages } = useNodeErrors(id);
   const traceView = useNodeTraceStatus(id);
-  const { title, subtitle } = getNodeSummary('condition', data);
+  const description = useNodeDescription('condition', data);
 
   return (
     <NodeShell
       kind="condition"
       icon={GitBranch}
-      title={title}
-      subtitle={subtitle}
+      description={description}
       selected={selected}
       disabled={data.enabled === false}
       hasErrors={hasErrors}

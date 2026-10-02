@@ -3,6 +3,7 @@ import type { Edge } from '@xyflow/react';
 import { Play, RotateCcw, Square } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDescribeNode } from '@/components/nodes/useNodeDescription';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,6 +18,7 @@ import { useFlowStore } from '@/store/flow-store';
 
 export function TraceSimulator() {
   const { t } = useTranslation(['simulator']);
+  const describeNode = useDescribeNode();
   const {
     nodes,
     edges,
@@ -162,7 +164,7 @@ export function TraceSimulator() {
             {conditionNodes.map((node) => (
               <div key={node.id} className="flex items-center justify-between text-xs">
                 <span className="mr-2 min-w-0 flex-1 truncate text-flow-text-muted">
-                  {(node.data as { alias?: string }).alias || node.id}
+                  {describeNode(node.type, node.data).title}
                 </span>
                 <Select
                   value={
@@ -210,7 +212,7 @@ export function TraceSimulator() {
           <ol className="list-inside list-decimal space-y-1 text-xs">
             {executionPath.map((nodeId, i) => {
               const node = nodes.find((n) => n.id === nodeId);
-              const alias = (node?.data as { alias?: string })?.alias;
+              const label = node ? describeNode(node.type, node.data).title : nodeId;
               return (
                 <li
                   key={nodeId}
@@ -221,7 +223,7 @@ export function TraceSimulator() {
                       : 'text-flow-text-muted'
                   )}
                 >
-                  {alias || nodeId}
+                  {label}
                 </li>
               );
             })}

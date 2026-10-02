@@ -1,0 +1,55 @@
+# `repeat.for_each` may be a template that renders to a list, not only a
+# literal list. Several of them in a row, then a choose that logs a summary.
+id: fixture_label_maintenance
+alias: Fixture - label maintenance with template for_each
+description: Tags devices without manual work.
+triggers:
+  - trigger: homeassistant
+    event: start
+  - trigger: time_pattern
+    minutes: /30
+  - trigger: event
+    event_type: device_registry_updated
+    event_data:
+      action: create
+conditions: []
+actions:
+  - delay:
+      seconds: 20
+  - variables:
+      first_group: "{{ states | map(attribute='entity_id') | map('device_id') | reject('none') | unique | list }}"
+      second_group: "{{ integration_entities('example') | map('device_id') | reject('none') | unique | list }}"
+  - repeat:
+      for_each: "{{ first_group }}"
+      sequence:
+        - action: homeassistant.add_label_to_device
+          data:
+            label_id: first
+            device_id: "{{ repeat.item }}"
+  - alias: Label the second group
+    repeat:
+      for_each: "{{ second_group }}"
+      sequence:
+        - action: homeassistant.add_label_to_device
+          data:
+            label_id: second
+            device_id: "{{ repeat.item }}"
+  - repeat:
+      for_each:
+        - light.kitchen
+        - light.hallway
+      sequence:
+        - action: light.turn_off
+          target:
+            entity_id: "{{ repeat.item }}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ (first_group | count) + (second_group | count) > 0 }}"
+        sequence:
+          - action: logbook.log
+            data:
+              name: Label maintenance
+              message: "Applied labels - first: {{ first_group | count }}, second: {{ second_group | count }}"
+mode: single
+max_exceeded: silent
