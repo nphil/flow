@@ -3,7 +3,7 @@
  * else on the canvas is disturbed, and a fix that changes nothing leaves no trace.
  */
 
-import type { FlowGraph } from '@flow/shared';
+import type { FlowGraph, FlowNode } from '@flow/shared';
 import { FlowTranspiler } from '@flow/transpiler';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyAllSafeReadabilityFixes, applyReadabilityFix } from '@/hooks/useReadability';
@@ -127,7 +127,11 @@ describe('readability fixes in the store', () => {
       ...graph,
       nodes: graph.nodes.map((n) =>
         n.id === 'trigger-1'
-          ? { ...n, position: { x: 999, y: 999 }, data: { ...n.data, alias: 'Renamed' } }
+          ? ({
+              ...n,
+              position: { x: 999, y: 999 },
+              data: { ...n.data, alias: 'Renamed' },
+            } as FlowNode)
           : n
       ),
     });
@@ -212,7 +216,7 @@ describe('readability fixes in the store', () => {
     state().applyGraphEdit({
       ...graph,
       nodes: graph.nodes.map((n) =>
-        n.id === 'action-1' ? { ...n, data: { alias: 'Light on' } } : n
+        n.id === 'action-1' ? ({ ...n, data: { alias: 'Light on' } } as FlowNode) : n
       ),
     });
     expect(state().nodeErrors.has('action-1')).toBe(true);
