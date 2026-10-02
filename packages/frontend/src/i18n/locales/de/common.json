@@ -51,7 +51,8 @@
     "zones": "Zonen",
     "unassigned": "Nicht zugeordnet",
     "workspaceSources": "Zusammengeführte Quellen",
-    "canvasTools": "Canvas-Werkzeuge"
+    "canvasTools": "Canvas-Werkzeuge",
+    "scripts": "Skripte"
   },
   "status": {
     "connecting": "Verbinde...",

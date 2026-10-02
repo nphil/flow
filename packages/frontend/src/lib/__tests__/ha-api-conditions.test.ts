@@ -6,7 +6,7 @@ import { HomeAssistantAPI } from '../ha-api';
  * Regression tests for issue #163: Conditions not being saved to Home Assistant
  * https://github.com/FezVrasta/cafe-hass/issues/163
  *
- * The issue was that createAutomation and updateAutomation were not including
+ * The issue was that createFlow and updateFlow were not including
  * the conditions field in the payload sent to Home Assistant, causing conditions
  * to be lost when saving automations.
  */
@@ -41,7 +41,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.createAutomation(config);
+      await api.createFlow('automation', config);
 
       // callApi is called with (method, path, body)
       expect(mockCallApi).toHaveBeenCalledWith(
@@ -63,7 +63,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.createAutomation(config);
+      await api.createFlow('automation', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -83,7 +83,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.createAutomation(config);
+      await api.createFlow('automation', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -105,7 +105,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         actions: [{ service: 'light.turn_on' }],
       };
 
-      await api.createAutomation(config);
+      await api.createFlow('automation', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -131,7 +131,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.updateAutomation('123456789', config);
+      await api.updateFlow('automation', '123456789', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -152,7 +152,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.updateAutomation('123456789', config);
+      await api.updateFlow('automation', '123456789', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -172,7 +172,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.updateAutomation('123456789', config);
+      await api.updateFlow('automation', '123456789', config);
 
       expect(mockCallApi).toHaveBeenCalledWith(
         'POST',
@@ -216,7 +216,7 @@ describe('HomeAssistantAPI - Conditions Preservation (Issue #163)', () => {
         mode: 'single' as const,
       };
 
-      await api.updateAutomation('123456789', config);
+      await api.updateFlow('automation', '123456789', config);
 
       const call = mockCallApi.mock.calls[0];
       const payload = call[2];

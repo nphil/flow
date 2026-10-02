@@ -13,28 +13,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useHass } from '@/contexts/HassContext';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { useFlowStore } from '@/store/flow-store';
 
-interface AutomationSaveDialogProps {
+interface FlowSaveDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaved?: (automationId: string) => void;
+  onSaved?: (flowId: string) => void;
 }
 
-export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSaveDialogProps) {
+export function FlowSaveDialog({ isOpen, onClose, onSaved }: FlowSaveDialogProps) {
   const { t } = useTranslation(['common', 'dialogs', 'errors']);
   const {
     flowName,
     flowDescription,
+    flowKind,
     automationId,
     isSaving,
     setFlowName,
     setFlowDescription,
     setAutomationId,
-    saveAutomation,
-    updateAutomation,
+    saveFlow,
+    updateFlow,
   } = useFlowStore();
+  const text = FLOW_TEXT[flowKind];
 
   const { hass, config: hassConfig } = useHass();
 
@@ -61,9 +64,10 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
     }
 
     try {
-      const exists = await getHomeAssistantAPI(hass, hassConfig).automationExistsByAlias(name);
+      const exists = await getHomeAssistantAPI(hass, hassConfig).flowExistsByAlias(flowKind, name);
       if (exists && !isUpdate) {
-        const uniqueName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+        const uniqueName = await getHomeAssistantAPI(hass, hassConfig).getUniqueFlowAlias(
+          flowKind,
           name
         );
         setSuggestedName(uniqueName);
@@ -95,10 +99,10 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
 
       let resultId: string;
       if (isUpdate) {
-        await updateAutomation(hass);
+        await updateFlow(hass);
         resultId = automationId || '';
       } else {
-        resultId = await saveAutomation(hass);
+        resultId = await saveFlow(hass);
       }
 
       onSaved?.(resultId);
@@ -137,17 +141,18 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
 
     try {
       // Get a unique name for the copy
-      const copyName = await getHomeAssistantAPI(hass, hassConfig).getUniqueAutomationAlias(
+      const copyName = await getHomeAssistantAPI(hass, hassConfig).getUniqueFlowAlias(
+        flowKind,
         flowName
       );
       setFlowName(copyName);
       setFlowDescription(localDescription.trim());
 
-      // Clear the automation ID to force creating a new one
+      // Clear the stored id to force creating a new one
       setAutomationId(null);
 
-      // Save as new automation
-      const resultId = await saveAutomation(hass);
+      // Save as new automation or script
+      const resultId = await saveFlow(hass);
 
       onSaved?.(resultId);
       onClose();
@@ -163,23 +168,23 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-flow-text">
             <Save className="h-5 w-5" />
-            {isUpdate ? t('dialogs:save.titleUpdate') : t('dialogs:save.title')}
+            {isUpdate ? t(text.saveTitleUpdate) : t(text.saveTitle)}
           </DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
-            {isUpdate ? t('dialogs:save.descriptionUpdate') : t('dialogs:save.description')}
+            {isUpdate ? t(text.saveDescriptionUpdate) : t(text.saveDescription)}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="automation-name" className="font-mono text-flow-text-muted text-xs">
-              {t('dialogs:save.nameLabel')}
+              {t(text.saveNameLabel)}
             </Label>
             <Input
               id="automation-name"
               value={flowName}
               onChange={(e) => handleNameChange(e.target.value)}
-              placeholder={t('placeholders.enterAutomationName')}
+              placeholder={t(text.enterName)}
               disabled={isSaving}
               className="border-flow-border bg-flow-bg font-mono text-flow-text placeholder:text-flow-text-muted focus-visible:ring-[var(--accent)]"
             />
@@ -214,7 +219,7 @@ export function AutomationSaveDialog({ isOpen, onClose, onSaved }: AutomationSav
               id="automation-description"
               value={localDescription}
               onChange={(e) => setLocalDescription(e.target.value)}
-              placeholder={t('placeholders.describeAutomation')}
+              placeholder={t(text.describe)}
               rows={3}
               disabled={isSaving}
               className="border-flow-border bg-flow-bg font-mono text-flow-text text-sm placeholder:text-flow-text-muted focus-visible:ring-[var(--accent)]"

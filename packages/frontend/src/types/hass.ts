@@ -22,24 +22,42 @@ export interface HomeAssistant extends Omit<CustomCardHomeAssistant, 'services' 
 }
 
 /**
- * Home Assistant automation configuration object
+ * What an automation and a script both store in Home Assistant
  */
-export interface AutomationConfig {
-  id?: string;
+interface StoredFlowConfig {
   alias?: string;
   description?: string;
   mode?: 'single' | 'restart' | 'queued' | 'parallel';
   max?: number;
   max_exceeded?: 'silent' | 'warning' | 'critical';
+  variables?: Record<string, unknown>;
+  trace?: { stored_traces?: number };
+  [key: string]: unknown;
+}
+
+/**
+ * Home Assistant automation configuration object
+ */
+export interface AutomationConfig extends StoredFlowConfig {
+  id?: string;
   trigger?: unknown[];
   triggers?: unknown[];
   condition?: unknown[];
   conditions?: unknown[];
   action?: unknown[];
   actions?: unknown[];
-  variables?: Record<string, unknown>;
   initial_state?: boolean;
   hide_entity?: boolean;
-  trace?: { stored_traces?: number };
-  [key: string]: unknown;
 }
+
+/**
+ * Home Assistant script configuration object. A script has no triggers; it is stored under its
+ * key (the part after `script.`), not under an `id` field.
+ */
+export interface ScriptConfig extends StoredFlowConfig {
+  icon?: string;
+  fields?: Record<string, unknown>;
+  sequence?: unknown[];
+}
+
+export type FlowConfig = AutomationConfig | ScriptConfig;

@@ -10,6 +10,8 @@ export interface NodeActionContext {
   edges: Edge[];
   clipboard: string | null;
   pasteCount: number;
+  /** Whether the open flow takes a node of this type (no triggers in a script, nothing when read-only). */
+  canPlaceNodeKind: (nodeKind: string | undefined) => boolean;
   addNode: (node: Node<FlowNodeData>) => void;
   removeNode: (nodeId: string) => void;
   updateNodeData: (nodeId: string, data: Partial<FlowNodeData>) => void;

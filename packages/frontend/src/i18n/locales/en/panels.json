@@ -46,7 +46,14 @@
     "reconnecting": "Reconnecting…",
     "openPalette": "Open node palette",
     "openPanel": "Open panel",
-    "unsavedChanges": "Unsaved changes"
+    "unsavedChanges": "Unsaved changes",
+    "runScriptSuccess": "Started \"{{name}}\"",
+    "runScriptFailed": "Failed to run script: {{message}}",
+    "duplicatedScript": "Duplicated — save to create the new script",
+    "deletedScript": "Script deleted",
+    "deleteScriptFailed": "Failed to delete script: {{message}}",
+    "scriptChip": "Script",
+    "running": "Running"
   },
   "readability": {
     "title": "Readability",
@@ -67,6 +74,19 @@
     "openProperties": "Open the automation settings",
     "unsafeFix": "Check first:",
     "tabBadge_one": "{{count}} readability finding",
-    "tabBadge_other": "{{count}} readability findings"
+    "tabBadge_other": "{{count}} readability findings",
+    "emptyBodyScript": "This script reads well: nothing looks fragile and every step is easy to follow.",
+    "emptyCanvasBodyScript": "Add a step. Tips for making the script easier to read show up here."
+  },
+  "scriptsTab": {
+    "newScript": "New script",
+    "searchPlaceholder": "Search scripts…",
+    "chips": {
+      "running": "Running"
+    },
+    "emptyHeadline": "No scripts yet",
+    "emptyBody": "Create your first script to see it here.",
+    "noResults": "No scripts match your search.",
+    "openFailed": "Failed to open script: {{message}}"
   }
 }

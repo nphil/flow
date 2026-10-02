@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AutomationsTab } from '@/components/panels/AutomationsTab';
+import { FlowListTab } from '@/components/panels/FlowListTab';
 import { PropertyPanel } from '@/components/panels/PropertyPanel';
 import { ReadabilityTab } from '@/components/panels/ReadabilityTab';
 import { YamlPreview } from '@/components/panels/YamlPreview';
@@ -12,7 +12,7 @@ import { useScrollFade } from '@/hooks/useScrollFade';
 import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 
-type RightPanelTab = 'automations' | 'properties' | 'yaml' | 'readability' | 'debug';
+type RightPanelTab = 'automations' | 'scripts' | 'properties' | 'yaml' | 'readability' | 'debug';
 
 /** Every tab trigger looks the same: an underlined mono label, accent underline when active. */
 const TAB_TRIGGER_CLASS =
@@ -25,7 +25,7 @@ interface RightPanelProps {
 
 /**
  * Right panel tab shell (design doc §4): Automations (default -- the new primary workflow) |
- * Properties | YAML | Readability | Debug. Content-only -- callers (desktop: ResizablePanel, mobile:
+ * Scripts | Properties | YAML | Readability | Debug. Content-only -- callers (desktop: ResizablePanel, mobile:
  * MobileDrawer) own the panel's chrome/positioning.
  */
 export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
@@ -77,6 +77,9 @@ export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
         <TabsTrigger value="automations" className={TAB_TRIGGER_CLASS}>
           {t('labels.automations')}
         </TabsTrigger>
+        <TabsTrigger value="scripts" className={TAB_TRIGGER_CLASS}>
+          {t('labels.scripts')}
+        </TabsTrigger>
         <TabsTrigger value="properties" className={TAB_TRIGGER_CLASS}>
           {t('labels.properties')}
         </TabsTrigger>
@@ -106,7 +109,10 @@ export function RightPanel({ dirtyGuard, className }: RightPanelProps) {
 
       <div className="flow-panel-container min-h-0 flex-1 overflow-hidden">
         <TabsContent value="automations" className="mt-0 h-full">
-          <AutomationsTab dirtyGuard={dirtyGuard} className="h-full" />
+          <FlowListTab kind="automation" dirtyGuard={dirtyGuard} className="h-full" />
+        </TabsContent>
+        <TabsContent value="scripts" className="mt-0 h-full">
+          <FlowListTab kind="script" dirtyGuard={dirtyGuard} className="h-full" />
         </TabsContent>
         <TabsContent
           ref={propertiesContentRef}

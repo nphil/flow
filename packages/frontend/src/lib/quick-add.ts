@@ -16,25 +16,29 @@ function hasSourceHandle(entry: NodeCatalogEntry): boolean {
 
 /**
  * Catalog entries offered by the quick-add menu, filtered by which handle the
- * new node needs to satisfy the dragged connection.
+ * new node needs to satisfy the dragged connection. `catalog` is what the open
+ * flow accepts at all (no triggers in a script).
  */
-export function getAvailableQuickAddTypes(direction: QuickAddDirection): NodeCatalogEntry[] {
+export function getAvailableQuickAddTypes(
+  direction: QuickAddDirection,
+  catalog: NodeCatalogEntry[] = NODE_CATALOG
+): NodeCatalogEntry[] {
   if (direction === 'forward') {
     // The new node must accept an incoming connection — triggers have no
     // target/input handle, so they can't complete a forward drag.
-    return NODE_CATALOG.filter((entry) => entry.kind !== 'trigger');
+    return catalog.filter((entry) => entry.kind !== 'trigger');
   }
   // Dragged backward from a target handle: the new node must have a source
   // handle to feed the dragged-from node.
-  return NODE_CATALOG.filter(hasSourceHandle);
+  return catalog.filter(hasSourceHandle);
 }
 
 /**
  * Catalog entries that can be spliced into the middle of an existing edge:
  * they need both an input (not a trigger) and an output (not a stop action).
  */
-export function getInsertableTypes(): NodeCatalogEntry[] {
-  return NODE_CATALOG.filter((entry) => entry.kind !== 'trigger' && hasSourceHandle(entry));
+export function getInsertableTypes(catalog: NodeCatalogEntry[] = NODE_CATALOG): NodeCatalogEntry[] {
+  return catalog.filter((entry) => entry.kind !== 'trigger' && hasSourceHandle(entry));
 }
 
 /**

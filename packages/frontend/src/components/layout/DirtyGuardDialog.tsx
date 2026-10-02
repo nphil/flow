@@ -7,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
+import { useFlowStore } from '@/store/flow-store';
 
 interface DirtyGuardDialogProps {
   open: boolean;
@@ -21,6 +23,7 @@ interface DirtyGuardDialogProps {
  */
 export function DirtyGuardDialog({ open, onCancel, onDiscard, onSave }: DirtyGuardDialogProps) {
   const { t } = useTranslation(['dialogs', 'common']);
+  const flowKind = useFlowStore((s) => s.flowKind);
 
   return (
     <Dialog
@@ -33,7 +36,7 @@ export function DirtyGuardDialog({ open, onCancel, onDiscard, onSave }: DirtyGua
         <DialogHeader>
           <DialogTitle className="text-flow-text">{t('dialogs:dirtyGuard.title')}</DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
-            {t('dialogs:dirtyGuard.description')}
+            {t(FLOW_TEXT[flowKind].dirtyDescription)}
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-2 pt-2">

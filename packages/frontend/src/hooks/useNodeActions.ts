@@ -20,6 +20,7 @@ import {
   type NodeAction,
   type NodeActionContext,
 } from '@/components/actions';
+import { canPlaceNodeKind } from '@/components/nodes/catalog';
 import { FIT_VIEW_MANUAL } from '@/lib/viewport';
 import { type FlowState, useFlowStore } from '@/store/flow-store';
 import { isMacOS } from '@/utils/useAgentPlatform';
@@ -54,6 +55,7 @@ export function buildActionContext(
     edges: s.edges,
     clipboard: s.clipboard,
     pasteCount: s.pasteCount,
+    canPlaceNodeKind: (nodeKind) => canPlaceNodeKind(s.flowKind, s.blueprint !== null, nodeKind),
     addNode: s.addNode,
     removeNode: s.removeNode,
     updateNodeData: s.updateNodeData,

@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { useDescribeNode } from '@/components/nodes/useNodeDescription';
 import { useHass } from '@/contexts/HassContext';
 import { useLiveTrace } from '@/hooks/useLiveTrace';
+import { findFlowEntity } from '@/lib/flow-catalog';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
 import { getHomeAssistantAPI, type ScriptExecutionState, type TraceListItem } from '@/lib/ha-api';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
@@ -97,8 +99,9 @@ export interface DebugTabProps {
 export function DebugTab({ className }: DebugTabProps) {
   const { t } = useTranslation(['common', 'dialogs', 'nodes', 'simulator']);
   const describeNode = useDescribeNode();
-  const { hass, entities } = useHass();
+  const { hass, entities, entityRegistryEntries } = useHass();
   const {
+    flowKind,
     automationId,
     traceData,
     isShowingTrace,
@@ -115,6 +118,7 @@ export function DebugTab({ className }: DebugTabProps) {
     setSimulationSpeed,
     isSimulating,
   } = useFlowStore();
+  const text = FLOW_TEXT[flowKind];
   const { isLive, toggleLive, runState, lastError } = useLiveTrace();
   const { fitView } = useReactFlow();
 
@@ -137,14 +141,14 @@ export function DebugTab({ className }: DebugTabProps) {
       setIsLoading(true);
       try {
         const api = getHomeAssistantAPI(hass);
-        const traceDetails = await api.getAutomationTraceDetails(automationId, runId);
+        const traceDetails = await api.getFlowTraceDetails(flowKind, automationId, runId);
         if (traceDetails) showTrace(traceDetails);
       } catch (error) {
         logger.error('Failed to load trace details:', error);
       }
       setIsLoading(false);
     },
-    [automationId, hass, showTrace]
+    [flowKind, automationId, hass, showTrace]
   );
 
   const loadTraceList = useCallback(async () => {
@@ -153,7 +157,7 @@ export function DebugTab({ className }: DebugTabProps) {
     setIsLoading(true);
     try {
       const api = getHomeAssistantAPI(hass);
-      const traceList = await api.getAutomationTraces(automationId);
+      const traceList = await api.getFlowTraces(flowKind, automationId);
       setTraces(traceList);
 
       // Auto-select and show the most recent run. Live mode drives showTrace
@@ -168,7 +172,7 @@ export function DebugTab({ className }: DebugTabProps) {
       setTraces([]);
     }
     setIsLoading(false);
-  }, [automationId, hass, showTraceRun]);
+  }, [flowKind, automationId, hass, showTraceRun]);
 
   useEffect(() => {
     if (automationId && hass) loadTraceList();
@@ -180,10 +184,10 @@ export function DebugTab({ className }: DebugTabProps) {
     if (traceRunsVersion === 0 || !automationId || !hass) return;
     const api = getHomeAssistantAPI(hass);
     api
-      .getAutomationTraces(automationId)
+      .getFlowTraces(flowKind, automationId)
       .then(setTraces)
       .catch((error) => logger.error('Failed to refresh automation traces:', error));
-  }, [traceRunsVersion, automationId, hass]);
+  }, [traceRunsVersion, flowKind, automationId, hass]);
 
   // While live, the run picker follows the in-flight run.
   useEffect(() => {
@@ -202,18 +206,19 @@ export function DebugTab({ className }: DebugTabProps) {
   // "Live" toggle defaults ON when an automation is open and its entity is
   // enabled (design doc §7) — applied once per opened automation, so the
   // user's own toggle afterward is never fought.
-  const automationEntity = automationId
-    ? entities.find((entity) => String(entity.attributes.id) === automationId)
-    : undefined;
+  const automationEntity = findFlowEntity(flowKind, automationId, entities, entityRegistryEntries);
   const appliedDefaultForId = useRef<string | null>(null);
   useEffect(() => {
     if (!automationId) return;
     if (appliedDefaultForId.current === automationId) return;
     if (automationEntity) {
       appliedDefaultForId.current = automationId;
-      useFlowStore.getState().setLiveTrace(automationEntity.state === 'on');
+      // A script's entity is only `on` while it runs, so an idle script still defaults to live.
+      useFlowStore
+        .getState()
+        .setLiveTrace(flowKind === 'script' || automationEntity.state === 'on');
     }
-  }, [automationId, automationEntity]);
+  }, [flowKind, automationId, automationEntity]);
 
   const handleTraceSelection = useCallback(
     (runId: string) => {
@@ -307,7 +312,7 @@ export function DebugTab({ className }: DebugTabProps) {
     return (
       <div className={cn('flex h-full items-center justify-center p-4', className)}>
         <span className="text-center font-mono text-flow-text-muted text-xs">
-          {t('dialogs:traceViewer.saveAutomationFirst')}
+          {t(text.traceSaveFirst)}
         </span>
       </div>
     );
@@ -319,9 +324,7 @@ export function DebugTab({ className }: DebugTabProps) {
     <div className={cn('flex h-full flex-col gap-3 overflow-y-auto p-3', className)}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-medium font-mono text-flow-text text-xs">
-            {t('labels.automationTrace')}
-          </span>
+          <span className="font-medium font-mono text-flow-text text-xs">{t(text.traceTitle)}</span>
           {isLive && runState !== 'idle' && (
             <span
               className={cn(
@@ -402,9 +405,7 @@ export function DebugTab({ className }: DebugTabProps) {
       )}
 
       {traces.length === 0 && !isLoading && (
-        <div className="text-center font-mono text-flow-text-muted text-xs">
-          {t('dialogs:traceViewer.noTracesFound')}
-        </div>
+        <div className="text-center font-mono text-flow-text-muted text-xs">{t(text.noTraces)}</div>
       )}
 
       {traces.length > 0 && (

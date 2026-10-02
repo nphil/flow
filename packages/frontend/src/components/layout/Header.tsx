@@ -37,13 +37,14 @@ import { Switch } from '@/components/ui/switch';
 import { useHass } from '@/contexts/HassContext';
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
 import { ACTION_GROUP_ORDER, useNodeActions } from '@/hooks/useNodeActions';
+import { findFlowEntity } from '@/lib/flow-catalog';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
 import { FIT_VIEW_MANUAL, FIT_VIEW_OPEN } from '@/lib/viewport';
 import { useFlowStore } from '@/store/flow-store';
-import type { HassEntity } from '@/types/hass';
 import { AboutDialog } from './AboutDialog';
-import { DeleteAutomationDialog } from './DeleteAutomationDialog';
+import { DeleteFlowDialog } from './DeleteFlowDialog';
 import { FlowMark } from './FlowMark';
 import { type ImportApplyPayload, ImportExportDialog } from './ImportExportDialog';
 import { ThemeMenu } from './ThemeMenu';
@@ -54,17 +55,6 @@ interface HeaderProps {
   onRequestSave: () => void;
   onToggleLeftDrawer: () => void;
   onToggleRightDrawer: () => void;
-}
-
-/** Finds the live automation entity behind the automation currently open on the canvas. */
-function findOpenAutomationEntity(entities: HassEntity[], automationId: string | null) {
-  if (!automationId) return undefined;
-  return entities.find(
-    (entity) =>
-      entity.entity_id.startsWith('automation.') &&
-      (String(entity.attributes.id ?? '') === automationId ||
-        entity.entity_id === `automation.${automationId}`)
-  );
 }
 
 /**
@@ -84,12 +74,21 @@ export function Header({
   onToggleRightDrawer,
 }: HeaderProps) {
   const { t } = useTranslation(['common', 'panels', 'dialogs']);
-  const { hass, config: hassConfig, entities, isRemote, setConfig } = useHass();
+  const {
+    hass,
+    config: hassConfig,
+    entities,
+    entityRegistryEntries,
+    isRemote,
+    setConfig,
+  } = useHass();
   const { fitView } = useReactFlow();
 
   const {
     flowName,
     flowMetadata,
+    flowKind,
+    blueprint,
     automationId,
     isSaving,
     isArranging,
@@ -105,6 +104,8 @@ export function Header({
     useShallow((s) => ({
       flowName: s.flowName,
       flowMetadata: s.flowMetadata,
+      flowKind: s.flowKind,
+      blueprint: s.blueprint,
       automationId: s.automationId,
       isSaving: s.isSaving,
       isArranging: s.isArranging,
@@ -118,6 +119,7 @@ export function Header({
       setAnimationsEnabled: s.setAnimationsEnabled,
     }))
   );
+  const text = FLOW_TEXT[flowKind];
   const isDirty = useFlowStore((s) => s.isDirty());
   const nodeActions = useNodeActions();
 
@@ -128,9 +130,21 @@ export function Header({
   const [isRunning, setIsRunning] = useState(false);
 
   const openEntity = useMemo(
-    () => findOpenAutomationEntity(entities, automationId),
-    [entities, automationId]
+    () => findFlowEntity(flowKind, automationId, entities, entityRegistryEntries),
+    [flowKind, automationId, entities, entityRegistryEntries]
   );
+
+  // An automation is enabled or disabled; a script is never either, it is only running or not.
+  const entityOn = openEntity?.state === 'on';
+  const statusChip = !openEntity
+    ? null
+    : flowKind === 'script'
+      ? entityOn
+        ? 'running'
+        : null
+      : entityOn
+        ? 'enabled'
+        : 'disabled';
 
   const handleZoomFit = () => fitView({ ...FIT_VIEW_MANUAL, duration: 220 });
 
@@ -138,11 +152,11 @@ export function Header({
     if (!hass || !openEntity) return;
     setIsRunning(true);
     try {
-      await getHomeAssistantAPI(hass, hassConfig).triggerAutomation(openEntity.entity_id);
-      toast.success(t('panels:header.runSuccess', { name: flowName }));
+      await getHomeAssistantAPI(hass, hassConfig).runFlow(flowKind, openEntity.entity_id);
+      toast.success(t(text.runSuccess, { name: flowName }));
     } catch (error) {
       toast.error(
-        t('panels:header.runFailed', {
+        t(text.runFailed, {
           message: error instanceof Error ? error.message : String(error),
         })
       );
@@ -153,23 +167,21 @@ export function Header({
 
   const handleDuplicate = () => {
     setAutomationId(null);
-    setFlowName(
-      t('panels:header.duplicateName', { name: flowName || t('common:defaults.newAutomation') })
-    );
-    toast.success(t('panels:header.duplicated'));
+    setFlowName(t('panels:header.duplicateName', { name: flowName || t(text.defaultName) }));
+    toast.success(t(text.duplicated));
   };
 
   const handleDeleteConfirm = async () => {
     if (!hass || !automationId) return;
     setIsDeleting(true);
     try {
-      await getHomeAssistantAPI(hass, hassConfig).deleteAutomation(automationId);
-      reset();
+      await getHomeAssistantAPI(hass, hassConfig).deleteFlow(flowKind, automationId);
+      reset(flowKind);
       setDeleteOpen(false);
-      toast.success(t('panels:header.deleted'));
+      toast.success(t(text.deleted));
     } catch (error) {
       toast.error(
-        t('panels:header.deleteFailed', {
+        t(text.deleteFailed, {
           message: error instanceof Error ? error.message : String(error),
         })
       );
@@ -221,13 +233,14 @@ export function Header({
           <input
             value={flowName}
             onChange={(event) => setFlowName(event.target.value)}
-            placeholder={t('common:placeholders.automationName')}
+            placeholder={t(text.namePlaceholder)}
             title={flowName || undefined}
             className="ui-focus-ring w-full min-w-0 truncate rounded-flow-control bg-transparent px-1.5 font-medium text-[13px] text-flow-text leading-[18px] placeholder:font-normal placeholder:text-flow-text-muted focus-visible:bg-flow-bg"
           />
 
           {(isDirty ||
-            openEntity ||
+            flowKind === 'script' ||
+            statusChip ||
             (flowMetadata.mode && flowMetadata.mode !== 'single') ||
             (isRemote && hass && !hass.connected)) && (
             <div className="mt-0.5 flex min-w-0 items-center gap-1 px-1.5">
@@ -240,18 +253,22 @@ export function Header({
                 />
               )}
 
-              {openEntity && (
+              {flowKind === 'script' && (
+                <span className="hidden shrink-0 rounded-full bg-flow-elevated px-1.5 font-mono text-[10px] text-flow-text-muted uppercase leading-[15px] tracking-wide sm:flex">
+                  {t('panels:header.scriptChip')}
+                </span>
+              )}
+
+              {statusChip && (
                 <span
                   className={cn(
                     'hidden shrink-0 items-center rounded-full px-1.5 font-mono text-[10px] uppercase leading-[15px] tracking-wide sm:flex',
-                    openEntity.state === 'on'
+                    entityOn
                       ? 'bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]'
                       : 'bg-flow-elevated text-flow-text-muted'
                   )}
                 >
-                  {openEntity.state === 'on'
-                    ? t('panels:header.enabled')
-                    : t('panels:header.disabled')}
+                  {t(`panels:header.${statusChip}`)}
                 </span>
               )}
 
@@ -296,7 +313,7 @@ export function Header({
 
         <Button
           size="sm"
-          disabled={!isDirty || isSaving}
+          disabled={!isDirty || isSaving || blueprint !== null}
           onClick={onRequestSave}
           title={t('common:buttons.save')}
           className={cn(
@@ -461,9 +478,10 @@ export function Header({
         onApply={handleApplyImport}
       />
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
-      <DeleteAutomationDialog
+      <DeleteFlowDialog
         open={deleteOpen}
-        automationName={flowName}
+        flowKind={flowKind}
+        flowName={flowName}
         isDeleting={isDeleting}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={handleDeleteConfirm}

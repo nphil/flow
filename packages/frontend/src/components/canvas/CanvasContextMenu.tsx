@@ -9,6 +9,8 @@ interface CanvasContextMenuProps {
   position: QuickAddPosition | null;
   canPaste: boolean;
   hasNodes: boolean;
+  /** False when the open flow takes no new nodes (made from a blueprint) */
+  canAddNode: boolean;
   onAddNode: () => void;
   onPasteHere: () => void;
   onSelectAll: () => void;
@@ -50,6 +52,7 @@ export function CanvasContextMenu({
   position,
   canPaste,
   hasNodes,
+  canAddNode,
   onAddNode,
   onPasteHere,
   onSelectAll,
@@ -83,10 +86,10 @@ export function CanvasContextMenu({
             sideOffset={2}
             className="w-52 rounded-flow-card border border-flow-border bg-flow-panel p-1 shadow-flow-pop"
           >
-            <MenuItem icon={Plus} onClick={onAddNode}>
+            <MenuItem icon={Plus} disabled={!canAddNode} onClick={onAddNode}>
               {t('common:canvasMenu.addNode')}
             </MenuItem>
-            <MenuItem icon={Clipboard} disabled={!canPaste} onClick={onPasteHere}>
+            <MenuItem icon={Clipboard} disabled={!canPaste || !canAddNode} onClick={onPasteHere}>
               {t('common:canvasMenu.pasteHere')}
             </MenuItem>
             <div className="my-1 h-px bg-flow-border" aria-hidden />

@@ -1,3 +1,4 @@
+import type { FlowKind } from '@flow/shared';
 import {
   Clock,
   GitBranch,
@@ -91,3 +92,20 @@ export const NODE_CATALOG: NodeCatalogEntry[] = [
     defaultData: { variables: {} },
   },
 ];
+
+/**
+ * Whether a node of `nodeKind` may be added to the open flow: never to a config made from a
+ * blueprint (read-only), and never a trigger to a script (it starts when it is called).
+ */
+export function canPlaceNodeKind(
+  flowKind: FlowKind,
+  isReadOnly: boolean,
+  nodeKind: string | undefined
+): boolean {
+  return !isReadOnly && !(flowKind === 'script' && nodeKind === 'trigger');
+}
+
+/** The palette entries the open flow accepts: every entry for an automation, no triggers for a script, none when read-only. */
+export function getNodeCatalog(flowKind: FlowKind, isReadOnly = false): NodeCatalogEntry[] {
+  return NODE_CATALOG.filter((entry) => canPlaceNodeKind(flowKind, isReadOnly, entry.kind));
+}

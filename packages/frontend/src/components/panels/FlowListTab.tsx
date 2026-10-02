@@ -1,3 +1,4 @@
+import type { FlowKind } from '@flow/shared';
 import { useReactFlow } from '@xyflow/react';
 import type { TFunction } from 'i18next';
 import type { LucideIcon } from 'lucide-react';
@@ -15,26 +16,29 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { MarqueeText } from '@/components/ui/MarqueeText';
+import { MdiIcon } from '@/components/ui/MdiIcon';
 import { Switch } from '@/components/ui/switch';
 import { useHass } from '@/contexts/HassContext';
-import {
-  type AutomationFilterChip,
-  filterAutomationCatalogItemsByChip,
-  planAutomationOpen,
-  setAutomationEnabled,
-  useAutomationCatalog,
-} from '@/hooks/useAutomationCatalog';
 import type { DirtyGuard } from '@/hooks/useDirtyGuard';
+import {
+  FLOW_CHIPS,
+  type FlowFilterChip,
+  filterFlowCatalogItemsByChip,
+  planFlowOpen,
+  setAutomationEnabled,
+  useFlowCatalog,
+} from '@/hooks/useFlowCatalog';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { useNow } from '@/hooks/useNow';
 import { useScrollFade } from '@/hooks/useScrollFade';
-import type { AutomationCatalogItem } from '@/lib/ha-api';
+import type { FlowCatalogItem } from '@/lib/flow-catalog';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { cn } from '@/lib/utils';
 import { FIT_VIEW_OPEN } from '@/lib/viewport';
 import { useFlowStore } from '@/store/flow-store';
 
-interface AutomationsTabProps {
+interface FlowListTabProps {
+  kind: FlowKind;
   className?: string;
   dirtyGuard: DirtyGuard;
 }
@@ -46,7 +50,44 @@ const MODE_ICONS: Record<string, LucideIcon> = {
   parallel: Layers,
 };
 
-const CHIPS: AutomationFilterChip[] = ['all', 'enabled', 'disabled', 'recent'];
+/** The chip labels. "All" and "Recent" read the same for both lists. */
+const CHIP_LABEL_KEYS = {
+  all: 'panels:automationsTab.chips.all',
+  enabled: 'panels:automationsTab.chips.enabled',
+  disabled: 'panels:automationsTab.chips.disabled',
+  running: 'panels:scriptsTab.chips.running',
+  recent: 'panels:automationsTab.chips.recent',
+} as const satisfies Record<FlowFilterChip, string>;
+
+/** What differs between the automation list and the script list. */
+const FLOW_LIST_VIEW = {
+  automation: {
+    showToggle: true,
+    showIcon: false,
+    text: {
+      newButton: 'panels:automationsTab.newAutomation',
+      newName: 'common:defaults.newAutomation',
+      search: 'panels:automationsTab.searchPlaceholder',
+      emptyHeadline: 'panels:automationsTab.emptyHeadline',
+      emptyBody: 'panels:automationsTab.emptyBody',
+      noResults: 'panels:automationsTab.noResults',
+      openFailed: 'panels:automationsTab.openFailed',
+    },
+  },
+  script: {
+    showToggle: false,
+    showIcon: true,
+    text: {
+      newButton: 'panels:scriptsTab.newScript',
+      newName: 'common:defaults.newScript',
+      search: 'panels:scriptsTab.searchPlaceholder',
+      emptyHeadline: 'panels:scriptsTab.emptyHeadline',
+      emptyBody: 'panels:scriptsTab.emptyBody',
+      noResults: 'panels:scriptsTab.noResults',
+      openFailed: 'panels:scriptsTab.openFailed',
+    },
+  },
+} as const;
 
 /** Reuses the existing shared relative-time keys (dialogs:import.*) rather than duplicating
  * near-identical strings under a new namespace -- also used by DebugTab's trace timestamps. */
@@ -70,13 +111,15 @@ function formatRelativeTime(
 
 /**
  * Right panel → Automations (design doc §4): THE new primary workflow. A live, searchable,
- * filterable list of every HA automation, backed entirely by data HassContext already pushes
- * reactively (no polling here -- see useAutomationCatalog).
+ * filterable list of every HA automation or script (one component for both: `kind` picks the
+ * text, the chips and whether a row has an enable switch), backed entirely by data HassContext
+ * already pushes reactively (no polling here -- see useFlowCatalog).
  */
-export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
+export function FlowListTab({ kind, className, dirtyGuard }: FlowListTabProps) {
+  const view = FLOW_LIST_VIEW[kind];
   const { t } = useTranslation(['panels', 'common', 'dialogs']);
   const { hass, config: hassConfig, entities, isRemote, connectionError } = useHass();
-  const [chip, setChip] = useState<AutomationFilterChip>('all');
+  const [chip, setChip] = useState<FlowFilterChip>('all');
   const now = useNow();
   const { ref: chipRowRef, isOverflowing: chipsOverflowing } = useScrollFade<HTMLDivElement>();
 
@@ -93,14 +136,15 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
     catalogItems,
     areaIdToName,
     isLoading: registriesLoading,
-  } = useAutomationCatalog({
+  } = useFlowCatalog({
+    kind,
     hass,
     hassConfig,
     entities,
   });
 
   const chipFiltered = useMemo(
-    () => filterAutomationCatalogItemsByChip(catalogItems, chip, now),
+    () => filterFlowCatalogItemsByChip(catalogItems, chip, now),
     [catalogItems, chip, now]
   );
 
@@ -109,23 +153,25 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
     threshold: 0.4,
   });
 
-  const automationId = useFlowStore((s) => s.automationId);
+  const openId = useFlowStore((s) => s.automationId);
+  const openKind = useFlowStore((s) => s.flowKind);
   const reset = useFlowStore((s) => s.reset);
   const setFlowName = useFlowStore((s) => s.setFlowName);
-  const openAutomationById = useFlowStore((s) => s.openAutomationById);
+  const openFlowById = useFlowStore((s) => s.openFlowById);
   const { fitView } = useReactFlow();
 
   const counts = useMemo(
     () => ({
       all: catalogItems.length,
-      enabled: catalogItems.filter((item) => item.enabled).length,
-      disabled: catalogItems.filter((item) => !item.enabled).length,
-      recent: filterAutomationCatalogItemsByChip(catalogItems, 'recent', now).length,
+      enabled: catalogItems.filter((item) => item.is_on).length,
+      running: catalogItems.filter((item) => item.is_on).length,
+      disabled: catalogItems.filter((item) => !item.is_on).length,
+      recent: filterFlowCatalogItemsByChip(catalogItems, 'recent', now).length,
     }),
     [catalogItems, now]
   );
 
-  const handleToggle = async (item: AutomationCatalogItem, enabled: boolean) => {
+  const handleToggle = async (item: FlowCatalogItem, enabled: boolean) => {
     if (!hass) return;
     try {
       await setAutomationEnabled(getHomeAssistantAPI(hass, hassConfig), item, enabled);
@@ -138,17 +184,17 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
     }
   };
 
-  const handleRowClick = (item: AutomationCatalogItem) => {
-    const plan = planAutomationOpen(item.automation_id, dirtyGuard.isDirty);
+  const handleRowClick = (item: FlowCatalogItem) => {
+    const plan = planFlowOpen(kind, item.flow_id, dirtyGuard.isDirty);
     const open = () => {
-      openAutomationById(plan.automationId)
+      openFlowById(plan.kind, plan.flowId)
         .then(() => {
           // Content replaced — refit at a readable zoom (see lib/viewport.ts).
           setTimeout(() => fitView({ ...FIT_VIEW_OPEN, duration: 300 }), 50);
         })
         .catch((error: unknown) => {
           toast.error(
-            t('panels:automationsTab.openFailed', {
+            t(view.text.openFailed, {
               message: error instanceof Error ? error.message : String(error),
             })
           );
@@ -161,10 +207,10 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
     }
   };
 
-  const handleNewAutomation = () => {
+  const handleNew = () => {
     dirtyGuard.guard(() => {
-      reset();
-      setFlowName(t('common:defaults.newAutomation'));
+      reset(kind);
+      setFlowName(t(view.text.newName));
     });
   };
 
@@ -179,11 +225,11 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
       <div className="flex flex-col gap-2 border-flow-border border-b p-2">
         <button
           type="button"
-          onClick={handleNewAutomation}
+          onClick={handleNew}
           className="ui-focus-ring flex items-center justify-center gap-2 rounded-flow-control bg-flow-accent px-3 py-2 font-mono text-flow-on-accent text-xs transition-colors duration-flow-fast hover:bg-flow-accent-hover"
         >
           <Plus className="h-3.5 w-3.5" />
-          {t('panels:automationsTab.newAutomation')}
+          {t(view.text.newButton)}
         </button>
 
         <div className="relative">
@@ -192,7 +238,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('panels:automationsTab.searchPlaceholder')}
+            placeholder={t(view.text.search)}
             className="ui-focus-ring w-full rounded-flow-control border border-flow-border bg-flow-bg py-1.5 pr-2 pl-7 font-mono text-flow-text text-xs placeholder:text-flow-text-muted focus-visible:border-flow-accent"
           />
         </div>
@@ -204,7 +250,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
             chipsOverflowing && 'flow-scroll-fade'
           )}
         >
-          {CHIPS.map((chipOption) => (
+          {FLOW_CHIPS[kind].map((chipOption) => (
             <button
               key={chipOption}
               type="button"
@@ -217,7 +263,7 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
                   : 'bg-flow-elevated text-flow-text-muted hover:text-flow-text'
               )}
             >
-              {`${t(`panels:automationsTab.chips.${chipOption}`)} (${counts[chipOption]})`}
+              {`${t(CHIP_LABEL_KEYS[chipOption])} (${counts[chipOption]})`}
             </button>
           ))}
         </div>
@@ -237,21 +283,17 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
           </div>
         ) : showEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <p className="font-medium text-flow-text text-lg">
-              {t('panels:automationsTab.emptyHeadline')}
-            </p>
-            <p className="font-mono text-flow-text-muted text-xs">
-              {t('panels:automationsTab.emptyBody')}
-            </p>
+            <p className="font-medium text-flow-text text-lg">{t(view.text.emptyHeadline)}</p>
+            <p className="font-mono text-flow-text-muted text-xs">{t(view.text.emptyBody)}</p>
           </div>
         ) : showNoResults ? (
           <p className="p-6 text-center font-mono text-flow-text-muted text-xs">
-            {t('panels:automationsTab.noResults')}
+            {t(view.text.noResults)}
           </p>
         ) : (
           <ul>
             {filteredItems.map((item) => {
-              const isActive = automationId === item.automation_id;
+              const isActive = openKind === kind && openId === item.flow_id;
               const ModeIcon = (item.mode && MODE_ICONS[item.mode]) || MODE_ICONS.single;
               const areaName = item.area_id ? areaIdToName[item.area_id] : undefined;
 
@@ -278,6 +320,9 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
+                        {view.showIcon && (
+                          <MdiIcon icon={item.icon} className="h-3.5 w-3.5 text-flow-text-muted" />
+                        )}
                         <MarqueeText
                           text={item.friendly_name}
                           active={isActive}
@@ -302,17 +347,28 @@ export function AutomationsTab({ className, dirtyGuard }: AutomationsTabProps) {
                         )}
                       </div>
                     </div>
-                    <Switch
-                      checked={item.enabled}
-                      onClick={(event) => event.stopPropagation()}
-                      onCheckedChange={(checked) => handleToggle(item, checked)}
-                      className="shrink-0 data-[state=checked]:bg-flow-accent data-[state=unchecked]:bg-flow-elevated"
-                      aria-label={
-                        item.enabled
-                          ? t('panels:automationsTab.disable')
-                          : t('panels:automationsTab.enable')
-                      }
-                    />
+                    {view.showToggle ? (
+                      <Switch
+                        checked={item.is_on}
+                        onClick={(event) => event.stopPropagation()}
+                        onCheckedChange={(checked) => handleToggle(item, checked)}
+                        className="shrink-0 data-[state=checked]:bg-flow-accent data-[state=unchecked]:bg-flow-elevated"
+                        aria-label={
+                          item.is_on
+                            ? t('panels:automationsTab.disable')
+                            : t('panels:automationsTab.enable')
+                        }
+                      />
+                    ) : (
+                      item.is_on && (
+                        <span
+                          role="img"
+                          title={t('panels:scriptsTab.chips.running')}
+                          aria-label={t('panels:scriptsTab.chips.running')}
+                          className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-flow-accent"
+                        />
+                      )
+                    )}
                   </div>
                 </li>
               );

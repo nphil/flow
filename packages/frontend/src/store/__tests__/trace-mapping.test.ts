@@ -12,7 +12,7 @@
 import type * as TranspilerModule from '@flow/transpiler';
 import type { TracePathMap } from '@flow/transpiler';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
+import type { FlowTrace, TraceStep } from '@/lib/ha-api';
 import { useFlowStore } from '../flow-store';
 
 vi.mock('@flow/transpiler', async (importOriginal) => {
@@ -52,8 +52,8 @@ function buildStep(path: string, timestamp: string, extra: Partial<TraceStep> = 
 
 function buildTrace(
   trace: Record<string, TraceStep[]>,
-  overrides: Partial<AutomationTrace> = {}
-): AutomationTrace {
+  overrides: Partial<FlowTrace> = {}
+): FlowTrace {
   return {
     last_step: null,
     run_id: 'run-1',
@@ -71,7 +71,7 @@ function buildTrace(
 }
 
 /** Seed the store's tracePathMap (showTrace's only map source) then show the trace. */
-function showTraceWith(trace: AutomationTrace, pathMap: TracePathMap | null): void {
+function showTraceWith(trace: FlowTrace, pathMap: TracePathMap | null): void {
   useFlowStore.setState({ tracePathMap: pathMap });
   useFlowStore.getState().showTrace(trace);
 }

@@ -17,18 +17,28 @@ export function copyNodesToClipboard(context: NodeActionContext): void {
 }
 
 /**
- * Clones a set of nodes and their connecting edges into the canvas.
+ * Clones a set of nodes and their connecting edges into the canvas, minus the nodes the open flow
+ * does not take (see `NodeActionContext.canPlaceNodeKind`).
  * Deselects existing nodes and selects the new clones.
  * By default the clones land at a progressive offset based on the paste
  * count; pass `at` (flow coordinates) to anchor the group's top-left corner
  * there instead — the context menu's "Paste here".
  */
 export function cloneNodesIntoCanvas(
-  sourceNodes: Node<FlowNodeData>[],
-  sourceEdges: Edge[],
+  allSourceNodes: Node<FlowNodeData>[],
+  allSourceEdges: Edge[],
   context: NodeActionContext,
   at?: { x: number; y: number }
 ): void {
+  // A script takes no trigger nodes and a blueprint instance no nodes at all: leave those out,
+  // together with the edges that would be left dangling.
+  const sourceNodes = allSourceNodes.filter((n) => context.canPlaceNodeKind(n.type));
+  if (sourceNodes.length === 0) return;
+  const keptIds = new Set(sourceNodes.map((n) => n.id));
+  const sourceEdges = allSourceEdges.filter(
+    (edge) => keptIds.has(edge.source) && keptIds.has(edge.target)
+  );
+
   const currentPasteCount = (context.pasteCount || 0) + 1;
   context.setPasteCount(currentPasteCount);
   const offset = 50 * currentPasteCount;

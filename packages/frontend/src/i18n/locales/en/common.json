@@ -51,7 +51,10 @@
     "zones": "Zones",
     "unassigned": "Unassigned",
     "workspaceSources": "Merged Sources",
-    "canvasTools": "Canvas tools"
+    "canvasTools": "Canvas tools",
+    "scripts": "Scripts",
+    "scriptName": "Script name",
+    "scriptTrace": "Script Trace"
   },
   "status": {
     "connecting": "Connecting...",
@@ -82,7 +85,10 @@
     "duration": "00:05:00",
     "enterTemplate": "Enter Jinja2 template...",
     "jsonExample": "{ \"key\": \"value\" }",
-    "none": "None"
+    "none": "None",
+    "scriptName": "Script name",
+    "enterScriptName": "Enter script name...",
+    "describeScript": "Describe what this script does..."
   },
   "help": {
     "clickNodesToAdd": "Click nodes to add",
@@ -111,7 +117,8 @@
     "stateMachine": "State Machine"
   },
   "defaults": {
-    "newAutomation": "New Automation"
+    "newAutomation": "New Automation",
+    "newScript": "New Script"
   },
   "boolean": {
     "true": "True",
@@ -215,5 +222,28 @@
   "canvasMenu": {
     "addNode": "Add node…",
     "pasteHere": "Paste here"
+  },
+  "scriptSettings": {
+    "title": "Script Settings",
+    "modeDescription": "Controls what happens when the script is called while already running.",
+    "icon": "Icon",
+    "iconDescription": "An mdi icon shown for the script, for example mdi:script-text.",
+    "fields": "Inputs",
+    "fieldsDescription": "The values the script is called with, as YAML (name, description, required, example, default, selector for each).",
+    "fieldsPlaceholder": "brightness:\n  name: Brightness\n  required: true",
+    "applyFields": "Apply",
+    "fieldsNotMapping": "The inputs must be a list of names, each with its settings."
+  },
+  "blueprint": {
+    "heading": "Made from a blueprint",
+    "path": "Blueprint",
+    "inputs": "Inputs",
+    "noInputs": "No inputs set",
+    "readOnly": "This is read-only here. Edit the blueprint inputs in Home Assistant.",
+    "openInHa": "Open in Home Assistant",
+    "paletteDisabled": "Nodes cannot be added to a flow made from a blueprint."
+  },
+  "canvas": {
+    "addFirstStep": "Add the first step"
   }
 }

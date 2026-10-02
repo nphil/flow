@@ -44,6 +44,8 @@ interface DeviceRegistryEntry {
  */
 interface EntityRegistryEntry {
   entity_id: string;
+  /** What the integration identifies the entity by; a script's key for a `script.*` entity. */
+  unique_id?: string | null;
   device_id: string | null;
   area_id: string | null;
   name: string | null;

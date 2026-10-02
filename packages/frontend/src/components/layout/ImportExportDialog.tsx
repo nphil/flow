@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { detectImportKind } from '@/lib/import-kind';
 import { cn } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 import { copyToClipboard } from '@/utils/copy-to-clipboard';
@@ -55,7 +56,9 @@ export function ImportExportDialog({
   const [copied, setCopied] = useState(false);
 
   const flowName = useFlowStore((s) => s.flowName);
+  const flowKind = useFlowStore((s) => s.flowKind);
   const nodes = useFlowStore((s) => s.nodes);
+  const hasBlueprint = useFlowStore((s) => s.blueprint !== null);
   const toFlowGraph = useFlowStore((s) => s.toFlowGraph);
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export function ImportExportDialog({
     let cancelled = false;
     setIsParsing(true);
     transpiler
-      .fromYaml(yamlText)
+      .fromYaml(yamlText, { kind: detectImportKind(yamlText, flowKind) })
       .then((result) => {
         if (cancelled) return;
         setParseResult(result);
@@ -96,7 +99,7 @@ export function ImportExportDialog({
     return () => {
       cancelled = true;
     };
-  }, [yamlText, t]);
+  }, [yamlText, flowKind, t]);
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -115,7 +118,7 @@ export function ImportExportDialog({
   };
 
   const exportYaml = useMemo(() => {
-    if (topTab !== 'export' || nodes.length === 0) return null;
+    if (topTab !== 'export' || (nodes.length === 0 && !hasBlueprint)) return null;
     try {
       const graph = toFlowGraph();
       const result = transpiler.transpile(graph);
@@ -123,7 +126,7 @@ export function ImportExportDialog({
     } catch {
       return null;
     }
-  }, [topTab, nodes, toFlowGraph]);
+  }, [topTab, nodes, hasBlueprint, toFlowGraph]);
 
   const handleCopyExport = async () => {
     if (!exportYaml) return;

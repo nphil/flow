@@ -51,7 +51,8 @@
     "zones": "地理围栏",
     "unassigned": "未分配",
     "workspaceSources": "合并来源",
-    "canvasTools": "画布工具"
+    "canvasTools": "画布工具",
+    "scripts": "脚本"
   },
   "status": {
     "connecting": "正在连接...",

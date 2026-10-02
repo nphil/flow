@@ -51,7 +51,8 @@
     "zones": "Zones de présence",
     "unassigned": "Non assigné",
     "workspaceSources": "Sources fusionnées",
-    "canvasTools": "Outils du canevas"
+    "canvasTools": "Outils du canevas",
+    "scripts": "Scripts"
   },
   "status": {
     "connecting": "Connexion en cours...",

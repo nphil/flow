@@ -1,3 +1,4 @@
+import type { FlowKind } from '@flow/shared';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,24 +8,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
 
-interface DeleteAutomationDialogProps {
+interface DeleteFlowDialogProps {
   open: boolean;
-  automationName: string;
+  flowKind: FlowKind;
+  flowName: string;
   isDeleting: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
 /** Overflow menu → Delete (design doc §4): destructive, unrelated to the unsaved-changes guard. */
-export function DeleteAutomationDialog({
+export function DeleteFlowDialog({
   open,
-  automationName,
+  flowKind,
+  flowName,
   isDeleting,
   onCancel,
   onConfirm,
-}: DeleteAutomationDialogProps) {
+}: DeleteFlowDialogProps) {
   const { t } = useTranslation(['dialogs', 'common']);
+  const text = FLOW_TEXT[flowKind];
 
   return (
     <Dialog
@@ -35,11 +40,9 @@ export function DeleteAutomationDialog({
     >
       <DialogContent className="max-w-md border-flow-border bg-flow-panel text-flow-text shadow-flow-modal">
         <DialogHeader>
-          <DialogTitle className="text-flow-text">
-            {t('dialogs:deleteAutomation.title')}
-          </DialogTitle>
+          <DialogTitle className="text-flow-text">{t(text.deleteTitle)}</DialogTitle>
           <DialogDescription className="text-flow-text-secondary">
-            {t('dialogs:deleteAutomation.description', { name: automationName })}
+            {t(text.deleteDescription, { name: flowName })}
           </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-2 pt-2">
@@ -56,7 +59,7 @@ export function DeleteAutomationDialog({
             disabled={isDeleting}
             className="bg-[var(--danger)] text-flow-on-accent hover:brightness-90"
           >
-            {isDeleting ? t('dialogs:deleteAutomation.deleting') : t('common:buttons.delete')}
+            {isDeleting ? t(text.deleting) : t('common:buttons.delete')}
           </Button>
         </div>
       </DialogContent>

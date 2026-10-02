@@ -19,7 +19,7 @@ import { cn, generateNodeId } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
 import type { HassEntity } from '@/types/hass';
 import { getNodeKind, type NodeKind } from '@/utils/nodeData';
-import { AutomationSettingsPanel } from './AutomationSettingsPanel';
+import { FlowSettingsPanel } from './FlowSettingsPanel';
 import { NodeFields } from './NodeFields';
 import { PropertyEditor } from './PropertyEditor';
 
@@ -57,7 +57,7 @@ interface PropertyPanelProps {
 /**
  * Node editor (design doc §6): header (kind-colored chip + inline alias edit), the existing
  * type-specific field dispatch, a common section every step type shares (Enabled, Notes), and a
- * footer (Duplicate, Delete, per-node YAML foldout). Falls back to AutomationSettingsPanel when
+ * footer (Duplicate, Delete, per-node YAML foldout). Falls back to FlowSettingsPanel when
  * no node is selected.
  */
 export function PropertyPanel({ className }: PropertyPanelProps) {
@@ -125,7 +125,7 @@ export function PropertyPanel({ className }: PropertyPanelProps) {
   const description = useNodeDescription(selectedNode?.type, selectedNode?.data ?? NO_NODE_DATA);
 
   if (!selectedNode) {
-    return <AutomationSettingsPanel />;
+    return <FlowSettingsPanel />;
   }
 
   const handleChange = (key: string, value: unknown) => {

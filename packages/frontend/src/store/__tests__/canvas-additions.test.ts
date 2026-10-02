@@ -1,6 +1,6 @@
 /**
  * Covers the three Wave-2 store additions: `isDirty`, `autoArrange`, and
- * `openAutomationById`.
+ * `openFlowById`.
  */
 
 import type { Node } from '@xyflow/react';
@@ -139,7 +139,7 @@ describe('autoArrange', () => {
   });
 });
 
-describe('openAutomationById', () => {
+describe('openFlowById', () => {
   beforeEach(() => {
     useFlowStore.getState().reset();
   });
@@ -149,19 +149,19 @@ describe('openAutomationById', () => {
       isConnected: () => false,
     } as unknown as ReturnType<typeof getHomeAssistantAPI>);
 
-    await expect(useFlowStore.getState().openAutomationById('automation.test')).rejects.toThrow(
-      /not connected/i
-    );
+    await expect(
+      useFlowStore.getState().openFlowById('automation', 'automation.test')
+    ).rejects.toThrow(/not connected/i);
     expect(useFlowStore.getState().automationId).toBeNull();
   });
 
   it('sets name/id from the automation id when the config fetch comes back empty', async () => {
     vi.mocked(getHomeAssistantAPI).mockReturnValue({
       isConnected: () => true,
-      getAutomationConfigWithFallback: vi.fn().mockResolvedValue(null),
+      getFlowConfigWithFallback: vi.fn().mockResolvedValue(null),
     } as unknown as ReturnType<typeof getHomeAssistantAPI>);
 
-    await useFlowStore.getState().openAutomationById('automation.missing_config');
+    await useFlowStore.getState().openFlowById('automation', 'automation.missing_config');
 
     const state = useFlowStore.getState();
     expect(state.automationId).toBe('automation.missing_config');
@@ -172,14 +172,14 @@ describe('openAutomationById', () => {
   it('parses a fetched YAML config into the canvas via the transpiler and sets id/name from its alias', async () => {
     vi.mocked(getHomeAssistantAPI).mockReturnValue({
       isConnected: () => true,
-      getAutomationConfigWithFallback: vi.fn().mockResolvedValue({
+      getFlowConfigWithFallback: vi.fn().mockResolvedValue({
         alias: 'Porch light at dusk',
         trigger: [{ platform: 'sun', event: 'sunset' }],
         action: [{ service: 'light.turn_on', target: { entity_id: 'light.porch' } }],
       }),
     } as unknown as ReturnType<typeof getHomeAssistantAPI>);
 
-    await useFlowStore.getState().openAutomationById('automation.porch_light');
+    await useFlowStore.getState().openFlowById('automation', 'automation.porch_light');
 
     const state = useFlowStore.getState();
     expect(state.automationId).toBe('automation.porch_light');

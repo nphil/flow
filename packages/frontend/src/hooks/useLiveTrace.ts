@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHass } from '@/contexts/HassContext';
+import { findFlowEntity } from '@/lib/flow-catalog';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { logger } from '@/lib/logger';
 import { useFlowStore } from '@/store/flow-store';
 
 export type LiveTraceRunState = 'idle' | 'waiting' | 'running';
 
+/** The bus event that announces a run: an automation fires `automation_triggered`, a script `script_started`. */
+const FLOW_START_EVENT = {
+  automation: 'automation_triggered',
+  script: 'script_started',
+} as const;
+
 /**
- * Payload of HA's `automation_triggered` bus event. `run_id` is never
- * included — it has to be resolved afterwards via `trace/contexts`, matching
+ * The bus event Home Assistant fires when an automation or a script starts a run. Its payload has
+ * no `run_id` — it has to be resolved afterwards via `trace/contexts`, matching
  * the event's `context.id` against a stored trace's context.
  */
-interface AutomationTriggeredEvent {
+interface FlowStartedEvent {
   data: {
     entity_id?: string;
     name?: string;
@@ -50,9 +57,11 @@ export function useLiveTrace(): {
   runState: LiveTraceRunState;
   lastError: string | null;
 } {
-  const { hass, connection, entities } = useHass();
+  const { hass, connection, entities, entityRegistryEntries } = useHass();
   const isLive = useFlowStore((state) => state.isLiveTrace);
   const automationId = useFlowStore((state) => state.automationId);
+  const kind = useFlowStore((state) => state.flowKind);
+  const startEvent = FLOW_START_EVENT[kind];
 
   const [runState, setRunState] = useState<LiveTraceRunState>('idle');
   const [lastError, setLastError] = useState<string | null>(null);
@@ -66,6 +75,8 @@ export function useLiveTrace(): {
   entitiesRef.current = entities;
   const automationIdRef = useRef(automationId);
   automationIdRef.current = automationId;
+  const registryRef = useRef(entityRegistryEntries);
+  registryRef.current = entityRegistryEntries;
 
   // Bumped whenever a poll loop starts or must be abandoned, so a stale
   // loop (an older run, or one torn down by cleanup) can tell it's no
@@ -109,7 +120,7 @@ export function useLiveTrace(): {
 
         try {
           const api = getHomeAssistantAPI(hassValue);
-          const trace = await api.getAutomationTraceDetails(automationIdValue, runId);
+          const trace = await api.getFlowTraceDetails(kind, automationIdValue, runId);
           if (cancelled || pollGenerationRef.current !== myGeneration) return;
 
           if (trace) {
@@ -138,25 +149,22 @@ export function useLiveTrace(): {
       poll();
     };
 
-    const handleTriggered = async (event: AutomationTriggeredEvent) => {
+    const handleTriggered = async (event: FlowStartedEvent) => {
       const currentAutomationId = automationIdRef.current;
       const entityId = event.data.entity_id;
       const contextId = event.context.id;
       if (!currentAutomationId || !entityId || !contextId) return;
 
-      // Fast pre-check: if the triggered entity's own `id` attribute is
-      // known and doesn't match, this trigger is for a different automation
-      // — skip without touching the network at all.
-      const entity = entitiesRef.current.find((candidate) => candidate.entity_id === entityId);
-      const entityAttributeId = entity?.attributes.id;
-      const resolvedEntityAutomationId =
-        typeof entityAttributeId === 'string' || typeof entityAttributeId === 'number'
-          ? String(entityAttributeId)
-          : undefined;
-      if (
-        resolvedEntityAutomationId !== undefined &&
-        resolvedEntityAutomationId !== currentAutomationId
-      ) {
+      // Fast pre-check: if the open item's entity is known and isn't the one
+      // that started, this run is for a different automation or script —
+      // skip without touching the network at all.
+      const openEntity = findFlowEntity(
+        kind,
+        currentAutomationId,
+        entitiesRef.current,
+        registryRef.current
+      );
+      if (openEntity && openEntity.entity_id !== entityId) {
         return;
       }
 
@@ -168,7 +176,7 @@ export function useLiveTrace(): {
         if (cancelled) return;
         const contexts = await api.getTraceContexts();
         const match = contexts[contextId];
-        if (match && match.item_id === currentAutomationId) {
+        if (match && match.domain === kind && match.item_id === currentAutomationId) {
           if (!cancelled) startPolling(match.run_id);
           return;
         }
@@ -178,17 +186,17 @@ export function useLiveTrace(): {
       }
 
       // Only surface a failure when the entity check positively identified
-      // this trigger as ours — an inconclusive pre-check (attributes
-      // unavailable) exhausting retries just means the event was probably
-      // for a different automation, which is expected and not an error.
-      if (resolvedEntityAutomationId === currentAutomationId && !cancelled) {
+      // this run as ours — an inconclusive pre-check (entity not loaded yet)
+      // exhausting retries just means the event was probably for a different
+      // automation or script, which is expected and not an error.
+      if (openEntity?.entity_id === entityId && !cancelled) {
         logger.warn('Live trace: triggered automation matched but its trace never appeared');
         setLastError('Could not locate the trace for the latest run');
       }
     };
 
     connection
-      .subscribeEvents<AutomationTriggeredEvent>(handleTriggered, 'automation_triggered')
+      .subscribeEvents<FlowStartedEvent>(handleTriggered, startEvent)
       .then((unsub) => {
         if (cancelled) {
           unsub();
@@ -197,7 +205,7 @@ export function useLiveTrace(): {
         unsubscribe = unsub;
       })
       .catch((error) => {
-        logger.error('Live trace: failed to subscribe to automation_triggered:', error);
+        logger.error(`Live trace: failed to subscribe to ${startEvent}:`, error);
         if (!cancelled) setLastError('Failed to subscribe to live trigger events');
       });
 
@@ -206,7 +214,7 @@ export function useLiveTrace(): {
       pollGenerationRef.current += 1;
       unsubscribe?.();
     };
-  }, [isLive, automationId, connection]);
+  }, [isLive, kind, startEvent, automationId, connection]);
 
   return { isLive, toggleLive, runState, lastError };
 }

@@ -10,8 +10,8 @@ import { Header } from '@/components/layout/Header';
 import { LeftPanel } from '@/components/layout/LeftPanel';
 import { MobileDrawer } from '@/components/layout/MobileDrawer';
 import { RightPanel } from '@/components/layout/RightPanel';
-import { AutomationSaveDialog } from '@/components/panels/AutomationSaveDialog';
 import { ConnectScreen } from '@/components/panels/ConnectScreen';
+import { FlowSaveDialog } from '@/components/panels/FlowSaveDialog';
 import { NodePalette } from '@/components/panels/NodePalette';
 import { Button } from '@/components/ui/button';
 import {
@@ -163,7 +163,7 @@ function App() {
           onDiscard={dirtyGuard.proceed}
           onSave={() => setSaveDialogOpen(true)}
         />
-        <AutomationSaveDialog
+        <FlowSaveDialog
           isOpen={saveDialogOpen}
           onClose={() => setSaveDialogOpen(false)}
           onSaved={() => {

@@ -6,7 +6,12 @@
     "descriptionUpdate": "Update this automation in Home Assistant",
     "nameLabel": "Automation Name",
     "descriptionLabel": "Description (Optional)",
-    "nameConflict": "Name already exists. Use: \"{{suggestedName}}\"?"
+    "nameConflict": "Name already exists. Use: \"{{suggestedName}}\"?",
+    "titleScript": "Save Script",
+    "titleUpdateScript": "Update Script",
+    "descriptionScript": "Save this script to Home Assistant",
+    "descriptionUpdateScript": "Update this script in Home Assistant",
+    "nameLabelScript": "Script Name"
   },
   "import": {
     "title": "Open Automation",
@@ -125,7 +130,9 @@
       "failed_max_runs": "Max runs reached",
       "not_triggered": "Not triggered",
       "disallowed_recursion_detected": "Recursion blocked"
-    }
+    },
+    "saveScriptFirst": "Save the script first to view traces",
+    "noScriptTracesFound": "No script traces found"
   },
   "connect": {
     "title": "Connect to Home Assistant",
@@ -151,7 +158,8 @@
   "dirtyGuard": {
     "title": "Unsaved changes",
     "description": "This automation has unsaved changes. Save them first, or discard and continue?",
-    "discard": "Discard"
+    "discard": "Discard",
+    "descriptionScript": "This script has unsaved changes. Save them first, or discard and continue?"
   },
   "deleteAutomation": {
     "title": "Delete automation?",
@@ -181,5 +189,10 @@
     "version": "Version {{version}}",
     "attribution": "Flow is a rebrand and rebuild of C.A.F.E. by Federico Zivolo, MIT licensed.",
     "originalProject": "Original project"
+  },
+  "deleteScript": {
+    "title": "Delete script?",
+    "description": "\"{{name}}\" will be permanently removed from Home Assistant. This cannot be undone.",
+    "deleting": "Deleting…"
   }
 }

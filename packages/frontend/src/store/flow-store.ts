@@ -1,6 +1,8 @@
 import type {
+  BlueprintInstance,
   FlowEdge,
   FlowGraph,
+  FlowKind,
   FlowMetadata,
   FlowNode,
   NodeValidationError,
@@ -23,10 +25,10 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { shallow } from 'zustand/shallow';
-import type { AutomationTrace, TraceStep } from '@/lib/ha-api';
+import type { FlowTrace, HomeAssistantAPI, TraceStep } from '@/lib/ha-api';
 import { getHomeAssistantAPI } from '@/lib/ha-api';
 import { generateNodeId, generateUUID } from '@/lib/utils';
-import type { HomeAssistant } from '@/types/hass';
+import type { FlowConfig, HomeAssistant } from '@/types/hass';
 import { flowIndexedDBStorage } from '@/utils/indexeddb-storage';
 
 /**
@@ -167,6 +169,12 @@ export interface FlowState {
   // Automation metadata (mode, max, max_exceeded, etc.)
   flowMetadata: FlowMetadata;
 
+  // Whether the open flow is an automation or a script
+  flowKind: FlowKind;
+
+  // Set when the open flow is made from a blueprint: it has no nodes, is read-only and never saved
+  blueprint: BlueprintInstance | null;
+
   // User-defined root-level variables (preserved across import/export round-trips)
   userVariables: Record<string, unknown> | undefined;
 
@@ -177,6 +185,11 @@ export interface FlowState {
   selectedNodeId: string | null;
 
   // Save state
+  /**
+   * The id the open flow is stored under in Home Assistant: an automation's id OR a script's key
+   * (null for one that was never saved). Read it together with `flowKind`. The name is historical
+   * and kept because 100+ places reference it.
+   */
   automationId: string | null;
   isSaving: boolean;
   lastSaved: Date | null;
@@ -190,7 +203,7 @@ export interface FlowState {
 
   // Trace state
   isShowingTrace: boolean;
-  traceData: AutomationTrace | null;
+  traceData: FlowTrace | null;
   traceExecutionPath: string[];
   traceTimestamps: Record<string, string>;
   nodeTraceStates: Record<string, NodeTraceState>;
@@ -259,8 +272,10 @@ export interface FlowState {
   setSaving: (saving: boolean) => void;
   setSaved: () => void;
   setUnsavedChanges: (hasChanges: boolean) => void;
-  saveAutomation: (hassApi: HomeAssistant) => Promise<string>;
-  updateAutomation: (hassApi: HomeAssistant) => Promise<void>;
+  /** Creates the open flow in Home Assistant as a new automation or script; resolves to its id. */
+  saveFlow: (hassApi: HomeAssistant) => Promise<string>;
+  /** Overwrites the stored automation or script the open flow was opened from (`automationId`). */
+  updateFlow: (hassApi: HomeAssistant) => Promise<void>;
   hasRealChanges: () => boolean; // Compare current state to original snapshot
   /** Same comparison as `hasRealChanges`, exposed as the canonical dirty-state selector. */
   isDirty: () => boolean;
@@ -273,7 +288,7 @@ export interface FlowState {
   clearExecutionPath: () => void;
 
   // Trace
-  showTrace: (traceData: AutomationTrace) => void;
+  showTrace: (traceData: FlowTrace) => void;
   hideTrace: () => void;
   clearTraceExecutionPath: () => void;
   setLiveTrace: (isLive: boolean) => void;
@@ -296,9 +311,13 @@ export interface FlowState {
    * nothing when the edit changes nothing.
    */
   applyGraphEdit: (graph: FlowGraph) => void;
-  /** Loads an existing HA automation by id via the ha-api + YamlParser path, replacing the canvas. */
-  openAutomationById: (id: string) => Promise<void>;
-  reset: () => void;
+  /**
+   * Loads an existing HA automation or script by its id via the ha-api + YamlParser path,
+   * replacing the canvas. `id` is the automation id or the script key.
+   */
+  openFlowById: (kind: FlowKind, id: string) => Promise<void>;
+  /** Starts a new, empty flow of the given kind (default: automation). */
+  reset: (kind?: FlowKind) => void;
 
   // Layout
   /**
@@ -383,20 +402,116 @@ function getTraceStepStatus(step: TraceStep): NodeTraceStatus {
 }
 
 /**
- * Derive the trace path map for a fully assembled automation config by
- * round-tripping it through the transpiler's parser. The config carries
- * `_cafe_metadata`, so the parse restores the exact canvas node ids.
- * Returns null (never throws) when the config can't be parsed.
+ * Derive the trace path map for a fully assembled config by round-tripping it through the
+ * transpiler's parser. The config carries `_cafe_metadata`, so the parse restores the exact canvas
+ * node ids. Returns null (never throws) when the config can't be parsed.
  */
 async function deriveTracePathMap(
-  automationConfig: Record<string, unknown>
+  kind: FlowKind,
+  config: Record<string, unknown>
 ): Promise<TracePathMap | null> {
   try {
     const transpiler = new FlowTranspiler();
-    const result = await transpiler.fromYaml(yamlDump(automationConfig));
+    const result = await transpiler.fromYaml(yamlDump(config), { kind });
     return result.success ? (result.nodePathMap ?? null) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Validates the open flow and builds the COMPLETE config to store in Home Assistant: the
+ * transpiler's `config` as it is (root variables, trigger variables and the canvas layout
+ * included), never rebuilt by hand. Rules: an automation needs a trigger node and an action node,
+ * a script needs a step and no trigger node, and a config made from a blueprint is never saved.
+ * Reads `state.nodeErrors`, so callers validate all nodes first.
+ */
+function buildFlowConfig(state: FlowState): { kind: FlowKind; config: FlowConfig } {
+  if (state.blueprint) {
+    throw new Error(
+      'Cannot save: this was made from a blueprint and is read-only here. Edit the blueprint inputs in Home Assistant.'
+    );
+  }
+  if (state.nodeErrors.size > 0) {
+    throw new Error(
+      `Cannot save: ${state.nodeErrors.size} node(s) have validation errors. Fix the highlighted nodes before saving.`
+    );
+  }
+
+  const graph = state.toFlowGraph();
+  const hasTrigger = graph.nodes.some((n) => n.type === 'trigger');
+
+  const { flowKind: kind } = state;
+  if (kind === 'script') {
+    if (graph.nodes.length === 0) {
+      throw new Error('Cannot save an empty script. Please add at least one step.');
+    }
+    if (hasTrigger) {
+      throw new Error(
+        'A script has no triggers: it starts when it is called. Remove the trigger nodes before saving.'
+      );
+    }
+  } else {
+    if (graph.nodes.length === 0) {
+      throw new Error(
+        'Cannot save empty automation. Please add at least one trigger and one action node.'
+      );
+    }
+    if (!hasTrigger) {
+      throw new Error(
+        'Automation must have at least one trigger node. Please add a trigger from the node palette.'
+      );
+    }
+    if (!graph.nodes.some((n) => n.type === 'action')) {
+      throw new Error(
+        'Automation must have at least one action node. Please add an action from the node palette.'
+      );
+    }
+  }
+
+  const transpiler = new FlowTranspiler();
+  const validation = transpiler.validate(graph);
+  if (validation.errors.length > 0) {
+    console.error('Flow: Validation errors:', validation.errors);
+    throw new Error(`Validation failed: ${validation.errors.map((e) => e.message).join(', ')}`);
+  }
+
+  const result = transpiler.transpile(graph);
+  if (!result.success || !result.config) {
+    throw new Error(`Failed to transpile flow to ${kind} config`);
+  }
+  return { kind, config: result.config };
+}
+
+/**
+ * Saves the open flow: builds its config, hands it to `write` (create or update) and records the
+ * result on the store. `write` returns the id the item is stored under.
+ */
+async function persistFlow(
+  hassApi: HomeAssistant,
+  write: (api: HomeAssistantAPI, kind: FlowKind, config: FlowConfig) => Promise<string>
+): Promise<string> {
+  const api = getHomeAssistantAPI(hassApi);
+  useFlowStore.setState({ isSaving: true });
+
+  try {
+    useFlowStore.getState().validateAllNodes();
+    const { kind, config } = buildFlowConfig(useFlowStore.getState());
+    const flowId = await write(api, kind, config);
+
+    useFlowStore.setState({
+      automationId: flowId,
+      isSaving: false,
+      lastSaved: new Date(),
+      hasUnsavedChanges: false,
+      // The saved YAML is what future traces will reference; re-derive
+      // the path map from it so it tracks the just-saved structure.
+      tracePathMap: await deriveTracePathMap(kind, config),
+    });
+    return flowId;
+  } catch (error) {
+    useFlowStore.setState({ isSaving: false });
+    throw error;
   }
 }
 
@@ -422,6 +537,8 @@ const initialState = {
   flowId: generateUUID(),
   flowName: 'Untitled Automation',
   flowDescription: '',
+  flowKind: 'automation' as FlowKind,
+  blueprint: null as BlueprintInstance | null,
   flowMetadata: defaultFlowMetadata,
   userVariables: undefined,
   userTriggerVariables: undefined,
@@ -462,7 +579,11 @@ export type PersistedFlowState = Pick<
   | 'flowId'
   | 'flowName'
   | 'flowDescription'
+  | 'flowKind'
+  | 'blueprint'
   | 'flowMetadata'
+  | 'userVariables'
+  | 'userTriggerVariables'
   | 'nodes'
   | 'edges'
   | 'selectedNodeId'
@@ -477,7 +598,11 @@ const persistSelector = (state: FlowState): PersistedFlowState => ({
   flowId: state.flowId,
   flowName: state.flowName,
   flowDescription: state.flowDescription,
+  flowKind: state.flowKind,
+  blueprint: state.blueprint,
   flowMetadata: state.flowMetadata,
+  userVariables: state.userVariables,
+  userTriggerVariables: state.userTriggerVariables,
   nodes: state.nodes,
   edges: state.edges,
   selectedNodeId: state.selectedNodeId,
@@ -499,6 +624,8 @@ export type TemporalFlowState = Pick<
   | 'edges'
   | 'flowName'
   | 'flowDescription'
+  | 'flowKind'
+  | 'blueprint'
   | 'flowMetadata'
   | 'userVariables'
   | 'userTriggerVariables'
@@ -509,6 +636,8 @@ const temporalSelector = (state: FlowState): TemporalFlowState => ({
   edges: state.edges,
   flowName: state.flowName,
   flowDescription: state.flowDescription,
+  flowKind: state.flowKind,
+  blueprint: state.blueprint,
   flowMetadata: state.flowMetadata,
   userVariables: state.userVariables,
   userTriggerVariables: state.userTriggerVariables,
@@ -723,219 +852,18 @@ export const useFlowStore = create<FlowState>()(
         // into it so existing callers of the older name are untouched.
         isDirty: () => get().hasRealChanges(),
 
-        saveAutomation: async (hassApi: HomeAssistant) => {
-          const state = get();
-          const api = getHomeAssistantAPI(hassApi);
+        saveFlow: (hassApi: HomeAssistant) =>
+          persistFlow(hassApi, (api, kind, config) => api.createFlow(kind, config)),
 
-          set({ isSaving: true });
-
-          try {
-            // Validate all nodes first
-            get().validateAllNodes();
-
-            // Check for validation errors
-            const currentState = get();
-            if (currentState.nodeErrors.size > 0) {
-              const errorCount = currentState.nodeErrors.size;
-              throw new Error(
-                `Cannot save: ${errorCount} node(s) have validation errors. Fix the highlighted nodes before saving.`
-              );
-            }
-
-            // Convert flow to graph
-            const graph = state.toFlowGraph();
-
-            // Check for empty automation
-            if (graph.nodes.length === 0) {
-              throw new Error(
-                'Cannot save empty automation. Please add at least one trigger and one action node.'
-              );
-            }
-
-            // Check for minimum required nodes
-            const triggers = graph.nodes.filter((n) => n.type === 'trigger');
-            const actions = graph.nodes.filter((n) => n.type === 'action');
-
-            if (triggers.length === 0) {
-              throw new Error(
-                'Automation must have at least one trigger node. Please add a trigger from the node palette.'
-              );
-            }
-
-            if (actions.length === 0) {
-              throw new Error(
-                'Automation must have at least one action node. Please add an action from the node palette.'
-              );
-            }
-
-            const transpiler = new FlowTranspiler();
-
-            // Validate first
-            const validation = transpiler.validate(graph);
-
-            if (validation.errors.length > 0) {
-              console.error('Flow: Validation errors:', validation.errors);
-              throw new Error(
-                `Validation failed: ${validation.errors.map((e) => e.message).join(', ')}`
-              );
-            }
-
-            // Transpile to automation config
-            const result = transpiler.transpile(graph);
-            if (!result.success || !result.output?.automation) {
-              throw new Error('Failed to transpile flow to automation config');
-            }
-
-            // Create automation in Home Assistant
-            const automationConfig = {
-              alias: state.flowName,
-              description: state.flowDescription || '',
-              ...result.output.automation,
-              variables: {
-                ...(result.output.automation.variables || {}),
-                _cafe_metadata: {
-                  version: 1,
-                  strategy: 'native' as const,
-                  nodes: graph.nodes.reduce(
-                    (acc, node) => {
-                      acc[node.id] = {
-                        x: node.position.x,
-                        y: node.position.y,
-                      };
-                      return acc;
-                    },
-                    {} as Record<string, { x: number; y: number }>
-                  ),
-                  graph_id: graph.id,
-                  graph_version: 1,
-                },
-              },
-            };
-
-            const automationId = await api.createAutomation(automationConfig);
-
-            set({
-              automationId,
-              isSaving: false,
-              lastSaved: new Date(),
-              hasUnsavedChanges: false,
-              // The saved YAML is what future traces will reference; re-derive
-              // the path map from it so it tracks the just-saved structure.
-              tracePathMap: await deriveTracePathMap(automationConfig),
-            });
-
-            return automationId;
-          } catch (error) {
-            set({ isSaving: false });
-            throw error;
+        updateFlow: async (hassApi: HomeAssistant) => {
+          const flowId = get().automationId;
+          if (!flowId) {
+            throw new Error('No ID set. Use saveFlow() to save a new automation or script.');
           }
-        },
-
-        updateAutomation: async (hassApi: HomeAssistant) => {
-          const state = get();
-          const api = getHomeAssistantAPI(hassApi);
-
-          if (!state.automationId) {
-            throw new Error('No automation ID set. Use saveAutomation() for new automations.');
-          }
-
-          console.log('Flow: Updating automation with ID from store:', state.automationId);
-
-          set({ isSaving: true });
-
-          try {
-            // Validate all nodes first
-            get().validateAllNodes();
-
-            // Check for validation errors
-            const currentState = get();
-            if (currentState.nodeErrors.size > 0) {
-              const errorCount = currentState.nodeErrors.size;
-              throw new Error(
-                `Cannot save: ${errorCount} node(s) have validation errors. Fix the highlighted nodes before saving.`
-              );
-            }
-
-            // Convert flow to graph
-            const graph = state.toFlowGraph();
-
-            // Check for empty automation
-            if (graph.nodes.length === 0) {
-              throw new Error(
-                'Cannot save empty automation. Please add at least one trigger and one action node.'
-              );
-            }
-
-            // Check for minimum required nodes
-            const triggers = graph.nodes.filter((n) => n.type === 'trigger');
-            const actions = graph.nodes.filter((n) => n.type === 'action');
-
-            if (triggers.length === 0) {
-              throw new Error(
-                'Automation must have at least one trigger node. Please add a trigger from the node palette.'
-              );
-            }
-
-            if (actions.length === 0) {
-              throw new Error(
-                'Automation must have at least one action node. Please add an action from the node palette.'
-              );
-            }
-
-            const transpiler = new FlowTranspiler();
-
-            // Validate first
-            const validation = transpiler.validate(graph);
-            if (validation.errors.length > 0) {
-              throw new Error(
-                `Validation failed: ${validation.errors.map((e) => e.message).join(', ')}`
-              );
-            }
-
-            // Transpile to automation config
-            const result = transpiler.transpile(graph);
-            if (!result.success || !result.output?.automation) {
-              throw new Error('Failed to transpile flow to automation config');
-            }
-
-            // Update automation in Home Assistant
-            const automationConfig = {
-              alias: state.flowName,
-              description: state.flowDescription || '',
-              ...result.output.automation,
-              variables: {
-                ...(result.output.automation.variables || {}),
-                _cafe_metadata: {
-                  version: 1,
-                  strategy: 'native' as const,
-                  nodes: graph.nodes.reduce(
-                    (acc, node) => {
-                      acc[node.id] = {
-                        x: node.position.x,
-                        y: node.position.y,
-                      };
-                      return acc;
-                    },
-                    {} as Record<string, { x: number; y: number }>
-                  ),
-                  graph_id: graph.id,
-                  graph_version: 1,
-                },
-              },
-            };
-
-            await api.updateAutomation(state.automationId, automationConfig);
-
-            set({
-              isSaving: false,
-              lastSaved: new Date(),
-              hasUnsavedChanges: false,
-              tracePathMap: await deriveTracePathMap(automationConfig),
-            });
-          } catch (error) {
-            set({ isSaving: false });
-            throw error;
-          }
+          await persistFlow(hassApi, async (api, kind, config) => {
+            await api.updateFlow(kind, flowId, config);
+            return flowId;
+          });
         },
 
         startSimulation: () => set({ isSimulating: true, executionPath: [], activeNodeId: null }),
@@ -1057,6 +985,7 @@ export const useFlowStore = create<FlowState>()(
             id: state.flowId,
             name: state.flowName,
             description: state.flowDescription || undefined,
+            kind: state.flowKind,
             nodes: state.nodes.map((n) => {
               // Ensure node has all required fields
               const nodeData = { ...n.data };
@@ -1101,6 +1030,7 @@ export const useFlowStore = create<FlowState>()(
             version: 1,
             userVariables: state.userVariables,
             userTriggerVariables: state.userTriggerVariables,
+            blueprint: state.blueprint ?? undefined,
           };
         },
 
@@ -1145,6 +1075,8 @@ export const useFlowStore = create<FlowState>()(
           });
           set({
             flowId: graph.id,
+            flowKind: graph.kind ?? 'automation',
+            blueprint: graph.blueprint ?? null,
             flowName: graph.name,
             flowDescription: graph.description || '',
             flowMetadata: importedMetadata,
@@ -1246,13 +1178,13 @@ export const useFlowStore = create<FlowState>()(
           get().validateAllNodes();
         },
 
-        openAutomationById: async (id) => {
+        openFlowById: async (kind, id) => {
           const api = getHomeAssistantAPI();
           if (!api.isConnected()) {
             throw new Error('Not connected to Home Assistant');
           }
-          const config = await api.getAutomationConfigWithFallback(id);
-          get().reset();
+          const config = await api.getFlowConfigWithFallback(kind, id);
+          get().reset(kind);
           if (config) {
             const yamlString = yamlDump(config, {
               indent: 2,
@@ -1261,9 +1193,9 @@ export const useFlowStore = create<FlowState>()(
               forceQuotes: false,
             });
             const transpiler = new FlowTranspiler();
-            const result = await transpiler.fromYaml(yamlString);
+            const result = await transpiler.fromYaml(yamlString, { kind });
             if (!result.success || !result.graph) {
-              throw new Error(result.errors?.join('\n') || 'Failed to parse automation YAML');
+              throw new Error(result.errors?.join('\n') || `Failed to parse ${kind} YAML`);
             }
             get().fromFlowGraph(result.graph);
             get().setTracePathMap(result.nodePathMap ?? null);
@@ -1273,10 +1205,11 @@ export const useFlowStore = create<FlowState>()(
           get().setAutomationId(id);
         },
 
-        reset: () => {
+        reset: (kind = 'automation') => {
           set({
             ...initialState,
             flowId: generateUUID(),
+            flowKind: kind,
             flowMetadata: { ...defaultFlowMetadata },
             originalSnapshot: null,
             nodeErrors: new Map(),

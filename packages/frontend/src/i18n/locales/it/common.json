@@ -51,7 +51,8 @@
     "zones": "Zone",
     "unassigned": "Non assegnate",
     "workspaceSources": "Sorgenti unite",
-    "canvasTools": "Strumenti canvas"
+    "canvasTools": "Strumenti canvas",
+    "scripts": "Script"
   },
   "status": {
     "connecting": "Connessione in corso...",

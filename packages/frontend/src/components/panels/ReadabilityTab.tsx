@@ -6,7 +6,9 @@ import { KIND_TEXT } from '@/components/nodes/nodeVisuals';
 import { useDescribeNode } from '@/components/nodes/useNodeDescription';
 import { Button } from '@/components/ui/button';
 import { type ReadabilityApi, useReadability } from '@/hooks/useReadability';
+import { FLOW_TEXT } from '@/lib/flow-kind-text';
 import { cn } from '@/lib/utils';
+import { useFlowStore } from '@/store/flow-store';
 import { getNodeKind } from '@/utils/nodeData';
 
 interface ReadabilityTabProps {
@@ -142,7 +144,8 @@ function EmptyState({ title, body, icon }: EmptyStateProps) {
  * name", "Starts again when a sensor comes back from unavailable") with one-click fixes.
  */
 export function ReadabilityTab({ onOpenProperties, className }: ReadabilityTabProps) {
-  const { t } = useTranslation('panels');
+  const { t } = useTranslation(['panels', 'common']);
+  const text = FLOW_TEXT[useFlowStore((s) => s.flowKind)];
   const api = useReadability();
   const { warnings, suggestions, safeFixCount, nodeCount } = api;
 
@@ -180,14 +183,14 @@ export function ReadabilityTab({ onOpenProperties, className }: ReadabilityTabPr
           <EmptyState
             icon="idle"
             title={t('readability.emptyCanvasTitle')}
-            body={t('readability.emptyCanvasBody')}
+            body={t(text.readabilityEmptyCanvasBody)}
           />
         )}
         {nodeCount > 0 && api.findings.length === 0 && (
           <EmptyState
             icon="ok"
             title={t('readability.emptyTitle')}
-            body={t('readability.emptyBody')}
+            body={t(text.readabilityEmptyBody)}
           />
         )}
         <Section

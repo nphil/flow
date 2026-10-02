@@ -1,4 +1,6 @@
-import type { AutomationConfig, HassEntity, HomeAssistant } from '@/types/hass';
+import type { FlowKind } from '@flow/shared';
+import { type FlowCatalogItem, mapEntityToCatalogItem, uniqueScriptKey } from '@/lib/flow-catalog';
+import type { FlowConfig, HassEntity, HomeAssistant } from '@/types/hass';
 
 export interface FlowMetadata {
   version: number;
@@ -16,6 +18,7 @@ export interface AreaRegistryEntry {
 
 export interface EntityRegistryEntry {
   entity_id: string;
+  unique_id?: string | null;
   area_id?: string | null;
   [key: string]: unknown;
 }
@@ -36,18 +39,6 @@ export interface ZoneCatalogItem {
   longitude?: number;
   radius?: number;
   passive?: boolean;
-}
-
-export interface AutomationCatalogItem {
-  entity_id: string;
-  automation_id: string;
-  friendly_name: string;
-  enabled: boolean;
-  last_triggered?: string;
-  description: string;
-  mode?: string;
-  area_id?: string;
-  tags: string[];
 }
 
 /**
@@ -83,7 +74,7 @@ export interface TraceStep {
   };
 }
 
-export interface AutomationTrace {
+export interface FlowTrace {
   last_step: string | null;
   run_id: string;
   state: 'running' | 'stopped';
@@ -96,7 +87,7 @@ export interface AutomationTrace {
   item_id: string;
   trigger: string;
   trace: Record<string, TraceStep[]>;
-  config: AutomationConfig;
+  config: FlowConfig;
   context: {
     id: string;
     parent_id?: string;
@@ -119,6 +110,40 @@ export interface TraceListItem {
   item_id: string;
   not_triggered?: boolean;
   error?: string;
+}
+
+/**
+ * The body Home Assistant's config endpoint stores for an item: the config as built, plus the keys
+ * Home Assistant requires. An automation is stored under an `id` with the plural
+ * trigger/condition/action forms; a script has no `id` (its key is in the URL) and no triggers.
+ */
+function toStoredConfig(
+  kind: FlowKind,
+  flowId: string,
+  config: FlowConfig
+): Record<string, unknown> {
+  if (kind === 'script') {
+    return {
+      ...config,
+      alias: config.alias || flowId,
+      description: config.description || '',
+      mode: config.mode || 'single',
+    };
+  }
+
+  // Spread all fields from config so nothing is accidentally stripped
+  const { trigger, condition, action, ...rest } = config;
+  return {
+    ...rest,
+    id: flowId,
+    alias: config.alias || `Flow Automation ${flowId}`,
+    description: config.description || '',
+    triggers: trigger || config.triggers || [],
+    conditions: condition || config.conditions || [],
+    actions: action || config.actions || [],
+    mode: config.mode || 'single',
+    variables: config.variables || {},
+  };
 }
 
 /**
@@ -192,23 +217,13 @@ export class HomeAssistantAPI {
   }
 
   /**
-   * Get all automation entities
+   * Get all automation or script entities
    */
-  getAutomations(): HassEntity[] {
+  getFlowEntities(kind: FlowKind): HassEntity[] {
     const states = this.getStates();
     if (!states) return [];
 
-    return Object.values(states).filter((entity) => entity.entity_id.startsWith('automation.'));
-  }
-
-  private normalizeTags(tags: unknown): string[] {
-    if (Array.isArray(tags)) {
-      return tags.filter((tag): tag is string => typeof tag === 'string');
-    }
-    if (typeof tags === 'string' && tags.trim()) {
-      return [tags];
-    }
-    return [];
+    return Object.values(states).filter((entity) => entity.entity_id.startsWith(`${kind}.`));
   }
 
   /**
@@ -337,28 +352,27 @@ export class HomeAssistantAPI {
   }
 
   /**
-   * Get automation configurations
+   * Get automation or script configurations
    */
-  async getAutomationConfigs(): Promise<AutomationConfig[]> {
+  async getFlowConfigs(kind: FlowKind): Promise<FlowConfig[]> {
     try {
       // First try websocket approach
       if (this.hass?.connection) {
         try {
           const result = await this.sendMessage({
-            type: 'config/automation/list',
+            type: `config/${kind}/list`,
           });
           if (Array.isArray(result)) {
-            return result as AutomationConfig[];
+            return result as FlowConfig[];
           }
         } catch (wsError) {
-          console.warn('WebSocket automation list failed, trying alternative:', wsError);
+          console.warn('WebSocket %s list failed, trying alternative:', kind, wsError);
         }
       }
 
-      // Alternative: Use automation entity states to get basic info
-      const automations = this.getAutomations();
-      return automations.map((entity) => ({
-        id: entity.entity_id.replace('automation.', ''),
+      // Alternative: Use entity states to get basic info
+      return this.getFlowEntities(kind).map((entity) => ({
+        id: entity.entity_id.replace(`${kind}.`, ''),
         alias:
           typeof entity.attributes.friendly_name === 'string'
             ? entity.attributes.friendly_name
@@ -367,25 +381,25 @@ export class HomeAssistantAPI {
           typeof entity.attributes.description === 'string' ? entity.attributes.description : '',
       }));
     } catch (error) {
-      console.error('Failed to get automation configs:', error);
+      console.error('Failed to get %s configs:', kind, error);
       return [];
     }
   }
 
   /**
-   * Get a specific automation configuration
+   * Get a specific automation or script configuration. A script's id is its key.
    */
-  async getAutomationConfig(automationId: string): Promise<AutomationConfig | null> {
+  async getFlowConfig(kind: FlowKind, flowId: string): Promise<FlowConfig | null> {
     try {
-      // Try websocket approach first
-      if (this.hass?.connection) {
+      // Try websocket approach first (only automations have a websocket getter)
+      if (kind === 'automation' && this.hass?.connection) {
         try {
           const config = await this.sendMessage({
             type: 'config/automation/get',
-            automation_id: automationId,
+            automation_id: flowId,
           });
           if (config) {
-            return config as AutomationConfig;
+            return config as FlowConfig;
           }
         } catch (wsError) {
           console.warn('WebSocket automation get failed:', wsError);
@@ -393,228 +407,230 @@ export class HomeAssistantAPI {
       }
 
       // REST API works for any automation with an `id:` field — both numeric
-      // (UI-created) and string IDs (YAML-defined automations in automations.yaml).
-      if (!automationId.startsWith('automation.')) {
+      // (UI-created) and string IDs (YAML-defined automations in automations.yaml) —
+      // and for any script key.
+      if (!flowId.startsWith(`${kind}.`)) {
         try {
-          const config = await this.fetchRestAPI(`config/automation/config/${automationId}`);
+          const config = await this.fetchRestAPI(`config/${kind}/config/${flowId}`);
           if (config) {
-            return config as AutomationConfig;
+            return config as FlowConfig;
           }
         } catch (directError) {
-          console.warn('REST API failed for automation %s:', automationId, directError);
+          console.warn('REST API failed for %s %s:', kind, flowId, directError);
         }
       }
 
+      // A script has no stand-in: a config rebuilt from entity states holds no steps, and saving
+      // the empty script it opens as would overwrite the real one.
+      if (kind === 'script') {
+        return null;
+      }
+
       // Fallback: get all configs and find the matching one
-      const configs = await this.getAutomationConfigs();
+      const configs = await this.getFlowConfigs(kind);
       return (
         configs.find(
           (config) =>
-            config.id === automationId ||
-            config.alias === automationId ||
-            `automation.${config.alias}` === automationId
+            config.id === flowId || config.alias === flowId || `${kind}.${config.alias}` === flowId
         ) || null
       );
     } catch (error) {
-      console.error('Flow: Failed to get automation config:', error);
+      console.error('Flow: Failed to get %s config:', kind, error);
       return null;
     }
   }
 
   /**
-   * Get automation config from trace (fallback method for getting config)
+   * Get automation or script config from trace (fallback method for getting config)
    */
-  async getAutomationConfigFromTrace(automationId: string): Promise<unknown | null> {
+  async getFlowConfigFromTrace(kind: FlowKind, flowId: string): Promise<FlowConfig | null> {
     try {
       // First get the list of traces
-      const traces = await this.getAutomationTraces(automationId);
+      const traces = await this.getFlowTraces(kind, flowId);
       if (!traces || traces.length === 0) {
         return null;
       }
 
       // Get the most recent trace details which includes config
-      const traceDetails = await this.getAutomationTraceDetails(automationId, traces[0].run_id);
+      const traceDetails = await this.getFlowTraceDetails(kind, flowId, traces[0].run_id);
       return traceDetails?.config || null;
     } catch (error) {
-      console.error('Flow: Failed to get automation config from trace:', error);
+      console.error('Flow: Failed to get %s config from trace:', kind, error);
       return null;
     }
   }
 
   /**
-   * Get automation configuration with multiple fallback methods.
+   * Get automation or script configuration with multiple fallback methods.
    * Falls back to extracting the config from the most recent trace when
    * the primary lookup returns null (e.g. when neither WebSocket nor REST
    * can serve the config).
    */
-  async getAutomationConfigWithFallback(
-    automationId: string,
-    _alias?: string
-  ): Promise<AutomationConfig | null> {
+  async getFlowConfigWithFallback(kind: FlowKind, flowId: string): Promise<FlowConfig | null> {
     try {
-      const primary = await this.getAutomationConfig(automationId);
+      const primary = await this.getFlowConfig(kind, flowId);
       if (primary) {
         return primary;
       }
-      const fromTrace = await this.getAutomationConfigFromTrace(automationId);
-      return (fromTrace as AutomationConfig | null) ?? null;
+      return await this.getFlowConfigFromTrace(kind, flowId);
     } catch (error) {
-      console.error('Flow: Failed to get automation config with fallback:', error);
+      console.error('Flow: Failed to get %s config with fallback:', kind, error);
       return null;
     }
   }
 
   /**
-   * Create a new automation in Home Assistant
+   * The id a new item is stored under. An automation gets a numeric id like Home Assistant uses; a
+   * script gets the slug of its alias, made unique against every script that exists (a POST to an
+   * existing key overwrites that script).
    */
-  async createAutomation(config: AutomationConfig): Promise<string> {
+  private async newFlowId(kind: FlowKind, config: FlowConfig): Promise<string> {
+    if (kind === 'automation') {
+      return typeof config.id === 'string' && config.id ? config.id : Date.now().toString();
+    }
+    const existing = await this.getFlowCatalog('script');
+    return uniqueScriptKey(
+      config.alias ?? '',
+      existing.map((item) => item.flow_id)
+    );
+  }
+
+  /**
+   * Store a config under its id. Home Assistant's config endpoint creates the item or overwrites
+   * the one with that id; it has no PUT for updates.
+   */
+  private async writeFlowConfig(kind: FlowKind, flowId: string, config: FlowConfig): Promise<void> {
+    await this.fetchRestAPI(
+      `config/${kind}/config/${flowId}`,
+      'POST',
+      toStoredConfig(kind, flowId, config)
+    );
+  }
+
+  /**
+   * Reload automations so a newly stored one is active
+   */
+  private async reloadAutomations(): Promise<void> {
+    if (this.hass?.callService) {
+      await this.hass.callService('automation', 'reload', {});
+      return;
+    }
+
+    if (this.hass?.connection) {
+      await this.sendMessage({
+        type: 'call_service',
+        domain: 'automation',
+        service: 'reload',
+      });
+      return;
+    }
+
+    throw new Error('No working Home Assistant connection method found');
+  }
+
+  /**
+   * Create a new automation or script in Home Assistant; returns its id
+   */
+  async createFlow(kind: FlowKind, config: FlowConfig): Promise<string> {
     try {
-      // Generate a numeric ID like Home Assistant uses
-      const automationId = config.id || Date.now().toString();
+      const flowId = await this.newFlowId(kind, config);
 
-      // Spread all fields from config so nothing is accidentally stripped,
-      // then normalise the keys HA requires (plural trigger/condition/action forms).
-      const { trigger, condition, action, ...rest } = config;
-      const configWithId = {
-        ...rest,
-        id: automationId,
-        alias: config.alias || `Flow Automation ${automationId}`,
-        description: config.description || '',
-        triggers: trigger || config.triggers || [],
-        conditions: condition || config.conditions || [],
-        actions: action || config.actions || [],
-        mode: config.mode || 'single',
-        variables: config.variables || {},
-      };
-
-      // Step 1: Create/save the automation configuration using REST API
+      // Step 1: Create/save the configuration using REST API
       try {
-        await this.fetchRestAPI(`config/automation/config/${automationId}`, 'POST', configWithId);
+        await this.writeFlowConfig(kind, flowId, config);
       } catch (saveError) {
-        console.error('Flow: Failed to save automation config:', saveError);
+        console.error('Flow: Failed to save %s config:', kind, saveError);
         throw new Error(
-          `Failed to save automation config: ${saveError instanceof Error ? saveError.message : 'Unknown error'}`
+          `Failed to save ${kind} config: ${saveError instanceof Error ? saveError.message : 'Unknown error'}`
         );
       }
 
-      // Step 2: Reload automations to make it active
-      if (this.hass?.callService) {
-        await this.hass.callService('automation', 'reload', {});
-        return automationId;
+      // Step 2: Home Assistant reloads scripts by itself after a write; automations are
+      // reloaded here to make the new one active
+      if (kind === 'automation') {
+        await this.reloadAutomations();
       }
-
-      if (this.hass?.connection) {
-        await this.sendMessage({
-          type: 'call_service',
-          domain: 'automation',
-          service: 'reload',
-        });
-        return automationId;
-      }
-
-      throw new Error('No working Home Assistant connection method found');
+      return flowId;
     } catch (error) {
-      console.error('Flow: Failed to create automation:', error);
+      console.error('Flow: Failed to create %s:', kind, error);
       throw new Error(
-        `Failed to create automation: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to create ${kind}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
 
   /**
-   * Update an existing automation in Home Assistant
+   * Update an existing automation or script in Home Assistant
    */
-  async updateAutomation(automationId: string, config: AutomationConfig): Promise<void> {
+  async updateFlow(kind: FlowKind, flowId: string, config: FlowConfig): Promise<void> {
     try {
-      console.log('Flow: Updating automation with ID:', automationId);
-      console.log('Flow: Update config:', config);
-
-      // Spread all fields from config so nothing is accidentally stripped,
-      // then normalise the keys HA requires (plural trigger/condition/action forms).
-      const { trigger, condition, action, ...rest } = config;
-      const configWithId = {
-        ...rest,
-        id: automationId,
-        alias: config.alias || `Flow Automation ${automationId}`,
-        description: config.description || '',
-        triggers: trigger || config.triggers || [],
-        conditions: condition || config.conditions || [],
-        actions: action || config.actions || [],
-        mode: config.mode || 'single',
-        variables: config.variables || {},
-      };
-
-      console.log('Flow: Final update payload:', configWithId);
-
-      // Use POST method for updates (HA doesn't support PUT for automation config updates)
-      await this.fetchRestAPI(`config/automation/config/${automationId}`, 'POST', configWithId);
-
-      console.log('Flow: Successfully updated automation:', automationId);
+      await this.writeFlowConfig(kind, flowId, config);
     } catch (error) {
-      console.error('Flow: Failed to update automation:', error);
+      console.error('Flow: Failed to update %s:', kind, error);
       throw new Error(
-        `Failed to update automation: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to update ${kind}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
 
   /**
-   * Delete an automation from Home Assistant
+   * Delete an automation or script from Home Assistant
    */
-  async deleteAutomation(automationId: string): Promise<void> {
+  async deleteFlow(kind: FlowKind, flowId: string): Promise<void> {
     try {
-      // Use the automation config DELETE endpoint
-      await this.fetchRestAPI(`config/automation/config/${automationId}`, 'DELETE');
+      await this.fetchRestAPI(`config/${kind}/config/${flowId}`, 'DELETE');
     } catch (error) {
-      console.error('Flow: Failed to delete automation:', error);
+      console.error('Flow: Failed to delete %s:', kind, error);
       throw new Error(
-        `Failed to delete automation: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to delete ${kind}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
 
   /**
-   * Check if an automation with the given alias already exists
+   * Check if an automation or script with the given alias already exists
    */
-  async automationExistsByAlias(alias: string): Promise<boolean> {
+  async flowExistsByAlias(kind: FlowKind, alias: string): Promise<boolean> {
     try {
-      const configs = await this.getAutomationConfigs();
-      const exists = configs.some((config) => config.alias === alias);
-
-      return exists;
+      const configs = await this.getFlowConfigs(kind);
+      return configs.some((config) => config.alias === alias);
     } catch (error) {
-      console.error('Flow: Failed to check automation existence:', error);
+      console.error('Flow: Failed to check %s existence:', kind, error);
       return false;
     }
   }
 
   /**
-   * Get unique automation alias by appending number if needed
+   * Get unique alias by appending number if needed
    */
-  async getUniqueAutomationAlias(baseAlias: string): Promise<string> {
+  async getUniqueFlowAlias(kind: FlowKind, baseAlias: string): Promise<string> {
     try {
       let alias = baseAlias;
       let counter = 1;
 
-      while (await this.automationExistsByAlias(alias)) {
+      while (await this.flowExistsByAlias(kind, alias)) {
         alias = `${baseAlias} (${counter})`;
         counter++;
       }
 
       return alias;
     } catch (error) {
-      console.error('Flow: Failed to get unique automation alias:', error);
+      console.error('Flow: Failed to get unique %s alias:', kind, error);
       return baseAlias;
     }
   }
 
   /**
-   * Trigger an automation
+   * Run an automation (skipping its conditions, as a test run) or a script
    */
-  async triggerAutomation(entityId: string, skipCondition = true): Promise<void> {
+  async runFlow(kind: FlowKind, entityId: string): Promise<void> {
+    if (kind === 'script') {
+      await this.callService('script', 'turn_on', { entity_id: entityId });
+      return;
+    }
     await this.callService('automation', 'trigger', {
       entity_id: entityId,
-      skip_condition: skipCondition,
+      skip_condition: true,
     });
   }
 
@@ -718,68 +734,51 @@ export class HomeAssistantAPI {
   }
 
   /**
-   * Build a normalized automation catalog for import/explorer views
+   * Build a normalized automation or script catalog for import/explorer views
    */
-  async getAutomationCatalog(): Promise<AutomationCatalogItem[]> {
+  async getFlowCatalog(kind: FlowKind): Promise<FlowCatalogItem[]> {
     try {
-      const [entityRegistryResult] = await Promise.all([this.getEntities()]);
+      const entityRegistryResult = await this.getEntities();
       const entityRegistry = Array.isArray(entityRegistryResult)
         ? (entityRegistryResult as EntityRegistryEntry[])
         : [];
 
-      const entityIdToAreaId = new Map<string, string>();
+      const registryByEntityId = new Map<string, EntityRegistryEntry>();
       for (const entry of entityRegistry) {
-        if (entry.entity_id && entry.area_id) {
-          entityIdToAreaId.set(entry.entity_id, entry.area_id);
+        if (entry.entity_id) {
+          registryByEntityId.set(entry.entity_id, entry);
         }
       }
 
-      return this.getAutomations().map((entity) => {
-        const friendlyName =
-          typeof entity.attributes.friendly_name === 'string'
-            ? entity.attributes.friendly_name
-            : entity.entity_id;
-        const automationId =
-          typeof entity.attributes.id === 'string' || typeof entity.attributes.id === 'number'
-            ? String(entity.attributes.id)
-            : entity.entity_id.replace('automation.', '');
-
-        return {
-          entity_id: entity.entity_id,
-          automation_id: automationId,
-          friendly_name: friendlyName,
-          enabled: entity.state === 'on',
-          last_triggered:
-            typeof entity.attributes.last_triggered === 'string'
-              ? entity.attributes.last_triggered
-              : undefined,
-          description:
-            typeof entity.attributes.description === 'string' ? entity.attributes.description : '',
-          mode: typeof entity.attributes.mode === 'string' ? entity.attributes.mode : undefined,
-          area_id: entityIdToAreaId.get(entity.entity_id),
-          tags: this.normalizeTags(entity.attributes.tags),
-        } satisfies AutomationCatalogItem;
+      return this.getFlowEntities(kind).flatMap((entity) => {
+        const entry = registryByEntityId.get(entity.entity_id);
+        const item = mapEntityToCatalogItem(kind, entity, {
+          areaId: entry?.area_id ?? undefined,
+          uniqueId: entry?.unique_id,
+        });
+        return item ? [item] : [];
       });
     } catch (error) {
-      console.error('Failed to build automation catalog:', error);
+      console.error('Failed to build %s catalog:', kind, error);
       return [];
     }
   }
 
   /**
-   * Get multiple automation configurations with bounded concurrency
+   * Get multiple automation or script configurations with bounded concurrency
    */
-  async getAutomationConfigsBatch(
+  async getFlowConfigsBatch(
+    kind: FlowKind,
     ids: string[],
     maxConcurrency = 4
-  ): Promise<Record<string, AutomationConfig | null>> {
-    const automationIds = Array.from(new Set(ids.filter(Boolean)));
-    const results: Record<string, AutomationConfig | null> = {};
-    if (automationIds.length === 0) {
+  ): Promise<Record<string, FlowConfig | null>> {
+    const flowIds = Array.from(new Set(ids.filter(Boolean)));
+    const results: Record<string, FlowConfig | null> = {};
+    if (flowIds.length === 0) {
       return results;
     }
 
-    const queue = [...automationIds];
+    const queue = [...flowIds];
     const workerCount = Math.max(1, Math.min(maxConcurrency, queue.length));
 
     const workers = Array.from({ length: workerCount }).map(async () => {
@@ -790,9 +789,9 @@ export class HomeAssistantAPI {
         }
 
         try {
-          results[nextId] = await this.getAutomationConfigWithFallback(nextId);
+          results[nextId] = await this.getFlowConfigWithFallback(kind, nextId);
         } catch (error) {
-          console.warn('Failed to fetch automation config for %s:', nextId, error);
+          console.warn('Failed to fetch %s config for %s:', kind, nextId, error);
           results[nextId] = null;
         }
       }
@@ -834,39 +833,40 @@ export class HomeAssistantAPI {
   }
 
   /**
-   * Get automation trace list
+   * Get the trace list of an automation or script
    */
-  async getAutomationTraces(automationId: string): Promise<TraceListItem[]> {
+  async getFlowTraces(kind: FlowKind, flowId: string): Promise<TraceListItem[]> {
     try {
       const result = await this.sendMessage({
         type: 'trace/list',
-        domain: 'automation',
-        item_id: automationId,
+        domain: kind,
+        item_id: flowId,
       });
       return (Array.isArray(result) ? result : []) as TraceListItem[];
     } catch (error) {
-      console.error('Failed to get automation traces:', error);
+      console.error('Failed to get %s traces:', kind, error);
       return [];
     }
   }
 
   /**
-   * Get specific automation trace details
+   * Get specific trace details of an automation or script run
    */
-  async getAutomationTraceDetails(
-    automationId: string,
+  async getFlowTraceDetails(
+    kind: FlowKind,
+    flowId: string,
     runId: string
-  ): Promise<AutomationTrace | null> {
+  ): Promise<FlowTrace | null> {
     try {
       const result = await this.sendMessage({
         type: 'trace/get',
-        domain: 'automation',
-        item_id: automationId,
+        domain: kind,
+        item_id: flowId,
         run_id: runId,
       });
-      return (result as AutomationTrace) || null;
+      return (result as FlowTrace) || null;
     } catch (error) {
-      console.error('Failed to get automation trace details:', error);
+      console.error('Failed to get %s trace details:', kind, error);
       return null;
     }
   }

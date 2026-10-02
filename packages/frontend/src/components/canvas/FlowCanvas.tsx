@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cloneNodesIntoCanvas } from '@/components/actions/clipboardHelpers';
+import { BlueprintCard } from '@/components/canvas/BlueprintCard';
 import { CanvasContextMenu } from '@/components/canvas/CanvasContextMenu';
 import { QuickAddMenu, type QuickAddPosition } from '@/components/canvas/QuickAddMenu';
 import { DeletableEdge } from '@/components/edges';
@@ -35,9 +36,10 @@ import {
   TriggerNode,
   WaitNode,
 } from '@/components/nodes';
-import { NODE_CATALOG, type NodeCatalogEntry } from '@/components/nodes/catalog';
+import type { NodeCatalogEntry } from '@/components/nodes/catalog';
 import { useFlowTheme } from '@/hooks/useFlowTheme';
 import { buildActionContext } from '@/hooks/useNodeActions';
+import { useNodeCatalog } from '@/hooks/useNodeCatalog';
 import { DROPZONE_ATTR, PALETTE_DROP_EVENT, type PaletteDropDetail } from '@/lib/paletteDrag';
 import {
   buildQuickAddConnection,
@@ -118,7 +120,11 @@ export function FlowCanvas() {
     isArranging,
     autoArrange,
     animationsEnabled,
+    flowKind,
+    blueprint,
+    automationId,
   } = useFlowStore();
+  const catalog = useNodeCatalog();
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -179,13 +185,13 @@ export function FlowCanvas() {
     if (!quickAdd) return [];
     switch (quickAdd.mode) {
       case 'connect':
-        return getAvailableQuickAddTypes(quickAdd.direction);
+        return getAvailableQuickAddTypes(quickAdd.direction, catalog);
       case 'insert':
-        return getInsertableTypes();
+        return getInsertableTypes(catalog);
       default:
-        return NODE_CATALOG;
+        return catalog;
     }
-  }, [quickAdd]);
+  }, [quickAdd, catalog]);
 
   const handleQuickAddSelect = useCallback(
     (entry: NodeCatalogEntry) => {
@@ -303,14 +309,14 @@ export function FlowCanvas() {
   const onWrapperDoubleClick = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement;
-      if (!target.classList.contains('react-flow__pane')) return;
+      if (!target.classList.contains('react-flow__pane') || catalog.length === 0) return;
       setQuickAdd({
         mode: 'free',
         screenPosition: { screenX: event.clientX, screenY: event.clientY },
         flowPosition: screenToFlowPosition({ x: event.clientX, y: event.clientY }),
       });
     },
-    [screenToFlowPosition]
+    [screenToFlowPosition, catalog.length]
   );
 
   // Auto-arrange (design doc §5): the store animates positions via CSS while
@@ -502,7 +508,7 @@ export function FlowCanvas() {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: double-click quick-add is a pointer affordance; keyboard users add nodes via the palette
     <div
-      className="h-full w-full"
+      className="relative h-full w-full"
       ref={reactFlowWrapper}
       onDoubleClick={onWrapperDoubleClick}
       {...{ [DROPZONE_ATTR]: '' }}
@@ -611,6 +617,15 @@ export function FlowCanvas() {
         )}
       </ReactFlow>
 
+      {blueprint && (
+        <BlueprintCard blueprint={blueprint} flowKind={flowKind} flowId={automationId} />
+      )}
+      {!blueprint && flowKind === 'script' && nodes.length === 0 && (
+        <p className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-mono text-flow-text-muted text-sm">
+          {t('common:canvas.addFirstStep')}
+        </p>
+      )}
+
       <QuickAddMenu
         position={quickAdd?.screenPosition ?? null}
         items={quickAddItems}
@@ -622,6 +637,7 @@ export function FlowCanvas() {
         position={contextMenu?.screenPosition ?? null}
         canPaste={!!clipboard}
         hasNodes={nodes.length > 0}
+        canAddNode={catalog.length > 0}
         onAddNode={handleContextAddNode}
         onPasteHere={handleContextPasteHere}
         onSelectAll={handleContextSelectAll}

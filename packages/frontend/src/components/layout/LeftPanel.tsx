@@ -1,9 +1,10 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NODE_CATALOG, type NodeCatalogGroup } from '@/components/nodes/catalog';
+import type { NodeCatalogGroup } from '@/components/nodes/catalog';
 import { NodePalette } from '@/components/panels/NodePalette';
 import { ResizablePanel } from '@/components/ui/resizable-panel';
+import { useNodeCatalog } from '@/hooks/useNodeCatalog';
 
 const COLLAPSE_STORAGE_KEY = 'flow.panel.left.collapsed';
 const GROUP_ORDER: NodeCatalogGroup[] = [
@@ -31,6 +32,7 @@ function loadCollapsed(): boolean {
  */
 export function LeftPanel() {
   const { t } = useTranslation('common');
+  const catalog = useNodeCatalog();
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
   const toggleCollapsed = () => {
@@ -47,7 +49,7 @@ export function LeftPanel() {
 
   const groupIcons = GROUP_ORDER.map((group) => ({
     group,
-    icon: NODE_CATALOG.find((entry) => entry.group === group)?.icon,
+    icon: catalog.find((entry) => entry.group === group)?.icon,
   })).filter((entry): entry is { group: NodeCatalogGroup; icon: NonNullable<typeof entry.icon> } =>
     Boolean(entry.icon)
   );

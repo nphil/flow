@@ -1,12 +1,9 @@
 import { Search } from 'lucide-react';
 import { type PointerEvent as ReactPointerEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  NODE_CATALOG,
-  type NodeCatalogEntry,
-  type NodeCatalogGroup,
-} from '@/components/nodes/catalog';
+import type { NodeCatalogEntry, NodeCatalogGroup } from '@/components/nodes/catalog';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
+import { useNodeCatalog } from '@/hooks/useNodeCatalog';
 import { beginPaletteDrag } from '@/lib/paletteDrag';
 import { cn, generateNodeId } from '@/lib/utils';
 import { useFlowStore } from '@/store/flow-store';
@@ -39,7 +36,9 @@ export function NodePalette() {
   const { t } = useTranslation('common');
   const addNode = useFlowStore((s) => s.addNode);
   const nodes = useFlowStore((s) => s.nodes);
-  const { query, setQuery, filteredItems } = useFuzzySearch(NODE_CATALOG, {
+  const isReadOnly = useFlowStore((s) => s.blueprint !== null);
+  const catalog = useNodeCatalog();
+  const { query, setQuery, filteredItems } = useFuzzySearch(catalog, {
     keys: ['label', 'group'],
     threshold: 0.4,
   });
@@ -114,7 +113,7 @@ export function NodePalette() {
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {groupedEntries.length === 0 && (
           <p className="p-3 text-center font-mono text-flow-text-muted text-xs">
-            {t('placeholders.noNodesFound')}
+            {isReadOnly ? t('blueprint.paletteDisabled') : t('placeholders.noNodesFound')}
           </p>
         )}
         {groupedEntries.map(({ group, entries }) => (
