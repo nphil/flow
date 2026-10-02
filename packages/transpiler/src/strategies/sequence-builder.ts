@@ -130,8 +130,29 @@ export class SequenceBuilder {
       if (this.backEdgeIds.has(edge.id)) continue;
       this.forwardOut.set(edge.source, [...(this.forwardOut.get(edge.source) ?? []), edge]);
     }
-    this.structure = computePostDominators(flow, this.backEdgeIds);
     this.findLoops();
+    this.structure = computePostDominators(this.withLoopExits(flow), this.backEdgeIds);
+  }
+
+  /**
+   * A `while` loop's body ends in a back-edge to its test. With the back-edges left out, the body
+   * would be a dead end that never reaches what follows the loop, and the blocks around the loop
+   * could not find where they end. For finding joins, the end of the body continues to the
+   * loop's exit instead (the loop does finish): these edges are added to a copy of the graph.
+   */
+  private withLoopExits(flow: FlowGraph): FlowGraph {
+    const synthetic = flow.edges
+      .filter((edge) => this.backEdgeIds.has(edge.id))
+      .flatMap((edge) => {
+        const loop = this.loops.get(edge.target);
+        if (loop?.kind !== 'while' || loop.conditions[0] !== edge.target) return [];
+        return loop.exitStarts.map((exit, index) => ({
+          id: `${edge.id}:loop-exit:${index}`,
+          source: edge.source,
+          target: exit,
+        }));
+      });
+    return synthetic.length === 0 ? flow : { ...flow, edges: [...flow.edges, ...synthetic] };
   }
 
   // ---------------------------------------------------------------------------
