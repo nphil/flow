@@ -1,3 +1,16 @@
+## 1.4.0
+
+- Scripts: a new **Scripts** tab opens any Home Assistant script on the canvas, lets you edit it and saves it back with the same steps. Fields, icon, mode and variables are kept, and Run starts a script.
+- Automations and scripts made from a blueprint open read-only (Home Assistant builds their steps), showing the blueprint and its inputs, instead of failing to open.
+- New **Readability** tab: plain-language tips on the open automation or script (steps without a name, templates a built-in condition can replace, literal `device_id`s, state triggers that fire when a sensor comes back from `unavailable`) with one-click fixes, and a small dot on the nodes that have a tip.
+- Round trip: every automation and script in the 353-fixture test set now opens and saves back as written, with the same steps in the same shape. `choose` stays `choose`, an inline condition step stays a step, `service:` stays `service:`, shorthand `and:`/`or:`/`not:` conditions, templated triggers, waits, delays and settings keep what they had, and a step Flow has no node for (such as `scene:`) is saved exactly as written and shown as such.
+- Fix: saving an automation no longer drops its top-level `variables`, and nodes keep the positions you gave them after a save (they used to trade places when a block was followed by more steps).
+- Fix: a `repeat` loop (`until` or `count`) whose body starts with a `parallel` block opens and saves back as written instead of being rewritten.
+- Fix: an `if` with no else followed by a `parallel` block no longer pulls the rest of the steps into an `else`, and a script that starts with a `parallel` block keeps its alias and note.
+- Fix: the state-machine fallback keeps `max`, `max_exceeded`, `initial_state`, `trace` and `trigger_variables`.
+- Fix: when a `choose` runs its default branch, the live trace now lights up the default's own step instead of the first condition.
+- `yarn verify:ha` checks scripts as well as automations and now needs `HA_URL` and a token instead of built-in addresses.
+
 ## 1.3.0
 
 - Round-trip fix: automations that stop a branch early (`stop` guards), wait with a timeout, use root conditions, `variables` lookup steps, `max`/`max_exceeded`, or a templated `repeat.for_each` now open and save back exactly as written. They used to fall back to a lossy state-machine rewrite (or fail to open).
