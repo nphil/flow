@@ -91,6 +91,7 @@
     }
   },
   "actions": {
+    "verbatimStep": "Flow cannot edit this step, so it keeps it exactly as written and saves it back unchanged. Edit it in Home Assistant's own editor.",
     "serviceLabel": "Service",
     "actionTypeLabel": "Action Type",
     "actionTypes": {

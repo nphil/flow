@@ -683,13 +683,9 @@ function summarizeConditionTemplate(template: string | null, t: DescribeT): Summ
 
 // ── actions ─────────────────────────────────────────────────────────────────
 
-/** True for the placeholder the parser emits for a step Flow cannot represent. */
+/** True for a step Flow cannot model: it is kept exactly as written and saved back unchanged. */
 function isUnsupportedPlaceholder(data: Data): boolean {
-  return data.service === 'unknown.unknown';
-}
-
-function isPlaceholderAlias(alias: string): boolean {
-  return alias === 'Unknown Node' || alias.startsWith('Unknown:');
+  return data.verbatimStep !== undefined;
 }
 
 function summarizeStop(data: Data, t: DescribeT): Summary {
@@ -779,7 +775,7 @@ function summarizeServiceCall(service: string, data: Data, t: DescribeT): Summar
 }
 
 function summarizeUnsupported(data: Data, t: DescribeT): Summary {
-  const original = isRecord(data.data) ? data.data : {};
+  const original = isRecord(data.verbatimStep) ? data.verbatimStep : {};
   const keys = Object.keys(original).slice(0, MAX_LISTED_ITEMS);
   return {
     text: t('describe.action.unsupported'),
@@ -923,7 +919,7 @@ export function describeNode(
 ): NodeDescription {
   const summary = summarize(type, data, t);
   const rawAlias = str(data.alias);
-  const alias = rawAlias && !(type === 'action' && isPlaceholderAlias(rawAlias)) ? rawAlias : null;
+  const alias = rawAlias || null;
 
   const details = [
     ...(data.enabled === false ? [t('describe.disabled')] : []),

@@ -20,8 +20,8 @@ describe('getNodeKind', () => {
     expect(getNodeKind('action', { parallel: [] })).toBe('flowctl');
   });
 
-  it("classifies YamlParser's unknown-node placeholder as unknown", () => {
-    expect(getNodeKind('action', { service: 'unknown.unknown', data: {} })).toBe('unknown');
+  it('classifies a step the parser keeps verbatim as unknown', () => {
+    expect(getNodeKind('action', { verbatimStep: { scene: 'scene.movie_night' } })).toBe('unknown');
   });
 
   it('falls back to unknown for an unrecognized node type', () => {

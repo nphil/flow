@@ -1,4 +1,5 @@
 import type { FlowNode } from '@flow/shared';
+import { dump } from 'js-yaml';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldError } from '@/components/forms/FieldError';
@@ -133,6 +134,18 @@ export function ActionFields({ node, onChange }: ActionFieldsProps) {
   const handleResponseVariableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange('response_variable', e.target.value === '' ? undefined : e.target.value);
   };
+
+  // A step Flow cannot model is saved exactly as written: show it, do not offer to edit it.
+  if (nodeData.verbatimStep !== undefined) {
+    return (
+      <div className="space-y-2" data-testid="verbatim-step">
+        <p className="text-muted-foreground text-xs">{t('nodes:actions.verbatimStep')}</p>
+        <pre className="max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs">
+          {dump(nodeData.verbatimStep)}
+        </pre>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -107,10 +107,8 @@ export function setNestedNodeData(
  * Design-system color category for a canvas node (design doc §3). Six of the
  * seven map 1:1 from the schema `type`; `action` fans out further since HA
  * flow-control actions (stop / an opaque preserved `repeat`|`parallel` block)
- * get the rose 'flowctl' kind instead of plain green 'action', and
- * YamlParser's "can't represent this" placeholder (`service:
- * 'unknown.unknown'` — see YamlParser.ts's `getNextNodeId('unknown')` call
- * sites) gets 'unknown'.
+ * get the rose 'flowctl' kind instead of plain green 'action', and a step Flow
+ * cannot model (the parser keeps it as `verbatimStep`) gets 'unknown'.
  */
 export type NodeKind =
   | 'trigger'
@@ -133,7 +131,7 @@ export function getNodeKind(type: string | undefined, data: Record<string, unkno
     case 'set_variables':
       return 'data';
     case 'action':
-      if (data.service === 'unknown.unknown') return 'unknown';
+      if (data.verbatimStep !== undefined) return 'unknown';
       if (
         typeof data.stop === 'string' ||
         data.repeat !== undefined ||

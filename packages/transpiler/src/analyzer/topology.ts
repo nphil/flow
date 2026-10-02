@@ -1,6 +1,6 @@
 import type { FlowEdge, FlowGraph } from '@flow/shared';
-import graphlib from 'graphlib';
 import { readNodeHints } from '@flow/shared';
+import graphlib from 'graphlib';
 import { computePostDominators, isStructuredFlow } from './structure';
 
 const { Graph, alg } = graphlib;

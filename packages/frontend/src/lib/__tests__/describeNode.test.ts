@@ -46,14 +46,11 @@ describe('alias handling', () => {
     });
   });
 
-  it('never shows the parser placeholder alias of an unsupported step', () => {
-    expect(
-      describe_('action', {
-        service: 'unknown.unknown',
-        alias: 'Unknown Node',
-        data: { choose: [] },
-      })
-    ).toEqual({ title: 'Unsupported step (kept as is)', detail: ['Contains: choose'] });
+  it('says an unsupported step is kept as written, and what it contains', () => {
+    expect(describe_('action', { verbatimStep: { scene: 'scene.movie_night' } })).toEqual({
+      title: 'Unsupported step (kept as is)',
+      detail: ['Contains: scene'],
+    });
   });
 
   it('flags a disabled node with a leading detail line', () => {
@@ -514,7 +511,7 @@ describe('actions', () => {
   });
 
   it('describes opaque and empty actions', () => {
-    expect(describe_('action', { service: 'unknown.unknown', data: { foo: 1, bar: 2 } })).toEqual({
+    expect(describe_('action', { verbatimStep: { foo: 1, bar: 2 } })).toEqual({
       title: 'Unsupported step (kept as is)',
       detail: ['Contains: foo, bar'],
     });
