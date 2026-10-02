@@ -76,8 +76,8 @@ describe('Wait node timeout branching', () => {
         { wait_for_trigger: unknown[]; timeout: string; continue_on_timeout: boolean },
         {
           if: { value_template: string }[];
-          then: { service: string }[];
-          else: { service: string }[];
+          then: { action: string }[];
+          else: { action: string }[];
         },
       ];
     };
@@ -88,8 +88,8 @@ describe('Wait node timeout branching', () => {
     expect(waitAction.continue_on_timeout).toBe(true);
 
     expect(branchAction.if[0].value_template).toBe('{{ wait.trigger is not none }}');
-    expect(branchAction.then[0].service).toBe('light.turn_on');
-    expect(branchAction.else[0].service).toBe('notify.notify');
+    expect(branchAction.then[0].action).toBe('light.turn_on');
+    expect(branchAction.else[0].action).toBe('notify.notify');
   });
 
   it('round-trips back to a Wait node with true/false edges to the same two actions', async () => {

@@ -2776,6 +2776,9 @@ export class YamlParser {
               continue_on_error:
                 typeof continue_on_error === 'boolean' ? continue_on_error : undefined,
               enabled: getNodeEnabled(typeof enabled === 'boolean' ? enabled : undefined),
+              // The step said `service:` (the spelling before HA renamed it to `action:`); keep it
+              // that way on save. Steps made in Flow carry no marker and are written as `action:`.
+              ...(typeof service === 'string' ? { legacyServiceKey: true } : {}),
             },
           };
           nodes.push(actionNode);

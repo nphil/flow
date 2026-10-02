@@ -1,4 +1,4 @@
-export type { CanonicalConfig, ConfigKind, Prose } from './canonicalize';
+export type { CanonicalConfig, CanonOptions, ConfigKind, Prose } from './canonicalize';
 export { canonicalizeConfig, canonValue, detectConfigKind } from './canonicalize';
 export { semanticDiff } from './diff';
 export type { Json, JsonObject } from './json';

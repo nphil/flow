@@ -45,6 +45,22 @@ export interface Prose {
   notes: string[];
 }
 
+export interface CanonOptions {
+  /**
+   * Compare the SHAPE the author wrote, not only what it does. `choose` and `if/else` stay
+   * different constructs (no ladder flattening, no "the rest of the run folds into the else"),
+   * and `service:` is not read as `action:`. Flow has to save what it opened without rewriting
+   * those spellings, so the corpus test and the live gate run strict; the default mode is the
+   * looser "same behavior" reading that `semanticDiff` was built on.
+   */
+  strict?: boolean;
+}
+
+/** The prose collector plus the comparison mode, threaded through the step canonicalizers. */
+interface Ctx extends Prose {
+  strict: boolean;
+}
+
 export type ConfigKind = 'automation' | 'script';
 
 export interface CanonicalConfig {
@@ -191,14 +207,14 @@ function canonTrigger(t: Json, prose: Prose): Json {
 // Steps
 // ---------------------------------------------------------------------------
 
-function canonSequence(seq: Json[], prose: Prose): Json[] {
+function canonSequence(seq: Json[], ctx: Ctx): Json[] {
   const steps = seq
-    .map((s) => canonStep(s, prose))
+    .map((s) => canonStep(s, ctx))
     .filter((s) => {
       if (isJsonObject(s) && Object.keys(s).length === 0) return false;
       return s !== null && s !== undefined;
     });
-  return absorbContinuations(steps);
+  return ctx.strict ? steps : absorbContinuations(steps);
 }
 
 type Decision = JsonObject & { __decision: Json[] };
@@ -231,31 +247,38 @@ function makeDecision(branches: Json[], elseSteps: Json[], disabled: boolean): J
   return out;
 }
 
-function canonDecision(step: JsonObject, prose: Prose): JsonObject {
+function canonDecision(step: JsonObject, ctx: Ctx): JsonObject {
   const branches: Json[] = [];
   let otherwise: Json[] = [];
+  const isChoose = 'choose' in step;
 
-  if ('choose' in step) {
+  if (isChoose) {
     for (const c of toList(step.choose)) {
       if (!isJsonObject(c)) continue;
       // A choose branch carries its own alias; the equivalent if/then/else
       // spelling carries it on the step. Harvest both or the conversion
       // looks like prose loss when nothing was lost.
-      harvestProse(c, prose);
+      harvestProse(c, ctx);
       branches.push({
-        when: canonConditions(firstList(c, 'conditions', 'condition'), prose),
-        do: canonSequence(firstList(c, 'sequence'), prose),
+        when: canonConditions(firstList(c, 'conditions', 'condition'), ctx),
+        do: canonSequence(firstList(c, 'sequence'), ctx),
       });
     }
-    otherwise = canonSequence(firstList(step, 'default'), prose);
+    otherwise = canonSequence(firstList(step, 'default'), ctx);
   } else {
     branches.push({
-      when: canonConditions(firstList(step, 'if'), prose),
-      do: canonSequence(firstList(step, 'then'), prose),
+      when: canonConditions(firstList(step, 'if'), ctx),
+      do: canonSequence(firstList(step, 'then'), ctx),
     });
-    otherwise = canonSequence(firstList(step, 'else'), prose);
+    otherwise = canonSequence(firstList(step, 'else'), ctx);
   }
 
+  if (ctx.strict) {
+    const out: JsonObject = isChoose ? { __choose: branches } : { __if: branches };
+    if (otherwise.length > 0) out.__otherwise = otherwise;
+    if (step.enabled === false) out.enabled = false;
+    return out;
+  }
   return makeDecision(branches, otherwise, step.enabled === false);
 }
 
@@ -303,30 +326,30 @@ function absorbContinuations(steps: Json[]): Json[] {
 }
 
 /** Loop condition lists stay structural on purpose. */
-function canonRepeat(step: JsonObject, repeat: JsonObject, prose: Prose): JsonObject {
+function canonRepeat(step: JsonObject, repeat: JsonObject, ctx: Ctx): JsonObject {
   const out: JsonObject = {};
-  if (repeat.until !== undefined) out.until = canonConditions(firstList(repeat, 'until'), prose);
-  if (repeat.while !== undefined) out.while = canonConditions(firstList(repeat, 'while'), prose);
+  if (repeat.until !== undefined) out.until = canonConditions(firstList(repeat, 'until'), ctx);
+  if (repeat.while !== undefined) out.while = canonConditions(firstList(repeat, 'while'), ctx);
   if (repeat.count !== undefined) out.count = repeat.count;
   if (repeat.for_each !== undefined) out.for_each = canonValue(repeat.for_each);
-  out.sequence = canonSequence(firstList(repeat, 'sequence'), prose);
+  out.sequence = canonSequence(firstList(repeat, 'sequence'), ctx);
   const wrapped: JsonObject = { __repeat: out };
   if (step.enabled === false) wrapped.enabled = false;
   return wrapped;
 }
 
 /** A `parallel` branch is a `{sequence: [...]}`, a bare list, or a single step. */
-function canonParallelBranch(branch: Json, prose: Prose): Json {
-  if (Array.isArray(branch)) return canonSequence(branch, prose);
+function canonParallelBranch(branch: Json, ctx: Ctx): Json {
+  if (Array.isArray(branch)) return canonSequence(branch, ctx);
   if (isJsonObject(branch) && Array.isArray(branch.sequence)) {
     const { sequence, ...rest } = branch;
     const onlySequence = Object.keys(rest).every((k) => Object.hasOwn(PROSE_KEYS, k));
     if (onlySequence) {
-      harvestProse(branch, prose);
-      return canonSequence(sequence, prose);
+      harvestProse(branch, ctx);
+      return canonSequence(sequence, ctx);
     }
   }
-  return canonSequence([branch], prose);
+  return canonSequence([branch], ctx);
 }
 
 function canonWaitFields(step: JsonObject, out: JsonObject, prose: Prose): void {
@@ -344,20 +367,20 @@ function canonWaitFields(step: JsonObject, out: JsonObject, prose: Prose): void 
  * Canonicalize one action step. Returns an empty object for steps that carry
  * no behavior once normalized (e.g. an empty branch container).
  */
-function canonStep(step: Json, prose: Prose): Json {
+function canonStep(step: Json, ctx: Ctx): Json {
   if (!isJsonObject(step)) return step;
 
-  harvestProse(step, prose);
+  harvestProse(step, ctx);
 
-  if ('if' in step || 'choose' in step) return canonDecision(step, prose);
+  if ('if' in step || 'choose' in step) return canonDecision(step, ctx);
 
   if ('repeat' in step && isJsonObject(step.repeat)) {
-    return canonRepeat(step, step.repeat, prose);
+    return canonRepeat(step, step.repeat, ctx);
   }
 
   // bare condition step (gates everything after it in its sequence)
   if ('condition' in step && !('action' in step) && !('service' in step)) {
-    return { __condition: canonCondition(step, prose) };
+    return { __condition: canonCondition(step, ctx) };
   }
 
   const out: JsonObject = {};
@@ -365,19 +388,20 @@ function canonStep(step: Json, prose: Prose): Json {
     if (Object.hasOwn(PROSE_KEYS, k)) continue;
     if (k === 'enabled' && step[k] === true) continue;
     if (k === 'wait_for_trigger' || k === 'timeout' || k === 'continue_on_timeout') continue;
-    // upstream renamed `service` to `action`; both are accepted
-    const key = k === 'service' ? 'action' : k;
+    // Upstream renamed `service` to `action` and accepts both. Only the strict reading keeps
+    // the author's spelling apart.
+    const key = k === 'service' && !ctx.strict ? 'action' : k;
     if (k === 'delay') {
       out.delay = canonDuration(step[k]);
     } else if (k === 'sequence') {
-      out[key] = canonSequence(firstList(step, k), prose);
+      out[key] = canonSequence(firstList(step, k), ctx);
     } else if (k === 'parallel') {
-      out[key] = toList(step[k]).map((b) => canonParallelBranch(b, prose));
+      out[key] = toList(step[k]).map((b) => canonParallelBranch(b, ctx));
     } else {
       out[key] = canonValue(step[k]);
     }
   }
-  canonWaitFields(step, out, prose);
+  canonWaitFields(step, out, ctx);
   return out;
 }
 
@@ -416,8 +440,9 @@ const PASSTHROUGH_KEYS = [
   'icon',
 ] as const;
 
-export function canonicalizeConfig(raw: Json): CanonicalConfig {
-  const prose: Prose = { aliases: [], notes: [] };
+export function canonicalizeConfig(raw: Json, options: CanonOptions = {}): CanonicalConfig {
+  const ctx: Ctx = { aliases: [], notes: [], strict: options.strict === true };
+  const prose: Prose = ctx;
   const kind = detectConfigKind(raw);
   if (!isJsonObject(raw)) return { kind, canon: { value: raw }, prose };
 
@@ -426,10 +451,10 @@ export function canonicalizeConfig(raw: Json): CanonicalConfig {
   const canon: JsonObject = { mode: raw.mode ?? 'single' };
 
   if (kind === 'script') {
-    canon.sequence = canonSequence(firstList(raw, 'sequence'), prose);
+    canon.sequence = canonSequence(firstList(raw, 'sequence'), ctx);
   } else {
     canon.triggers = firstList(raw, 'triggers', 'trigger').map((t) => canonTrigger(t, prose));
-    canon.actions = canonSequence(firstList(raw, 'actions', 'action'), prose);
+    canon.actions = canonSequence(firstList(raw, 'actions', 'action'), ctx);
     const conditions = canonConditions(firstList(raw, 'conditions', 'condition'), prose);
     if (conditions.length > 0) canon.conditions = conditions;
   }
@@ -439,5 +464,5 @@ export function canonicalizeConfig(raw: Json): CanonicalConfig {
   for (const key of PASSTHROUGH_KEYS) {
     if (raw[key] !== undefined) canon[key] = canonValue(raw[key]);
   }
-  return { kind, canon, prose };
+  return { kind, canon, prose: { aliases: ctx.aliases, notes: ctx.notes } };
 }

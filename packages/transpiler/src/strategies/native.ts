@@ -1387,6 +1387,7 @@ export class NativeStrategy extends BaseStrategy {
     const {
       alias,
       service,
+      legacyServiceKey,
       // `id` is intentionally dropped (not just excluded from extraProps) —
       // HA's action-step schemas (service call, delay, wait, set_variables)
       // don't support a per-step `id:` at all; only triggers do. Real HA
@@ -1405,7 +1406,8 @@ export class NativeStrategy extends BaseStrategy {
     const action: Record<string, unknown> = {
       ...extraProps, // Preserve extra properties
       alias,
-      service,
+      // `action:` is the current spelling; `service:` only when the opened step used it.
+      [legacyServiceKey === true ? 'service' : 'action']: service,
     };
 
     if (target) {

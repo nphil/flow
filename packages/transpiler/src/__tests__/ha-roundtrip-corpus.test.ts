@@ -7,6 +7,9 @@
 // of "same"). This is the offline twin of `yarn verify:ha`, which runs the
 // same check against a live Home Assistant.
 //
+// The comparison is STRICT: besides what the config does, it keeps the author's spelling of the
+// constructs Flow could silently rewrite (`choose` stays `choose`, `service:` stays `service:`).
+//
 // The fixtures are synthetic on purpose: the repository is public, so they use
 // generic entity ids and never copy a real installation's automations.
 import { readFileSync } from 'node:fs';
@@ -42,11 +45,17 @@ const KNOWN_GAPS: Record<string, string> = {
     'set_conversation_response: null saved as an empty step',
   'automations/action-stop-in-choose-branch.yaml':
     'choose/else-if with a stopping branch rewritten as sequential ifs',
+  'automations/action-stop-in-choose-default.yaml':
+    'guard that stops in else: the steps after the if are folded or reordered',
+  'automations/action-stop-in-else-branch.yaml':
+    'guard that stops in else: the steps after the if are folded or reordered',
   'automations/action-stop-in-repeat.yaml':
     'stop moved out of its branch (stop becomes unconditional)',
   'automations/action-stop-without-reason.yaml': 'stop: null saved as an empty string',
   'automations/action-wait-for-trigger-single-mapping.yaml':
     'single-mapping wait_for_trigger step vanishes',
+  'automations/action-wait-for-trigger-then-choose-on-wait-trigger-id.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/action-wait-template-timeout-number.yaml': 'numeric wait timeout dropped',
   'automations/action-wait-then-branch-on-wait-completed.yaml':
     'bare template condition corrupted into a character map',
@@ -56,9 +65,18 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/alias-note-on-simple-step-kinds.yaml': 'scene step replaced by unknown.unknown',
   'automations/blueprint-instance-no-inputs.yaml': 'blueprint instance cannot be opened',
   'automations/blueprint-instance-with-inputs.yaml': 'blueprint instance cannot be opened',
+  'automations/choose-branch-alias-and-note.yaml': 'choose saved as a nested if/else ladder',
+  'automations/choose-conditions-mapping-instead-of-list.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/choose-empty-default.yaml': 'first/only step hoisted into root conditions',
   'automations/choose-empty-sequence-branch.yaml': 'first/only step hoisted into root conditions',
+  'automations/choose-many-branches-with-default.yaml': 'choose saved as a nested if/else ladder',
+  'automations/choose-nested-choose.yaml': 'choose saved as a nested if/else ladder',
+  'automations/choose-overlapping-branches-first-match-wins.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/choose-single-branch-only.yaml': 'first/only step hoisted into root conditions',
+  'automations/choose-with-steps-before-and-after.yaml': 'choose saved as a nested if/else ladder',
+  'automations/choose-without-default.yaml': 'choose saved as a nested if/else ladder',
   'automations/condition-enabled-template.yaml':
     '`enabled` template on a condition saved as a JSON template',
   'automations/condition-group-alias-and-note.yaml': 'alias/note lost: Alex is home, It is cold',
@@ -79,6 +97,7 @@ const KNOWN_GAPS: Record<string, string> = {
     'trigger condition with an integer id saved as a JSON template',
   'automations/conditions-in-choose-groups.yaml':
     'not: shorthand in choose saved as a broken template condition',
+  'automations/conditions-in-choose-leaf-types.yaml': 'choose saved as a nested if/else ladder',
   'automations/conditions-in-choose-template-string.yaml':
     'bare template condition corrupted into a character map',
   'automations/conditions-in-if-group-long-form.yaml':
@@ -111,14 +130,19 @@ const KNOWN_GAPS: Record<string, string> = {
     'template/or shorthand condition steps broken',
   'automations/deep-choose-in-repeat-in-parallel-in-sequence.yaml':
     'nested sequence step replaced by unknown.unknown',
+  'automations/deep-diamond-choose-branches-converge-on-shared-tail.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/deep-if-ladder-with-waits-and-stops.yaml':
     'choose/else-if with a stopping branch rewritten as sequential ifs',
+  'automations/deep-repeat-in-choose-in-if-in-parallel.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/deep-wait-timeout-guard-then-continue.yaml':
     'bare template condition corrupted into a character map',
   'automations/disabled-step-choose.yaml':
     'disabled if/choose: enabled:false pushed onto inner nodes',
   'automations/disabled-step-condition.yaml': 'condition step rewritten as an if wrapping the rest',
   'automations/disabled-step-if.yaml': 'disabled if/choose: enabled:false pushed onto inner nodes',
+  'automations/disabled-step-inside-choose-branch.yaml': 'choose saved as a nested if/else ladder',
   'automations/disabled-step-inside-if-then.yaml': 'first/only step hoisted into root conditions',
   'automations/disabled-step-parallel.yaml': 'disabled parallel becomes enabled',
   'automations/disabled-step-repeat.yaml': 'disabled repeat: flag pushed onto inner steps',
@@ -130,6 +154,7 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/initial-state-true.yaml': 'initial_state: true dropped',
   'automations/kitchen-sink-every-construct.yaml':
     'bare template condition corrupted into a character map',
+  'automations/kitchen-sink-legacy-spellings.yaml': 'choose saved as a nested if/else ladder',
   'automations/max-exceeded-debug.yaml': 'unsupported max_exceeded level resets mode to single',
   'automations/max-exceeded-error.yaml': 'unsupported max_exceeded level resets mode to single',
   'automations/max-exceeded-fatal.yaml': 'unsupported max_exceeded level resets mode to single',
@@ -148,9 +173,16 @@ const KNOWN_GAPS: Record<string, string> = {
     'nested parallel flattened, following step duplicated',
   'automations/parallel-single-mapping-branch.yaml':
     'parallel as a mapping replaced by unknown.unknown',
+  'automations/realistic-garage-auto-close.yaml': 'choose saved as a nested if/else ladder',
+  'automations/realistic-motion-light-with-timeout.yaml': 'choose saved as a nested if/else ladder',
   'automations/realistic-presence-lights-with-sun-and-zone.yaml':
     'parallel becomes sequential steps',
+  'automations/realistic-thermostat-schedule-with-trigger-ids.yaml':
+    'choose saved as a nested if/else ladder',
+  'automations/realistic-voice-command-scene.yaml': 'choose saved as a nested if/else ladder',
   'automations/repeat-count-template.yaml': 'repeat count template dropped',
+  'automations/repeat-for-each-template.yaml': 'choose saved as a nested if/else ladder',
+  'automations/self-healing-wait-and-guard.yaml': 'choose saved as a nested if/else ladder',
   'automations/sequence-nested-inside-sequence.yaml':
     'nested sequence step replaced by unknown.unknown',
   'automations/sequence-nested-with-alias.yaml': 'nested sequence step replaced by unknown.unknown',
@@ -166,6 +198,8 @@ const KNOWN_GAPS: Record<string, string> = {
   'automations/trigger-fields-enabled-template.yaml': 'trigger enabled as a template is rejected',
   'automations/trigger-purpose-area-list-with-options.yaml':
     'purpose trigger without target.entity_id rejected',
+  'automations/trigger-routing-by-trigger-id-with-choose.yaml':
+    'choose saved as a nested if/else ladder',
   'automations/trigger-state-attribute-from-to-numbers.yaml':
     'numeric from/to on a state trigger rejected',
   'automations/trigger-state-from-null.yaml': 'to: null / from: null dropped',
@@ -220,7 +254,7 @@ describe('HA round-trip corpus', () => {
       const original = loadFixture(file);
       if (!isJson(original)) throw new Error(`${file} is not a plain JSON-compatible document`);
 
-      const result = await roundTripConfig(transpiler, original);
+      const result = await roundTripConfig(transpiler, original, { strict: true });
 
       expect(result.errors, `${file}: ${result.errors.join('\n')}`).toEqual([]);
       expect(result.diffs, `${file} changed meaning:\n${result.diffs.join('\n')}`).toEqual([]);

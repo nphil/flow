@@ -320,3 +320,68 @@ actions:
     );
   });
 });
+
+describe("strict mode keeps the author's spelling apart", () => {
+  function strictDiff(a: string, b: string): string[] {
+    const strict = { strict: true };
+    return semanticDiff(
+      canonicalizeConfig(config(a), strict).canon,
+      canonicalizeConfig(config(b), strict).canon
+    );
+  }
+
+  const CHOOSE = `${TRIGGER}
+actions:
+  - choose:
+      - conditions: [{ condition: state, entity_id: light.a, state: "on" }]
+        sequence: [{ action: light.turn_off, target: { entity_id: light.a } }]
+    default:
+      - action: light.turn_on
+        target: { entity_id: light.c }
+`;
+  const IF_ELSE = `${TRIGGER}
+actions:
+  - if: [{ condition: state, entity_id: light.a, state: "on" }]
+    then: [{ action: light.turn_off, target: { entity_id: light.a } }]
+    else: [{ action: light.turn_on, target: { entity_id: light.c } }]
+`;
+
+  it('a choose and the equivalent if/else are the same behavior but not the same shape', () => {
+    expect(sameMeaning(CHOOSE, IF_ELSE)).toEqual([]);
+    expect(strictDiff(CHOOSE, IF_ELSE)).not.toEqual([]);
+    expect(strictDiff(CHOOSE, CHOOSE)).toEqual([]);
+  });
+
+  it('a guard that stops keeps its shape instead of folding the rest into else', () => {
+    const guard = `${TRIGGER}
+actions:
+  - if: [{ condition: state, entity_id: light.a, state: "on" }]
+    then: [{ stop: already on }]
+  - action: light.turn_on
+    target: { entity_id: light.a }
+`;
+    const folded = `${TRIGGER}
+actions:
+  - if: [{ condition: state, entity_id: light.a, state: "on" }]
+    then: [{ stop: already on }]
+    else: [{ action: light.turn_on, target: { entity_id: light.a } }]
+`;
+    expect(sameMeaning(guard, folded)).toEqual([]);
+    expect(strictDiff(guard, folded)).not.toEqual([]);
+  });
+
+  it('service: and action: are the same step but not the same spelling', () => {
+    const legacy = `${TRIGGER}
+actions:
+  - service: light.turn_on
+    target: { entity_id: light.a }
+`;
+    const current = `${TRIGGER}
+actions:
+  - action: light.turn_on
+    target: { entity_id: light.a }
+`;
+    expect(sameMeaning(legacy, current)).toEqual([]);
+    expect(strictDiff(legacy, current)).not.toEqual([]);
+  });
+});
