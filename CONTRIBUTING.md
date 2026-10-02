@@ -30,6 +30,7 @@ See the repository root and the `packages` folder for the full layout.
 - Build all packages: `yarn build`
 - Build and copy to Home Assistant component: `yarn build:ha`
 - Run tests: `yarn test` (use `--run` to avoid Vitest watch mode when necessary)
+- Run the round-trip fixtures on their own: `yarn test:roundtrip`
 - Typecheck: `yarn typecheck`
 - Lint/format: `yarn check` and `yarn format`
 
@@ -47,6 +48,7 @@ If you need to run a command inside a package, change into that package director
 
 - Unit tests use Vitest. Run all tests with `yarn test` from the repository root or run the package-local tests inside `packages/*`.
 - When adding tests, aim for deterministic, fast tests. Use fixtures in `packages/transpiler/fixtures` or `__tests__/yaml-automation-fixtures` where appropriate.
+- The round-trip fixtures (Home Assistant configs that must open and save in Flow with the same meaning) run with `yarn test:roundtrip`, and CI reports them as a separate step.
 
 ## Branching, Commits & Pull Requests
 
@@ -66,7 +68,29 @@ If you need to run a command inside a package, change into that package director
 ## Home Assistant Build / Deploy
 
 - The repository includes scripts to copy builds into the Home Assistant custom component directory. Use `yarn build:ha` from the repo root to build and copy files.
-- The manifest at [custom_components/flow/manifest.json](custom_components/flow/manifest.json#L1) must be kept in sync with release versions.
+- Three files carry the release version and must always agree: [custom_components/flow/manifest.json](custom_components/flow/manifest.json#L1) (HACS), `flow_web/config.yaml` and the `ARG BUILD_VERSION` line of `flow_web/Dockerfile` (the Home Assistant add-on). Do not edit them by hand: `yarn release:bump <version>` writes all three and `yarn release:check` verifies them.
+
+## CI
+
+Every pull request and every push to `main` runs these GitHub Actions workflows (see `.github/workflows`). Keep them green:
+
+- **CI** — typecheck, Biome lint and format check, unit tests, the round-trip fixtures, and a full build including the Home Assistant bundle. The built integration is attached to the run as the `flow` artifact, so a pull request can be tried in Home Assistant.
+- **HACS Validation** — the HACS action, hassfest, and a check that the three version files agree. It also runs every night.
+- **Add-on** — the Home Assistant app linter on `flow_web`, and a build of the add-on image against the newest published release.
+
+## Releases
+
+A release is a git tag; the Release workflow does the rest. Maintainers do not cut one without the owner's go-ahead.
+
+1. `yarn release:bump 1.3.0` sets the version in the three files above (`yarn release:check` confirms they agree).
+2. Commit them: `git commit -m "chore(release): v1.3.0"`.
+3. Tag and push: `git tag v1.3.0 && git push origin main v1.3.0`.
+
+The workflow checks that the tag and the version files agree, runs CI, builds `flow.zip` and `flow.tar.gz`, creates the GitHub Release (its notes are generated from the commit history, grouped by `feat`, `fix` and everything else, so write conventional commit subjects), and pushes `ghcr.io/nphil/flow:1.3.0` (plus `latest` for stable versions). HACS and the Home Assistant add-on pick the release up from there: HACS reads `flow.zip`, and the add-on image downloads the `flow.tar.gz` of its own version.
+
+- **Pre-release:** a version such as `1.4.0-rc.1` creates a GitHub pre-release and leaves the `latest` image alone.
+- **Rehearsal:** `gh workflow run release.yml --ref <branch> -f version=1.3.0` builds and tests everything but publishes nothing (`dry_run` is on by default). The files stay available as a workflow artifact.
+- **By hand:** a release created in the GitHub UI works too. The workflow attaches the files and keeps your title and notes.
 
 ## Adding Packages or Tests
 
