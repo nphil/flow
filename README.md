@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Stars](https://img.shields.io/github/stars/nphil/flow?style=flat&color=gold)](https://github.com/nphil/flow)
 
-Flow is a visual flow editor that brings Node-RED-style clarity to Home Assistant automations **without a second execution engine**: you build on a canvas, and Flow transpiles the diagram into 100% standard Home Assistant YAML stored directly in HA's own automation config, so the logic that runs is native HA logic, not something Flow has to keep alive itself.
+Flow is a visual flow editor that brings Node-RED-style clarity to Home Assistant automations and scripts **without a second execution engine**: you build on a canvas, and Flow transpiles the diagram into 100% standard Home Assistant YAML stored directly in HA's own automation and script config, so the logic that runs is native HA logic, not something Flow has to keep alive itself.
 
 ---
 
@@ -60,6 +60,8 @@ Flow is architected with strict engineering principles to ensure your home remai
 ## ✨ Power Features
 
 - **Script Responses:** Full support for `call_service` responses. Call a script, capture its output, and use it in subsequent nodes via native Jinja templates.
+- **Scripts:** The **Scripts** tab next to Automations opens any Home Assistant script on the same canvas. A script has no trigger, so its first step is where it starts; its fields, icon, mode and variables are kept, and **Run** starts it. Scripts open and save back with the same steps, just like automations.
+- **Blueprint-based automations and scripts, read-only:** One made from a blueprint has no steps of its own (Home Assistant builds them), so Flow shows which blueprint and which inputs it uses, says it is read-only, and never writes it back changed. Edit its inputs in Home Assistant.
 - **Set Variables Node:** Create and update flow-scoped variables dynamically within your automation logic.
 - **Entity Intelligence:** Full autocomplete and state-awareness via the native HASS WebSocket API.
 - **Visual Import:** Load any native automation and see it mapped instantly to nodes.
@@ -150,6 +152,10 @@ When you call a script and set a `response_variable` (e.g., `weather_data`), tho
 Open the automation in Flow, switch the right-hand panel to the **Debug** tab, and click the **Live** (radio tower) button in the *Automation Trace* section. Flow subscribes to Home Assistant's trigger events and polls the run's trace, so the canvas updates while the automation is still executing — including long `delay` and `wait_for_trigger` steps, which show a live countdown.
 
 Each node badges its outcome: green (executed), orange (condition was false — hover for the reason), red (error), and a spinner while the step is in flight. Nodes the run never reached are dimmed, so a glance tells you which branch was taken. Loop bodies show `×N` for the number of visits. The **Select Trace Run** picker replays any of the recent runs Home Assistant retains.
+
+### Can I check Flow against my own Home Assistant before I save anything?
+
+Yes. From a checkout of this repository, run `HA_URL=http://homeassistant.local:8123 HA_TOKEN=<long-lived token> yarn verify:ha`. It only reads: nothing is saved or run. It opens every automation and script in Flow, writes each one back out in memory, and reports anything that fails to open or comes back with a different meaning or shape. `HA_TOKEN_FILE` can point at a file holding the token instead, and `GATE_KINDS=automation` or `GATE_KINDS=script` limits what is checked.
 
 ### Does Flow slow down my Home Assistant instance?
 

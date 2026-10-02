@@ -3,8 +3,8 @@
 How well Flow opens and saves Home Assistant 2026.9 automations and scripts without changing their meaning, and how readable the result is on the canvas.
 
 - **Fixtures**: `__tests__/ha-roundtrip-fixtures/{automations,scripts}/*.yaml`, one complete Home Assistant config per file, written in the shape HA stores (plural `triggers:`/`conditions:`/`actions:`, `trigger:` and `action:` keys) plus dedicated fixtures for the legacy spellings. Every fixture's triggers, conditions and actions were validated against a live Home Assistant 2026.9 (`validate_config`, no automation was saved); top-level keys were checked against the automation/script schema in HA core. Entity, device and webhook ids are synthetic.
-- **Check**: `roundTripConfig()` (`packages/transpiler/src/semantic`): open the config in Flow, save it back, compare canonical forms. The corpus test (`packages/transpiler/src/__tests__/ha-roundtrip-corpus.test.ts`) lists every failing fixture in `KNOWN_GAPS` and asserts that it still fails, so fixing a construct without removing its entry turns the suite red. The three older fixtures owned by the transpiler work are not in that list.
-- **Snapshot**: measured on `main` at v1.3.0 (`b83bb6e`). Re-run the corpus test after every transpiler change; this table is a snapshot, the test is the live check.
+- **Check**: `roundTripConfig()` (`packages/transpiler/src/semantic`): open the config in Flow, save it back, compare canonical forms, strictly: the author's spelling of a construct (`choose` stays `choose`, `service:` stays `service:`) counts too. The corpus test (`packages/transpiler/src/__tests__/ha-roundtrip-corpus.test.ts`) would list every failing fixture in `KNOWN_GAPS` and assert that it still fails, so fixing a construct without removing its entry turns the suite red. The list is empty. The corpus test also checks that dragged node positions survive an open, save and open for every fixture, and that a blueprint instance opens read-only and is written back exactly as read.
+- **Snapshot**: measured on `main` at v1.4.0. Re-run the corpus test after every transpiler change; the tables below are a snapshot, the test is the live check. `yarn verify:ha` (needs `HA_URL` and a token) runs the same check against the automations and scripts of a live Home Assistant.
 
 ## Result classes
 
@@ -19,16 +19,18 @@ How well Flow opens and saves Home Assistant 2026.9 automations and scripts with
 
 ## Summary
 
-345 fixtures (322 automations, 23 scripts) were run; the three older fixtures owned by the transpiler work are not counted.
+350 fixtures (325 automations, 25 scripts) were run; the three older fixtures owned by the transpiler work are not counted. Every one is OK, in strict mode. Three of them are blueprint instances (two automations, one script): they open read-only, because Home Assistant builds their steps from the blueprint.
 
 | Area | Fixtures | OK | LOST DATA | CHANGED MEANING | REWRITTEN | REJECTED (cannot open) | OPENS BUT STATE-MACHINE |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Automation-level | 32 | 19 | 2 | 9 | 0 | 2 | 0 |
-| Triggers | 68 | 63 | 0 | 2 | 0 | 3 | 0 |
-| Conditions | 66 | 38 | 1 | 14 | 7 | 6 | 0 |
-| Actions | 156 | 107 | 4 | 33 | 12 | 0 | 0 |
-| Scripts | 23 | 0 | 0 | 0 | 0 | 23 | 0 |
-| **Total** | **345** | **227** | **7** | **58** | **19** | **34** | **0** |
+| Automation-level | 32 | 32 | 0 | 0 | 0 | 0 | 0 |
+| Triggers | 68 | 68 | 0 | 0 | 0 | 0 | 0 |
+| Conditions | 66 | 66 | 0 | 0 | 0 | 0 | 0 |
+| Actions | 159 | 159 | 0 | 0 | 0 | 0 | 0 |
+| Scripts | 25 | 25 | 0 | 0 | 0 | 0 | 0 |
+| **Total** | **350** | **350** | **0** | **0** | **0** | **0** | **0** |
+
+The first audit (v1.3.0) found 227 of 345 OK, 7 LOST DATA, 58 CHANGED MEANING, 19 REWRITTEN and 34 REJECTED, all 23 scripts among the rejected. The transpiler work since then (see "Step structure" below) and scripts in 1.4.0 closed every one of them. The tables keep the construct column; the result column is `OK` for all rows.
 
 ## Coverage tables
 
@@ -40,8 +42,8 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| hide_entity is deprecated but still accepted by Home Assistant | `hide-entity-deprecated.yaml` | LOST DATA | `hide_entity` is dropped on save (only `initial_state: false` survives). |
-| Every automation-level option on one automation | `meta-all-top-level-options.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode queued becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
+| hide_entity is deprecated but still accepted by Home Assistant | `hide-entity-deprecated.yaml` | OK | - |
+| Every automation-level option on one automation | `meta-all-top-level-options.yaml` | OK | - |
 | Identity fields of an automation: id, alias and a one-line description | `meta-id-alias-description.yaml` | OK | - |
 | Alias and a multi-line description with quotes, colons, hash signs and accents | `meta-multiline-description-special-characters.yaml` | OK | - |
 | Shape the UI editor saves: numeric-string id, empty description, empty conditions list | `meta-ui-style-empty-description.yaml` | OK | - |
@@ -51,14 +53,14 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
 | max_exceeded: critical on a parallel automation | `max-exceeded-critical.yaml` | OK | - |
-| max_exceeded: debug on a parallel automation | `max-exceeded-debug.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode parallel becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
-| max_exceeded: error on a parallel automation | `max-exceeded-error.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode parallel becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
-| max_exceeded: fatal (a synonym of critical in the HA log level list) | `max-exceeded-fatal.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode queued becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
-| max_exceeded: info on a queued automation | `max-exceeded-info.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode queued becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
-| max_exceeded: notset on a queued automation | `max-exceeded-notset.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode queued becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
+| max_exceeded: debug on a parallel automation | `max-exceeded-debug.yaml` | OK | - |
+| max_exceeded: error on a parallel automation | `max-exceeded-error.yaml` | OK | - |
+| max_exceeded: fatal (a synonym of critical in the HA log level list) | `max-exceeded-fatal.yaml` | OK | - |
+| max_exceeded: info on a queued automation | `max-exceeded-info.yaml` | OK | - |
+| max_exceeded: notset on a queued automation | `max-exceeded-notset.yaml` | OK | - |
 | max_exceeded: silent on a single-mode automation (suppress the "already running" warning) | `max-exceeded-silent.yaml` | OK | - |
-| max_exceeded written in upper case (HA upper-cases the value before checking it) | `max-exceeded-uppercase-silent.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode parallel becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
-| max_exceeded: warn (a synonym of warning in the HA log level list) | `max-exceeded-warn.yaml` | CHANGED MEANING | `max_exceeded` outside Flow's enum (silent/warning/critical) invalidates the whole metadata block: mode parallel becomes single and max/max_exceeded vanish (initial_state, trace too when set). |
+| max_exceeded written in upper case (HA upper-cases the value before checking it) | `max-exceeded-uppercase-silent.yaml` | OK | - |
+| max_exceeded: warn (a synonym of warning in the HA log level list) | `max-exceeded-warn.yaml` | OK | - |
 | max_exceeded: warning (the HA default level, written out) on a queued automation | `max-exceeded-warning.yaml` | OK | - |
 | mode: parallel with an explicit limit of simultaneous runs | `mode-parallel-with-max.yaml` | OK | - |
 | mode: queued with an explicit queue length | `mode-queued-with-max.yaml` | OK | - |
@@ -71,7 +73,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | An explicit empty conditions list, as the UI editor writes it | `conditions-empty-list.yaml` | OK | - |
 | initial_state: false - the automation starts switched off after every restart | `initial-state-false.yaml` | OK | - |
-| initial_state: true - the automation always starts switched on | `initial-state-true.yaml` | LOST DATA | `initial_state: true` is dropped on save (only `initial_state: false` survives). |
+| initial_state: true - the automation always starts switched on | `initial-state-true.yaml` | OK | - |
 | trace.stored_traces keeps more debug traces than the default of five | `trace-stored-traces.yaml` | OK | - |
 | trigger_variables are available when the triggers are attached (limited templates only) | `trigger-variables-top-level.yaml` | OK | - |
 | Both automation-level `variables` and `trigger_variables` on one automation | `variables-and-trigger-variables-together.yaml` | OK | - |
@@ -81,8 +83,8 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| A blueprint instance whose blueprint needs no inputs at all | `blueprint-instance-no-inputs.yaml` | REJECTED (cannot open) | Cannot open: a `use_blueprint` config has no triggers or actions (`Graph must have at least one trigger node`). |
-| An automation created from a blueprint: no triggers or actions, only use_blueprint + inputs | `blueprint-instance-with-inputs.yaml` | REJECTED (cannot open) | Cannot open: a `use_blueprint` config has no triggers or actions (`Graph must have at least one trigger node`). |
+| A blueprint instance whose blueprint needs no inputs at all | `blueprint-instance-no-inputs.yaml` | OK | Opens read-only: Home Assistant builds the steps from the blueprint, so there is nothing to draw. The config is written back exactly as read. |
+| An automation created from a blueprint: no triggers or actions, only use_blueprint + inputs | `blueprint-instance-with-inputs.yaml` | OK | Opens read-only: Home Assistant builds the steps from the blueprint, so there is nothing to draw. The config is written back exactly as read. |
 
 #### Legacy spellings and list shapes
 
@@ -91,7 +93,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Plural triggers/conditions/actions keys that still use the old `platform:` and `service:` names | `legacy-platform-and-service-in-plural-keys.yaml` | OK | - |
 | Legacy spelling: trigger, condition and action are single mappings, not lists | `legacy-single-mapping-values.yaml` | OK | - |
 | Legacy spelling: singular trigger/condition/action keys holding lists, `platform:` and `service:` | `legacy-singular-keys-trigger-condition-action.yaml` | OK | - |
-| A trigger-list entry holding only `triggers:` is merged into the main list by Home Assistant | `triggers-nested-list-flattened.yaml` | CHANGED MEANING | A `- triggers: [...]` entry is saved as `{trigger: state, triggers: [...]}`, an invalid state trigger without entity_id; Home Assistant disables the automation. |
+| A trigger-list entry holding only `triggers:` is merged into the main list by Home Assistant | `triggers-nested-list-flattened.yaml` | OK | - |
 
 ### 2. Triggers
 
@@ -100,7 +102,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
 | State trigger with neither `from` nor `to`: fires on every state change | `trigger-state-any-change.yaml` | OK | - |
-| State trigger on an attribute with numeric `from` and `to` values | `trigger-state-attribute-from-to-numbers.yaml` | REJECTED (cannot open) | Schema rejects numeric `from`/`to` (attribute triggers); only strings and string lists are accepted. |
+| State trigger on an attribute with numeric `from` and `to` values | `trigger-state-attribute-from-to-numbers.yaml` | OK | - |
 | State trigger on an attribute value instead of the entity state | `trigger-state-attribute.yaml` | OK | - |
 | State trigger watching a list of entities | `trigger-state-entity-list.yaml` | OK | - |
 | State trigger with `for` as a duration mapping | `trigger-state-for-dict.yaml` | OK | - |
@@ -108,12 +110,12 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | State trigger with `for` as an HH:MM:SS string | `trigger-state-for-string.yaml` | OK | - |
 | State trigger whose `for` mapping holds a template | `trigger-state-for-template-dict.yaml` | OK | - |
 | State trigger whose `for` is one template string | `trigger-state-for-template-string.yaml` | OK | - |
-| `from: null` on its own: also a state-change-only trigger | `trigger-state-from-null.yaml` | CHANGED MEANING | `to: null` / `from: null` is dropped, so the trigger also starts firing on attribute-only updates (meaning change). |
+| `from: null` on its own: also a state-change-only trigger | `trigger-state-from-null.yaml` | OK | - |
 | State trigger where `from` and `to` are lists of states | `trigger-state-from-to-lists.yaml` | OK | - |
 | State trigger with both `from` and `to` as strings | `trigger-state-from-to-strings.yaml` | OK | - |
 | not_from / not_to guards that exclude unavailable and unknown | `trigger-state-not-from-not-to.yaml` | OK | - |
 | not_from as a single string next to a `to` value | `trigger-state-not-from-string.yaml` | OK | - |
-| `to: null` limits the state trigger to real state changes (attribute-only updates do not fire it) | `trigger-state-to-null.yaml` | CHANGED MEANING | `to: null` / `from: null` is dropped, so the trigger also starts firing on attribute-only updates (meaning change). |
+| `to: null` limits the state trigger to real state changes (attribute-only updates do not fire it) | `trigger-state-to-null.yaml` | OK | - |
 | State trigger on one entity with `to` as a plain string | `trigger-state-to-string.yaml` | OK | - |
 
 #### Numeric state trigger
@@ -172,7 +174,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| Purpose-specific trigger targeting two areas, with behavior and `for` options | `trigger-purpose-area-list-with-options.yaml` | REJECTED (cannot open) | Schema rejects a purpose-specific trigger whose `target` has no `entity_id` (area/floor/label/device only). |
+| Purpose-specific trigger targeting two areas, with behavior and `for` options | `trigger-purpose-area-list-with-options.yaml` | OK | - |
 | Purpose-specific trigger with a list option: climate HVAC mode changed | `trigger-purpose-climate-hvac-mode-changed.yaml` | OK | - |
 | Purpose-specific trigger on a door sensor | `trigger-purpose-door-opened.yaml` | OK | - |
 | Purpose-specific trigger for an event entity receiving an event type | `trigger-purpose-event-received.yaml` | OK | - |
@@ -187,7 +189,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | Two triggers share the same id (allowed by Home Assistant) | `trigger-duplicate-ids.yaml` | OK | - |
 | A disabled trigger between two enabled ones | `trigger-fields-disabled.yaml` | OK | - |
-| Trigger `enabled` driven by a limited template evaluated when the automation loads | `trigger-fields-enabled-template.yaml` | REJECTED (cannot open) | Schema rejects a trigger `enabled` that is a template string (boolean only). |
+| Trigger `enabled` driven by a limited template evaluated when the automation loads | `trigger-fields-enabled-template.yaml` | OK | - |
 | Every trigger carries an id, an alias and a note | `trigger-fields-id-alias-note.yaml` | OK | - |
 | Trigger-level variables that are set when that trigger fires | `trigger-fields-variables.yaml` | OK | - |
 | Several different trigger types on one automation, each with an id | `trigger-multiple-different-types.yaml` | OK | - |
@@ -203,9 +205,9 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Root condition: explicit `and` group | `condition-and-explicit.yaml` | OK | - |
 | Root condition: device condition (placeholder ids) | `condition-device-light-is-on.yaml` | OK | - |
 | Root conditions: a disabled condition behaves as if it were removed | `condition-disabled.yaml` | OK | - |
-| Root condition whose `enabled` is a limited template evaluated at load time | `condition-enabled-template.yaml` | CHANGED MEANING | `enabled` template on a condition is saved as a `template` condition whose text is the JSON of the original condition (never true). |
-| Alias and note on a condition group and on each of its members | `condition-group-alias-and-note.yaml` | LOST DATA | Prose is dropped on save: 2 alias(es): Alex is home, It is cold. |
-| Root condition written with a list under the `condition:` key (an implicit `and`) | `condition-list-shorthand-condition-key.yaml` | CHANGED MEANING | `condition:` holding a list is saved as a `template` condition whose text is the JSON of the original condition (never true). |
+| Root condition whose `enabled` is a limited template evaluated at load time | `condition-enabled-template.yaml` | OK | - |
+| Alias and note on a condition group and on each of its members | `condition-group-alias-and-note.yaml` | OK | - |
+| Root condition written with a list under the `condition:` key (an implicit `and`) | `condition-list-shorthand-condition-key.yaml` | OK | - |
 | Root condition: and containing or containing not (three levels deep) | `condition-nested-and-or-not-three-deep.yaml` | OK | - |
 | Root condition: explicit `not` group with two members (passes when none is true) | `condition-not-explicit.yaml` | OK | - |
 | Root condition: numeric state between two thresholds | `condition-numeric-state-above-below.yaml` | OK | - |
@@ -216,13 +218,13 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Root condition: explicit `or` group | `condition-or-explicit.yaml` | OK | - |
 | Root condition: purpose-specific condition with an area target and an option | `condition-purpose-specific-area-target.yaml` | OK | - |
 | Root condition: purpose-specific `light.is_on` with a target and a behavior option | `condition-purpose-specific-light-is-on.yaml` | OK | - |
-| Root condition: `and:` shorthand (no `condition:` key) | `condition-shorthand-and.yaml` | REJECTED (cannot open) | Parser crash (`Cannot read properties of undefined (reading 'id')`) on shorthand `and:`/`or:`/`not:` conditions. |
-| Root conditions: bare template strings mixed with full condition mappings | `condition-shorthand-bare-template-strings.yaml` | CHANGED MEANING | Three root conditions (two bare template strings and a state condition) collapse into a single state condition: the two template guards are dropped. |
-| Root condition: shorthand groups nested inside each other | `condition-shorthand-nested-groups.yaml` | REJECTED (cannot open) | Parser crash (`Cannot read properties of undefined (reading 'id')`) on shorthand `and:`/`or:`/`not:` conditions. |
-| Root condition: `not:` shorthand | `condition-shorthand-not.yaml` | REJECTED (cannot open) | Parser crash (`Cannot read properties of undefined (reading 'id')`) on shorthand `and:`/`or:`/`not:` conditions. |
-| Root condition: `or:` shorthand with an alias | `condition-shorthand-or.yaml` | REJECTED (cannot open) | Parser crash (`Cannot read properties of undefined (reading 'id')`) on shorthand `and:`/`or:`/`not:` conditions. |
-| Root conditions written as one bare template string instead of a list | `condition-shorthand-single-template-string.yaml` | REJECTED (cannot open) | Parser crash (`Cannot read properties of undefined (reading 'id')`) when `conditions:` is one bare template string. |
-| Root condition: attribute compared with a numeric value | `condition-state-attribute-number.yaml` | CHANGED MEANING | State condition on a numeric attribute is saved as a `template` condition whose text is the JSON of the original condition (never true). |
+| Root condition: `and:` shorthand (no `condition:` key) | `condition-shorthand-and.yaml` | OK | - |
+| Root conditions: bare template strings mixed with full condition mappings | `condition-shorthand-bare-template-strings.yaml` | OK | - |
+| Root condition: shorthand groups nested inside each other | `condition-shorthand-nested-groups.yaml` | OK | - |
+| Root condition: `not:` shorthand | `condition-shorthand-not.yaml` | OK | - |
+| Root condition: `or:` shorthand with an alias | `condition-shorthand-or.yaml` | OK | - |
+| Root conditions written as one bare template string instead of a list | `condition-shorthand-single-template-string.yaml` | OK | - |
+| Root condition: attribute compared with a numeric value | `condition-state-attribute-number.yaml` | OK | - |
 | Root condition: attribute matching any of several values | `condition-state-attribute-state-list.yaml` | OK | - |
 | Root condition: attribute value instead of the entity state | `condition-state-attribute.yaml` | OK | - |
 | Root condition: several entities with `match: any` | `condition-state-entity-list-match-any.yaml` | OK | - |
@@ -240,7 +242,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Root condition: time window defined by helper and sensor entities | `condition-time-entities.yaml` | OK | - |
 | Root condition: only weekdays | `condition-time-weekday-only.yaml` | OK | - |
 | Root condition: automation continues for any of several trigger ids | `condition-trigger-id-list.yaml` | OK | - |
-| Root condition: trigger identified by its index (an integer id) | `condition-trigger-index-id.yaml` | CHANGED MEANING | Trigger condition with an integer id is saved as a `template` condition whose text is the JSON of the original condition (never true). |
+| Root condition: trigger identified by its index (an integer id) | `condition-trigger-index-id.yaml` | OK | - |
 | Root condition: automation only continues for one trigger id | `condition-trigger-single-id.yaml` | OK | - |
 | Root condition: legacy zone condition (entity inside a zone) | `condition-zone-legacy.yaml` | OK | - |
 | Root condition: purpose-specific `zone.in_zone` with target and options | `condition-zone-purpose-specific-in-zone.yaml` | OK | - |
@@ -249,27 +251,27 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| `choose` branches whose conditions are long-form and shorthand groups | `conditions-in-choose-groups.yaml` | CHANGED MEANING | A `not:` shorthand condition in a `choose` branch is saved as `condition: template` plus a stray `not:` key. |
+| `choose` branches whose conditions are long-form and shorthand groups | `conditions-in-choose-groups.yaml` | OK | - |
 | `choose` whose branches use state, numeric_state, time, sun and template conditions | `conditions-in-choose-leaf-types.yaml` | OK | - |
-| `choose` branch conditions written as one bare template string | `conditions-in-choose-template-string.yaml` | CHANGED MEANING | A bare template-string condition (`"{{ ... }}"`) is spread into a character map (`0: '{'`, `1: '{'`, ...); the saved condition is invalid. |
-| `if` whose conditions are an `or` group containing an `and` and a `not` | `conditions-in-if-group-long-form.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
-| `if` using the `or:` and `and:` shorthand group spellings | `conditions-in-if-group-shorthand.yaml` | CHANGED MEANING | An `or:`/`and:` shorthand group in an `if` is saved as `condition: numeric_state` with a stray `or:` key, and the if is hoisted to root conditions. |
+| `choose` branch conditions written as one bare template string | `conditions-in-choose-template-string.yaml` | OK | - |
+| `if` whose conditions are an `or` group containing an `and` and a `not` | `conditions-in-if-group-long-form.yaml` | OK | - |
+| `if` using the `or:` and `and:` shorthand group spellings | `conditions-in-if-group-shorthand.yaml` | OK | - |
 | `if` with several leaf condition types (state, numeric_state, template, time) and an else branch | `conditions-in-if-leaf-types.yaml` | OK | - |
-| `if` list mixing bare template strings with a state condition | `conditions-in-if-mixed-bare-templates.yaml` | CHANGED MEANING | A bare template-string condition (`"{{ ... }}"`) is spread into a character map (`0: '{'`, `1: '{'`, ...); the saved condition is invalid. |
-| `if` written as one bare template string | `conditions-in-if-template-string.yaml` | CHANGED MEANING | `if: "<template>"` (a bare string) is saved as a call to the non-existent action `unknown.unknown`; the else branch moves into `data`. |
-| `if` using a trigger condition and a purpose-specific zone condition | `conditions-in-if-trigger-and-zone.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
-| `repeat.while` and `repeat.until` written as bare template strings | `conditions-in-repeat-shorthand.yaml` | REJECTED (cannot open) | Schema rejects `repeat.while`/`until` written as a bare template string (a list is required). |
+| `if` list mixing bare template strings with a state condition | `conditions-in-if-mixed-bare-templates.yaml` | OK | - |
+| `if` written as one bare template string | `conditions-in-if-template-string.yaml` | OK | - |
+| `if` using a trigger condition and a purpose-specific zone condition | `conditions-in-if-trigger-and-zone.yaml` | OK | - |
+| `repeat.while` and `repeat.until` written as bare template strings | `conditions-in-repeat-shorthand.yaml` | OK | - |
 | `repeat.until` with a numeric_state condition and a template | `conditions-in-repeat-until.yaml` | OK | - |
 | `repeat.while` with a state condition and a template using repeat.index | `conditions-in-repeat-while.yaml` | OK | - |
-| Inline `- condition:` steps in the action list: later steps run only while the gates pass | `conditions-inline-step-gating-sequence.yaml` | REWRITTEN | An inline `- condition:` step is rewritten as `if: [cond] then: [rest of the sequence]`; same behavior, different shape. |
-| Inline condition step that is an `or` group, followed by more steps | `conditions-inline-step-group.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
-| A condition step inside a choose branch followed by more steps in that branch | `conditions-inline-step-in-choose-sequence.yaml` | CHANGED MEANING | A `- condition:` step inside a branch is merged into the branch's conditions, so when the gate fails the `else`/`default`/next branch now runs instead of nothing. |
-| A condition step in the first choose branch: if it fails the second branch is NOT tried | `conditions-inline-step-in-first-choose-branch-with-second-branch.yaml` | CHANGED MEANING | A `- condition:` step inside a branch is merged into the branch's conditions, so when the gate fails the `else`/`default`/next branch now runs instead of nothing. |
-| A condition step inside `then`: when it fails it only ends the `then` branch, the step after the `if` still runs | `conditions-inline-step-in-if-then.yaml` | REWRITTEN | A `- condition:` step inside `then` is merged into the if's conditions; equivalent here (no else), but the shape changes. |
-| A condition step at the start of one parallel branch | `conditions-inline-step-in-parallel-branch.yaml` | REWRITTEN | An inline `- condition:` step is rewritten as `if: [cond] then: [rest of the sequence]`; same behavior, different shape. |
-| A condition step inside a repeat sequence | `conditions-inline-step-in-repeat-sequence.yaml` | REWRITTEN | An inline `- condition:` step is rewritten as `if: [cond] then: [rest of the sequence]`; same behavior, different shape. |
-| A condition step inside `then` of an if that also has an else: when the gate fails, neither the rest of then nor else runs | `conditions-inline-step-in-then-with-else.yaml` | CHANGED MEANING | A `- condition:` step inside a branch is merged into the branch's conditions, so when the gate fails the `else`/`default`/next branch now runs instead of nothing. |
-| Condition steps written as `condition: "<template>"` and as `or:` shorthand | `conditions-step-template-shorthand.yaml` | CHANGED MEANING | A `condition: "<template>"` step is moved to the root `conditions:` as an invalid `{condition: "<template>"}` entry, and an `or:` shorthand step is replaced by `unknown.unknown`. |
+| Inline `- condition:` steps in the action list: later steps run only while the gates pass | `conditions-inline-step-gating-sequence.yaml` | OK | - |
+| Inline condition step that is an `or` group, followed by more steps | `conditions-inline-step-group.yaml` | OK | - |
+| A condition step inside a choose branch followed by more steps in that branch | `conditions-inline-step-in-choose-sequence.yaml` | OK | - |
+| A condition step in the first choose branch: if it fails the second branch is NOT tried | `conditions-inline-step-in-first-choose-branch-with-second-branch.yaml` | OK | - |
+| A condition step inside `then`: when it fails it only ends the `then` branch, the step after the `if` still runs | `conditions-inline-step-in-if-then.yaml` | OK | - |
+| A condition step at the start of one parallel branch | `conditions-inline-step-in-parallel-branch.yaml` | OK | - |
+| A condition step inside a repeat sequence | `conditions-inline-step-in-repeat-sequence.yaml` | OK | - |
+| A condition step inside `then` of an if that also has an else: when the gate fails, neither the rest of then nor else runs | `conditions-inline-step-in-then-with-else.yaml` | OK | - |
+| Condition steps written as `condition: "<template>"` and as `or:` shorthand | `conditions-step-template-shorthand.yaml` | OK | - |
 
 ### 4. Actions
 
@@ -280,11 +282,11 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Service call with continue_on_error: the next step still runs when it fails | `action-service-continue-on-error.yaml` | OK | - |
 | Service call data holding a null, booleans, numbers and an empty list | `action-service-data-null-and-boolean-values.yaml` | OK | - |
 | Old step spelling: `service:` with `data_template` | `action-service-data-template-legacy.yaml` | OK | - |
-| Service call whose whole data is one template that renders to a mapping | `action-service-data-template-string.yaml` | LOST DATA | A step `data:` written as one template string is dropped. |
+| Service call whose whole data is one template that renders to a mapping | `action-service-data-template-string.yaml` | OK | - |
 | Service call with a data mapping (scalars, a list and a nested mapping) | `action-service-data.yaml` | OK | - |
 | Old step spelling: `service:` instead of `action:` | `action-service-legacy-service-key.yaml` | OK | - |
 | Service call storing its response in a variable that a later step uses | `action-service-response-variable.yaml` | OK | - |
-| Old step spelling: `service_template` choosing the service with a template | `action-service-service-template-legacy.yaml` | CHANGED MEANING | A `service_template:` step is saved as a call to the non-existent action `unknown.unknown`. |
+| Old step spelling: `service_template` choosing the service with a template | `action-service-service-template-legacy.yaml` | OK | - |
 | Old step spelling: `entity_id` directly on the step instead of under `target` | `action-service-step-level-entity-id.yaml` | OK | - |
 | Service call targeting a list of areas | `action-service-target-area-list.yaml` | OK | - |
 | Service call targeting an area | `action-service-target-area.yaml` | OK | - |
@@ -294,7 +296,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Service call whose target mixes entity, device, area, floor and label ids (scalars and lists) | `action-service-target-every-kind-mixed.yaml` | OK | - |
 | Service call targeting a floor | `action-service-target-floor.yaml` | OK | - |
 | Service call targeting a label | `action-service-target-label.yaml` | OK | - |
-| Service call whose whole target is one template | `action-service-target-template-string.yaml` | LOST DATA | A step `target:` written as one template string is dropped. |
+| Service call whose whole target is one template | `action-service-target-template-string.yaml` | OK | - |
 | Service call whose target ids are templates | `action-service-target-templates.yaml` | OK | - |
 | `action` itself is a template choosing between two services | `action-service-template-action-name.yaml` | OK | - |
 
@@ -303,11 +305,11 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
 | Device action (placeholder ids) with the empty `metadata` the editor writes | `action-device-light-turn-on.yaml` | OK | - |
-| Fire an event using the older `event_data_template` key | `action-event-data-template.yaml` | LOST DATA | `event_data_template` is dropped: the event fires without its data. |
+| Fire an event using the older `event_data_template` key | `action-event-data-template.yaml` | OK | - |
 | Fire an event with event_data | `action-event-with-data.yaml` | OK | - |
 | Fire an event that has no data at all | `action-event-without-data.yaml` | OK | - |
-| Scene step (`scene:` instead of an action call) | `action-scene-activate.yaml` | CHANGED MEANING | A `scene:` step is saved as a call to the non-existent action `unknown.unknown` (scene id moved into `data`); HA cannot run it. |
-| set_conversation_response set to null clears the response | `action-set-conversation-response-null.yaml` | CHANGED MEANING | `set_conversation_response: null` (clear the reply) is saved as an empty `{}` step, which Home Assistant rejects. |
+| Scene step (`scene:` instead of an action call) | `action-scene-activate.yaml` | OK | - |
+| set_conversation_response set to null clears the response | `action-set-conversation-response-null.yaml` | OK | - |
 | set_conversation_response with plain text | `action-set-conversation-response-plain.yaml` | OK | - |
 | set_conversation_response with a template | `action-set-conversation-response-template.yaml` | OK | - |
 | A variables step defining scalars and a list | `action-variables-step-scalars.yaml` | OK | - |
@@ -318,15 +320,15 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| Delay given as a fractional number of seconds | `action-delay-fractional-seconds.yaml` | REWRITTEN | `delay: 5` is saved as `delay: "5"`; HA reads both as 5 s, the strict checker sees a type change. |
+| Delay given as a fractional number of seconds | `action-delay-fractional-seconds.yaml` | OK | - |
 | Delay given as an HH:MM string | `action-delay-hhmm-string.yaml` | OK | - |
 | Delay given as an HH:MM:SS string | `action-delay-hhmmss-string.yaml` | OK | - |
-| Delay mapping using days, hours, minutes, seconds and milliseconds together | `action-delay-mapping-all-units.yaml` | CHANGED MEANING | `delay` with `days` is shortened (1 d 2 h 3 min 4.5 s becomes 2 h 3 min 4.5 s); the days are lost. |
+| Delay mapping using days, hours, minutes, seconds and milliseconds together | `action-delay-mapping-all-units.yaml` | OK | - |
 | Delay mapping with only milliseconds | `action-delay-mapping-milliseconds-only.yaml` | OK | - |
 | Delay mapping with only minutes | `action-delay-mapping-minutes.yaml` | OK | - |
-| Delay mapping whose unit values are templates | `action-delay-mapping-with-templates.yaml` | CHANGED MEANING | A delay mapping with templates is rewritten into one long `format(...)` template that repeats every sub-expression three times; non-deterministic parts such as `random` give inconsistent values. |
+| Delay mapping whose unit values are templates | `action-delay-mapping-with-templates.yaml` | OK | - |
 | Delay given as a quoted number of seconds | `action-delay-numeric-string.yaml` | OK | - |
-| Delay given as a bare number of seconds | `action-delay-seconds-number.yaml` | REWRITTEN | `delay: 5` is saved as `delay: "5"`; HA reads both as 5 s, the strict checker sees a type change. |
+| Delay given as a bare number of seconds | `action-delay-seconds-number.yaml` | OK | - |
 | Delay computed by one template | `action-delay-template-string.yaml` | OK | - |
 
 #### Wait for template / trigger
@@ -336,7 +338,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | wait_for_trigger written with the old `platform:` key | `action-wait-for-trigger-legacy-platform.yaml` | OK | - |
 | wait_for_trigger with a list of two triggers, each with an id | `action-wait-for-trigger-list-of-triggers.yaml` | OK | - |
 | wait_for_trigger using a numeric_state trigger and a time trigger | `action-wait-for-trigger-numeric-state.yaml` | OK | - |
-| wait_for_trigger holding one trigger mapping instead of a list | `action-wait-for-trigger-single-mapping.yaml` | CHANGED MEANING | A `wait_for_trigger` written as one mapping (not a list) is dropped entirely: the next step takes its place and runs immediately. |
+| wait_for_trigger holding one trigger mapping instead of a list | `action-wait-for-trigger-single-mapping.yaml` | OK | - |
 | Branch on which trigger a wait_for_trigger saw (`wait.trigger.id`) | `action-wait-for-trigger-then-choose-on-wait-trigger-id.yaml` | OK | - |
 | wait_for_trigger with a mapping timeout and continue_on_timeout: false | `action-wait-for-trigger-timeout-continue-false.yaml` | OK | - |
 | wait_for_trigger with an HH:MM:SS timeout and continue_on_timeout: true | `action-wait-for-trigger-timeout-string-continue-true.yaml` | OK | - |
@@ -344,11 +346,11 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | wait_template without a timeout | `action-wait-template-basic.yaml` | OK | - |
 | wait_template with continue_on_timeout written out as true (the default) | `action-wait-template-continue-on-timeout-true.yaml` | OK | - |
 | wait_template with a mapping timeout and continue_on_timeout: false (the run stops on timeout) | `action-wait-template-timeout-mapping-stop-on-timeout.yaml` | OK | - |
-| wait_template with a timeout given as a bare number of seconds | `action-wait-template-timeout-number.yaml` | CHANGED MEANING | A numeric `timeout` on a wait is dropped, so the wait can block forever (`timeout: 30` / `10`). |
+| wait_template with a timeout given as a bare number of seconds | `action-wait-template-timeout-number.yaml` | OK | - |
 | wait_template with an HH:MM:SS timeout (continue on timeout is the default) | `action-wait-template-timeout-string.yaml` | OK | - |
 | wait_template whose timeout is a template | `action-wait-template-timeout-template.yaml` | OK | - |
-| A wait with timeout followed by an `if` on `wait.completed` (the timeout idiom) | `action-wait-then-branch-on-wait-completed.yaml` | CHANGED MEANING | A bare template-string condition (`"{{ ... }}"`) is spread into a character map (`0: '{'`, `1: '{'`, ...); the saved condition is invalid. The numeric `timeout` of the preceding wait is also dropped. |
-| Two waits sharing one overall timeout through `wait.remaining` | `action-wait-two-waits-sharing-one-timeout.yaml` | CHANGED MEANING | A numeric `timeout` on a wait is dropped, so the wait can block forever (`timeout: 30` / `10`). |
+| A wait with timeout followed by an `if` on `wait.completed` (the timeout idiom) | `action-wait-then-branch-on-wait-completed.yaml` | OK | - |
+| Two waits sharing one overall timeout through `wait.remaining` | `action-wait-two-waits-sharing-one-timeout.yaml` | OK | - |
 
 #### Stop
 
@@ -356,14 +358,14 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | stop with a reason as the last step | `action-stop-end-of-automation.yaml` | OK | - |
 | stop with `error: true` marks the run as failed | `action-stop-error-true.yaml` | OK | - |
-| `stop` inside a choose branch, with more steps after the choose | `action-stop-in-choose-branch.yaml` | REWRITTEN | A decision ladder whose first branch ends in `stop` is rewritten as sequential `if`s; equivalent, different shape. |
+| `stop` inside a choose branch, with more steps after the choose | `action-stop-in-choose-branch.yaml` | OK | - |
 | `stop` inside the choose default, with more steps after the choose | `action-stop-in-choose-default.yaml` | OK | - |
 | `stop` inside `else`, with more steps after the `if` | `action-stop-in-else-branch.yaml` | OK | - |
 | `stop` inside `then`, with more steps after the `if`: stop ends the whole run, not just the branch | `action-stop-in-if-then-followed-by-steps.yaml` | OK | - |
 | `stop` inside one parallel branch | `action-stop-in-parallel-branch.yaml` | OK | - |
-| `stop` inside a repeat loop ends the whole run | `action-stop-in-repeat.yaml` | CHANGED MEANING | A `stop` inside a guarded branch in a loop is saved after an empty `then: []`, so it runs on every iteration. |
+| `stop` inside a repeat loop ends the whole run | `action-stop-in-repeat.yaml` | OK | - |
 | stop returning a response variable | `action-stop-response-variable.yaml` | OK | - |
-| stop with no reason (a null value) | `action-stop-without-reason.yaml` | REWRITTEN | `stop: null` is saved as `stop: ''`. |
+| stop with no reason (a null value) | `action-stop-without-reason.yaml` | OK | - |
 
 #### choose
 
@@ -371,12 +373,12 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | choose branches carry an alias and a note; the default has none | `choose-branch-alias-and-note.yaml` | OK | - |
 | choose branch whose `conditions` and `sequence` are single mappings instead of lists | `choose-conditions-mapping-instead-of-list.yaml` | OK | - |
-| choose with an explicit empty default | `choose-empty-default.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
-| choose where one branch does nothing (an empty sequence) so later branches are not tried | `choose-empty-sequence-branch.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
+| choose with an explicit empty default | `choose-empty-default.yaml` | OK | - |
+| choose where one branch does nothing (an empty sequence) so later branches are not tried | `choose-empty-sequence-branch.yaml` | OK | - |
 | choose with four branches and a default, each branch with several steps | `choose-many-branches-with-default.yaml` | OK | - |
 | choose nested inside a choose branch | `choose-nested-choose.yaml` | OK | - |
 | choose where two branch conditions overlap: only the first matching branch runs | `choose-overlapping-branches-first-match-wins.yaml` | OK | - |
-| choose with exactly one branch (an if without else) | `choose-single-branch-only.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
+| choose with exactly one branch (an if without else) | `choose-single-branch-only.yaml` | OK | - |
 | choose between ordinary steps: shared steps before and after the decision | `choose-with-steps-before-and-after.yaml` | OK | - |
 | choose with two branches and no default | `choose-without-default.yaml` | OK | - |
 
@@ -386,7 +388,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | Alias and note on an if step and on its conditions | `if-alias-and-note-on-step-and-conditions.yaml` | OK | - |
 | An else-if ladder written as nested if statements in the else branch | `if-else-if-chain.yaml` | OK | - |
-| if with an empty then and an else (do nothing when true, act otherwise) | `if-empty-then-with-else.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
+| if with an empty then and an else (do nothing when true, act otherwise) | `if-empty-then-with-else.yaml` | OK | - |
 | if with three conditions that must all hold | `if-multiple-conditions-anded.yaml` | OK | - |
 | else branch holding an if AND another step (so it is not a plain else-if ladder) | `if-nested-in-else-with-extra-steps.yaml` | OK | - |
 | if nested inside the then branch of another if | `if-nested-in-then.yaml` | OK | - |
@@ -400,7 +402,7 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 | --- | --- | --- | --- |
 | Alias and note on a repeat step and on a step inside it | `repeat-alias-and-note.yaml` | OK | - |
 | repeat with a fixed count | `repeat-count-number.yaml` | OK | - |
-| repeat whose count is a template | `repeat-count-template.yaml` | CHANGED MEANING | `repeat.count` given as a template is dropped from the saved repeat. |
+| repeat whose count is a template | `repeat-count-template.yaml` | OK | - |
 | repeat.for_each over a list of mappings | `repeat-for-each-dicts.yaml` | OK | - |
 | repeat.for_each over a literal list of strings | `repeat-for-each-scalars.yaml` | OK | - |
 | repeat.for_each over a template query, with a condition on repeat.item inside | `repeat-for-each-template-query-with-item-condition.yaml` | OK | - |
@@ -417,41 +419,41 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| Alias and note on parallel step, on its sequence branches and on steps inside | `parallel-branch-alias-and-note.yaml` | LOST DATA | Prose is dropped on save: 3 alias(es): Tell everyone at once, Light branch, Notification branch; 1 note(s): The two branches do not depend on each other.. |
+| Alias and note on parallel step, on its sequence branches and on steps inside | `parallel-branch-alias-and-note.yaml` | OK | - |
 | Steps after a parallel only run once every branch has finished | `parallel-followed-by-steps.yaml` | OK | - |
-| parallel inside a choose branch | `parallel-in-choose-branch.yaml` | CHANGED MEANING | A `parallel` inside an `if`/`choose` branch is saved as plain sequential steps (no longer concurrent). |
-| parallel inside the then branch of an if | `parallel-in-if-then.yaml` | CHANGED MEANING | A `parallel` inside an `if`/`choose` branch is saved as plain sequential steps (no longer concurrent). |
+| parallel inside a choose branch | `parallel-in-choose-branch.yaml` | OK | - |
+| parallel inside the then branch of an if | `parallel-in-if-then.yaml` | OK | - |
 | parallel mixing a bare action branch with a sequence branch | `parallel-mixed-single-and-sequence-branches.yaml` | OK | - |
-| A parallel inside a parallel branch, followed by a step that must run once after the inner pair | `parallel-nested-parallel.yaml` | CHANGED MEANING | A `parallel` nested in a branch is flattened: the step after it is copied into each inner branch (runs twice) and the inner branches are no longer joined first. |
+| A parallel inside a parallel branch, followed by a step that must run once after the inner pair | `parallel-nested-parallel.yaml` | OK | - |
 | parallel whose branches are `sequence:` groups with several steps each | `parallel-sequence-branches.yaml` | OK | - |
 | parallel with two plain actions (each runs at the same time) | `parallel-single-actions.yaml` | OK | - |
-| parallel written with a single mapping instead of a list | `parallel-single-mapping-branch.yaml` | CHANGED MEANING | `parallel:` given as one mapping is saved as a call to the non-existent action `unknown.unknown`. |
+| parallel written with a single mapping instead of a list | `parallel-single-mapping-branch.yaml` | OK | - |
 
 #### Nested sequence
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| A sequence group inside a sequence group | `sequence-nested-inside-sequence.yaml` | CHANGED MEANING | A nested `sequence:` group is saved as a call to the non-existent action `unknown.unknown` (the whole group moved into `data`). Also loses 2 alias(es): Outer group, Inner group. |
-| A nested `sequence:` step with an alias, followed by another group | `sequence-nested-with-alias.yaml` | CHANGED MEANING | A nested `sequence:` group is saved as a call to the non-existent action `unknown.unknown` (the whole group moved into `data`). Also loses 2 alias(es): Turn on devices, Send notifications. |
+| A sequence group inside a sequence group | `sequence-nested-inside-sequence.yaml` | OK | - |
+| A nested `sequence:` step with an alias, followed by another group | `sequence-nested-with-alias.yaml` | OK | - |
 
 #### Disabled steps (`enabled: false`)
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| A disabled choose block between two enabled steps | `disabled-step-choose.yaml` | CHANGED MEANING | A disabled `if`/`choose` loses its own `enabled: false`; the flag is copied onto the first condition and first steps instead, so the block runs with its conditions disabled (always true). |
-| A disabled inline condition step: it no longer gates the steps after it | `disabled-step-condition.yaml` | REWRITTEN | An inline `- condition:` step is rewritten as `if: [cond] then: [rest of the sequence]`; same behavior, different shape. |
+| A disabled choose block between two enabled steps | `disabled-step-choose.yaml` | OK | - |
+| A disabled inline condition step: it no longer gates the steps after it | `disabled-step-condition.yaml` | OK | - |
 | A disabled delay: the steps around it run back to back | `disabled-step-delay.yaml` | OK | - |
 | A disabled device action between two enabled steps | `disabled-step-device-action.yaml` | OK | - |
 | A disabled fire-event step between two enabled steps | `disabled-step-event.yaml` | OK | - |
-| A disabled if/then/else block between two enabled steps | `disabled-step-if.yaml` | CHANGED MEANING | A disabled `if`/`choose` loses its own `enabled: false`; the flag is copied onto the first condition and first steps instead, so the block runs with its conditions disabled (always true). |
+| A disabled if/then/else block between two enabled steps | `disabled-step-if.yaml` | OK | - |
 | A disabled step inside a choose branch and inside its default | `disabled-step-inside-choose-branch.yaml` | OK | - |
-| A disabled step inside an if/then branch | `disabled-step-inside-if-then.yaml` | REWRITTEN | An `if`/`choose` (or a leading condition step) that is the only step is hoisted into the root `conditions:`; same in single mode, but root conditions also gate restart/queued runs. |
+| A disabled step inside an if/then branch | `disabled-step-inside-if-then.yaml` | OK | - |
 | A disabled step inside a parallel branch | `disabled-step-inside-parallel-branch.yaml` | OK | - |
 | A disabled step inside a repeat sequence | `disabled-step-inside-repeat.yaml` | OK | - |
-| A disabled parallel block between two enabled steps | `disabled-step-parallel.yaml` | CHANGED MEANING | `enabled: false` is removed from a disabled `parallel`; its branches run. |
-| A disabled repeat block between two enabled steps | `disabled-step-repeat.yaml` | REWRITTEN | `enabled: false` moves from the `repeat` onto each inner step: the loop still iterates but every step in it is disabled (no side effects). |
-| A disabled scene step between two enabled steps | `disabled-step-scene.yaml` | CHANGED MEANING | A `scene:` step is saved as a call to the non-existent action `unknown.unknown` (scene id moved into `data`); HA cannot run it. |
-| A disabled nested sequence group between two enabled steps | `disabled-step-sequence-group.yaml` | CHANGED MEANING | A nested `sequence:` group is saved as a call to the non-existent action `unknown.unknown` (the whole group moved into `data`). Also loses 1 alias(es): Optional extras. |
+| A disabled parallel block between two enabled steps | `disabled-step-parallel.yaml` | OK | - |
+| A disabled repeat block between two enabled steps | `disabled-step-repeat.yaml` | OK | - |
+| A disabled scene step between two enabled steps | `disabled-step-scene.yaml` | OK | - |
+| A disabled nested sequence group between two enabled steps | `disabled-step-sequence-group.yaml` | OK | - |
 | A disabled service call between two enabled steps | `disabled-step-service-call.yaml` | OK | - |
 | A disabled set_conversation_response between two enabled steps | `disabled-step-set-conversation-response.yaml` | OK | - |
 | A disabled stop: the run carries on past it | `disabled-step-stop.yaml` | OK | - |
@@ -463,36 +465,39 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| Alias and note on choose (and its branch), if, repeat, parallel (and its branch), sequence and stop steps | `alias-note-on-flow-control-step-kinds.yaml` | CHANGED MEANING | A nested `sequence:` group is saved as a call to the non-existent action `unknown.unknown` (the whole group moved into `data`). Also loses 4 alias(es): Choose alias, Parallel alias, Parallel branch alias; 3 note(s): Choose note., Parallel note.. |
-| Alias and note on a service call, device action, scene, event, delay, waits, variables, conversation response and condition step | `alias-note-on-simple-step-kinds.yaml` | CHANGED MEANING | A `scene:` step is saved as a call to the non-existent action `unknown.unknown` (scene id moved into `data`); HA cannot run it. Also loses 1 alias(es): Scene alias; 4 note(s): Scene note., Event note.. |
+| Alias and note on choose (and its branch), if, repeat, parallel (and its branch), sequence and stop steps | `alias-note-on-flow-control-step-kinds.yaml` | OK | - |
+| Alias and note on a service call, device action, scene, event, delay, waits, variables, conversation response and condition step | `alias-note-on-simple-step-kinds.yaml` | OK | - |
 
 #### Deep combinations, realistic automations, structure stress, kitchen sinks
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| choose inside repeat inside a parallel branch inside a nested sequence | `deep-choose-in-repeat-in-parallel-in-sequence.yaml` | CHANGED MEANING | A nested `sequence:` group is saved as a call to the non-existent action `unknown.unknown` (the whole group moved into `data`). Also loses 1 alias(es): Outer group. |
+| choose inside repeat inside a parallel branch inside a nested sequence | `deep-choose-in-repeat-in-parallel-in-sequence.yaml` | OK | - |
 | Every choose branch waits or delays differently, then all continue with the same two steps | `deep-diamond-choose-branches-converge-on-shared-tail.yaml` | OK | - |
-| An else-if ladder whose rungs contain waits, delays and a stop, followed by shared steps | `deep-if-ladder-with-waits-and-stops.yaml` | REWRITTEN | A decision ladder whose first branch ends in `stop` is rewritten as sequential `if`s; equivalent, different shape. |
+| An else-if ladder whose rungs contain waits, delays and a stop, followed by shared steps | `deep-if-ladder-with-waits-and-stops.yaml` | OK | - |
 | Nested ifs where both levels converge into a shared step, then another shared step | `deep-nested-ifs-converge-twice.yaml` | OK | - |
 | repeat inside choose inside if inside a parallel branch, plus a second branch | `deep-repeat-in-choose-in-if-in-parallel.yaml` | OK | - |
-| Wait for a trigger with a timeout, stop with a message when it timed out, otherwise carry on | `deep-wait-timeout-guard-then-continue.yaml` | CHANGED MEANING | A bare template-string condition (`"{{ ... }}"`) is spread into a character map (`0: '{'`, `1: '{'`, ...); the saved condition is invalid. |
-| One large automation using almost every construct: identity, mode, variables, many triggers and conditions, and every step kind nested | `kitchen-sink-every-construct.yaml` | CHANGED MEANING | A bare template-string condition (`"{{ ... }}"`) is spread into a character map (`0: '{'`, `1: '{'`, ...); the saved condition is invalid. Also loses 1 alias(es): Tidy up. |
+| Wait for a trigger with a timeout, stop with a message when it timed out, otherwise carry on | `deep-wait-timeout-guard-then-continue.yaml` | OK | - |
+| One large automation using almost every construct: identity, mode, variables, many triggers and conditions, and every step kind nested | `kitchen-sink-every-construct.yaml` | OK | - |
 | A large automation written entirely with the older spellings (singular keys, platform, service, data_template, device ids) | `kitchen-sink-legacy-spellings.yaml` | OK | - |
 | Realistic: check a list of doors, stop with a notice if one is open, otherwise arm the alarm | `realistic-alarm-arming-with-door-check.yaml` | OK | - |
 | Realistic: remind every 5 minutes while a door stays open, at most three times | `realistic-door-left-open-reminder.yaml` | OK | - |
 | Realistic: close the garage when it was left open, verify it closed, and report either way | `realistic-garage-auto-close.yaml` | OK | - |
 | Realistic: a daily digest of low batteries built with a template list and a for_each loop | `realistic-low-battery-digest.yaml` | OK | - |
 | Realistic: a motion light with on/off trigger ids, a dark-only gate and restart mode | `realistic-motion-light-with-timeout.yaml` | OK | - |
-| Realistic: arrival lights using a zone trigger, sun condition and a parallel notification | `realistic-presence-lights-with-sun-and-zone.yaml` | CHANGED MEANING | A `parallel` of plain actions is saved as sequential steps (no longer concurrent). |
+| Realistic: arrival lights using a zone trigger, sun condition and a parallel notification | `realistic-presence-lights-with-sun-and-zone.yaml` | OK | - |
 | Realistic (house rule): an actuating state trigger pins `from` and `to`, and a condition re-checks the sensor is not unavailable | `realistic-sensor-unavailable-guard.yaml` | OK | - |
 | Realistic: three time triggers with ids, a choose that sets a different setpoint for each | `realistic-thermostat-schedule-with-trigger-ids.yaml` | OK | - |
 | Realistic: a conversation trigger that picks a scene from the sentence and replies | `realistic-voice-command-scene.yaml` | OK | - |
 | Realistic: power drops below a threshold for two minutes, then announce and wait for the door to open | `realistic-washer-done-notification.yaml` | OK | - |
-| Structure stress: choose with a wait inside a repeat-until loop | `structure-choose-inside-repeat-until-with-wait.yaml` | CHANGED MEANING | A `choose` with a branch and a default inside a `repeat: until` is saved as `if: [cond] then: []` followed by the branch steps and the default steps as plain steps: they all run on every iteration. |
-| Structure stress: an if/else inside one parallel branch, then a shared step after the parallel | `structure-if-inside-parallel-branch-converging.yaml` | CHANGED MEANING | The step after a `parallel` whose branches hold an `if` or a loop is copied into each branch (it runs once per branch, inside the branch, instead of once after all branches finished). |
-| Structure stress: every parallel branch runs its own repeat loop, then one shared step | `structure-parallel-branches-each-with-a-loop.yaml` | CHANGED MEANING | The step after a `parallel` whose branches hold an `if` or a loop is copied into each branch (it runs once per branch, inside the branch, instead of once after all branches finished). |
-| Structure stress: a repeat-until loop nested inside a repeat-while loop | `structure-repeat-until-inside-repeat-while.yaml` | CHANGED MEANING | A `repeat: until` nested in a `repeat: while` disappears: its body is inlined once per outer iteration followed by an empty `if: [until condition] then: []`. |
-| Structure stress: a loop that stops itself from a choose branch, with steps after the loop | `structure-stop-inside-while-loop-after-choose.yaml` | CHANGED MEANING | A `choose` (door off -> stop) inside a `repeat: while` is merged into the loop's `while:` list and the rest of the loop body (notification, delay) is dropped; the loop now only runs while the door is off. |
+| Structure stress: choose with a wait inside a repeat-until loop | `structure-choose-inside-repeat-until-with-wait.yaml` | OK | - |
+| Structure stress: an if/else inside one parallel branch, then a shared step after the parallel | `structure-if-inside-parallel-branch-converging.yaml` | OK | - |
+| Structure stress: every parallel branch runs its own repeat loop, then one shared step | `structure-parallel-branches-each-with-a-loop.yaml` | OK | - |
+| Counted repeat whose body starts with a three-branch parallel block, then more steps and a step after the loop | `structure-repeat-count-body-starts-with-parallel.yaml` | OK | - |
+| repeat-until with two tests whose body starts with a parallel block (alias and note on the loop, the block and a branch), then an if | `structure-repeat-until-body-starts-with-parallel.yaml` | OK | - |
+| Structure stress: a repeat-until loop nested inside a repeat-while loop | `structure-repeat-until-inside-repeat-while.yaml` | OK | - |
+| One parallel branch is a repeat-until whose body starts with another parallel block (the loop sits between two parallel blocks) | `structure-repeat-until-parallel-body-in-parallel-branch.yaml` | OK | - |
+| Structure stress: a loop that stops itself from a choose branch, with steps after the loop | `structure-stop-inside-while-loop-after-choose.yaml` | OK | - |
 
 ### 5. Scripts
 
@@ -500,33 +505,35 @@ Each row is one fixture; `construct` is the comment at the top of the fixture fi
 
 | Construct | Fixture | Result today | What exactly goes wrong |
 | --- | --- | --- | --- |
-| Script identity: alias, icon and description | `script-alias-icon-description.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script created from a blueprint: only use_blueprint and its inputs | `script-blueprint-instance.yaml` | REJECTED (cannot open) | Cannot open: a `use_blueprint` config has no triggers or actions (`Graph must have at least one trigger node`). |
-| A script using choose and if/else | `script-choose-and-if-flow.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script with inline condition steps gating the rest | `script-condition-gate-steps.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script fields using entity, device, area and target selectors | `script-fields-entity-device-area-target.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script fields with required and advanced flags and defaults of several types | `script-fields-required-advanced-defaults.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script fields using select, time, duration, date, color and icon selectors | `script-fields-select-time-duration-color.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script fields using text, number and boolean selectors with name, description, required, default and example | `script-fields-text-number-boolean.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script fields that only have a description and an example (no selector) | `script-fields-without-selectors.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script using identity, mode, fields, variables, trace and several step kinds | `script-full-featured.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script written with `service:` and `data_template` spellings | `script-legacy-service-keys.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script max_exceeded with a log level other than silent or warning | `script-max-exceeded-error.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| The smallest script: an alias and one step | `script-minimal-sequence.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script with mode parallel, a run limit and a silenced overflow warning | `script-mode-parallel-max-exceeded-silent.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script with mode queued and a queue length | `script-mode-queued-with-max.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script with mode restart | `script-mode-restart.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script with no alias, an empty description and the default mode written out | `script-no-alias-description-empty.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script using parallel branches | `script-parallel-flow.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script using repeat, waits and a timeout branch | `script-repeat-and-wait-flow.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script calling an action with a response variable and returning part of it | `script-service-response-then-stop.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| A script that returns data to its caller through `stop` and `response_variable` | `script-stop-with-response-variable.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script trace configuration | `script-trace-stored-traces.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
-| Script-level variables used by the sequence | `script-variables-and-templates.yaml` | REJECTED (cannot open) | Cannot open: a script has no trigger (`Graph must have at least one trigger node`); only automations are parsed. |
+| Script identity: alias, icon and description | `script-alias-icon-description.yaml` | OK | - |
+| A script created from a blueprint: only use_blueprint and its inputs | `script-blueprint-instance.yaml` | OK | Opens read-only: Home Assistant builds the steps from the blueprint, so there is nothing to draw. The config is written back exactly as read. |
+| A script using choose and if/else | `script-choose-and-if-flow.yaml` | OK | - |
+| A script with inline condition steps gating the rest | `script-condition-gate-steps.yaml` | OK | - |
+| Script fields using entity, device, area and target selectors | `script-fields-entity-device-area-target.yaml` | OK | - |
+| Script fields with required and advanced flags and defaults of several types | `script-fields-required-advanced-defaults.yaml` | OK | - |
+| Script fields using select, time, duration, date, color and icon selectors | `script-fields-select-time-duration-color.yaml` | OK | - |
+| Script fields using text, number and boolean selectors with name, description, required, default and example | `script-fields-text-number-boolean.yaml` | OK | - |
+| Script fields that only have a description and an example (no selector) | `script-fields-without-selectors.yaml` | OK | - |
+| A script using identity, mode, fields, variables, trace and several step kinds | `script-full-featured.yaml` | OK | - |
+| A script written with `service:` and `data_template` spellings | `script-legacy-service-keys.yaml` | OK | - |
+| Script max_exceeded with a log level other than silent or warning | `script-max-exceeded-error.yaml` | OK | - |
+| The smallest script: an alias and one step | `script-minimal-sequence.yaml` | OK | - |
+| Script with mode parallel, a run limit and a silenced overflow warning | `script-mode-parallel-max-exceeded-silent.yaml` | OK | - |
+| Script with mode queued and a queue length | `script-mode-queued-with-max.yaml` | OK | - |
+| Script with mode restart | `script-mode-restart.yaml` | OK | - |
+| A script with no alias, an empty description and the default mode written out | `script-no-alias-description-empty.yaml` | OK | - |
+| A script using parallel branches | `script-parallel-flow.yaml` | OK | - |
+| A script using repeat, waits and a timeout branch | `script-repeat-and-wait-flow.yaml` | OK | - |
+| A script that starts with a repeat-until loop whose body starts with a parallel block | `script-repeat-until-is-first-step.yaml` | OK | - |
+| A script with fields, variables and a retry loop whose body starts with a parallel block (the shape of a real voice-backup script) | `script-repeat-until-parallel-first.yaml` | OK | - |
+| A script calling an action with a response variable and returning part of it | `script-service-response-then-stop.yaml` | OK | - |
+| A script that returns data to its caller through `stop` and `response_variable` | `script-stop-with-response-variable.yaml` | OK | - |
+| Script trace configuration | `script-trace-stored-traces.yaml` | OK | - |
+| Script-level variables used by the sequence | `script-variables-and-templates.yaml` | OK | - |
 
 ## On-canvas readability
 
-Derived from reading `packages/frontend/src/components/nodes/*` (cards), `lib/describeNode.ts` (the sentence on each card), `components/panels/*` and `components/panels/node-fields/*` (side panel editors), `utils/nodeData.ts` and `config/handledProperties.ts`, and by running the real `describeNode` on the parsed fixtures.
+Derived from reading `packages/frontend/src/components/nodes/*` (cards), `lib/describeNode.ts` (the sentence on each card), `components/panels/*` and `components/panels/node-fields/*` (side panel editors), `utils/nodeData.ts` and `config/handledProperties.ts`, and by running the real `describeNode` on the parsed fixtures. The card texts were measured at v1.3.0 and not re-audited for 1.4.0; what changed since is the "Problem" cells that described saving (every fixture saves back unchanged today) and the rows for scripts and blueprint instances.
 
 How a card is drawn: an icon, a title (the user's alias when there is one, otherwise a plain-English sentence, at most four lines), a subtitle (the sentence, when an alias took the title) and detail lines (two lines each). Disabled steps are dimmed with a "Disabled" badge. Condition nodes have a True and a False exit and the edges carry True/False chips. A step Flow cannot model is drawn as "Unsupported step (kept as is)". **`note` is never drawn on the canvas** (it only exists in the side panel).
 
@@ -539,7 +546,7 @@ How a card is drawn: an icon, a title (the user's alias when there is one, other
 | Time trigger with `weekday` | "Every day at 08:00" | No | Says every day although it only fires on the listed weekdays. |
 | Time trigger with helper entity and offset | "30 min before the time set in input_datetime.alarm_time" | Yes | |
 | Time pattern, sun (legacy), zone, event, mqtt, webhook, template, homeassistant, conversation, geo_location, persistent_notification, tag | One sentence each | Yes | `allowed_methods`, `local_only`, `qos`, `encoding`, `value_template` (mqtt) are not shown. |
-| Purpose-specific trigger (`light.turned_on`) | "Light turned on in light.kitchen", options on a detail line | Yes | Area/floor/label-only targets cannot be opened at all (see tables above). The editor has no form for them: they are edited as raw additional properties. |
+| Purpose-specific trigger (`light.turned_on`) | "Light turned on in light.kitchen", options on a detail line | Yes | The editor has no form for area/floor/label-only targets: they are edited as raw additional properties. |
 | Purpose-specific sun trigger | "Sun sunset", detail "Options: offset 45 min, offset type before" | Partly | Reads like a log line, not a sentence. |
 | Device trigger / condition / action | "Device action: light turn on (<32-character registry id>)" | No | The raw registry id is shown instead of a device or entity name. |
 | Trigger `id` | A detail line | Yes | |
@@ -552,52 +559,48 @@ How a card is drawn: an icon, a title (the user's alias when there is one, other
 | Inline `- condition:` gate step | A condition node whose False exit has no edge | Partly | Nothing says that a failing gate ends the run (or only the branch it is in). |
 | `if` / `choose` | No container: a chain of condition nodes with True/False chips; a choose branch alias becomes the condition's title with the sentence as subtitle; the default is the last False exit | Partly | "First match wins" is implicit; alias and note of the `choose` block itself are not shown. |
 | Service call | "Turn on light.hallway", "Send notification via mobile_app_phone", "Call x.y"; targets list entities, areas, floors, labels, devices | Partly | `data` (brightness, temperature, ...) is not shown except `message`; templated targets are shown as raw template text. |
-| Scene step | "Unsupported step (kept as is), Contains: scene" | No | The saved YAML is not the original: the step becomes a call to `unknown.unknown`. |
+| Scene step | "Unsupported step (kept as is), Contains: scene" | No | The card says it is unsupported; the saved YAML is exactly the original step. |
 | Fire event | "Fire event LOGBOOK_ENTRY" | Partly | Event data is not shown. |
-| Delay | "Wait 1 min 30 s" | Partly | `days` are ignored (shown and saved without them); a delay mapping with templates is shown as a long generated `format(...)` template. |
-| Wait (template / trigger) | "Wait up to 3 min for event X", detail "Stops the run if it times out" | Yes | A numeric `timeout` never reaches the card (dropped when the file is opened); a single-mapping `wait_for_trigger` is dropped. |
+| Delay | "Wait 1 min 30 s" | Partly | A delay mapping with templates is shown as a long generated `format(...)` template (the card text; the saved YAML keeps the original spelling and `days`). |
+| Wait (template / trigger) | "Wait up to 3 min for event X", detail "Stops the run if it times out" | Yes | |
 | Variables step | "Set 5 variables: a, b, c +2 more" | Partly | Values are not shown; in the side panel a nested mapping shows as `[object Object]` and a list as comma-joined text, and editing writes the text back instead of the structure. |
 | Stop | "Stop here: reason", red "Stop with error: ..." | Yes | `response_variable` is not shown; the card has no outgoing handle. |
 | `set_conversation_response` | "Reply to the voice command: ..." | Yes | |
 | `repeat.count` | A loop of hidden `_repeat_counter_set_variables_<id>` nodes and "Template is true: _repeat_counter_... < 3" with a back-edge | No | Machine names instead of "repeat 3 times". |
-| `repeat.while` / `repeat.until` | The body nodes with a condition node and a back-edge | Partly | No "Repeat" label; `repeat.while` / `until` given as one template string cannot be opened. |
+| `repeat.while` / `repeat.until` | The body nodes with a condition node and a back-edge | Partly | No "Repeat" label. |
 | `repeat.for_each` | One card "Repeat for each of 3 items, 1 step inside" | Partly | The inner steps are not on the canvas. |
-| `parallel` | Fan-out edges from the previous node, branches re-join | Partly | No "Parallel" node or label; alias and note on the block and its branches are lost; a mapping instead of a list becomes an unsupported step. |
-| Nested `sequence:` group | "Unsupported step" | No | Saved as `unknown.unknown`. |
-| Disabled `if` / `choose` / `parallel` | Badge and dimming on inner nodes | No | The block's own flag is moved or removed (see actions table). |
+| `parallel` | Fan-out edges from the previous node, branches re-join | Partly | No "Parallel" node or label; alias, note and `enabled` of the block and its branches are kept in the saved YAML but not drawn. |
+| Nested `sequence:` group | "Unsupported step" | No | The saved YAML is exactly the original group. |
+| Disabled `if` / `choose` / `parallel` | Badge and dimming on inner nodes | No | The block's own `enabled: false` is kept in the saved YAML; the canvas only dims the inner nodes. |
 | Alias | Card title, sentence as subtitle | Yes | |
 | `note` | Not drawn | No | |
-| Scripts and blueprint instances | Cannot be opened | No | Every script fixture and both blueprint fixtures are rejected. |
+| Scripts | A **Scripts** tab next to Automations (All, Running and Recent chips, an icon per script). A script opens like an automation without a trigger: the first step is the start, the header says "Script", and a Run button starts it | Yes | `mdi:` icons are drawn as one of about 35 Flow icons, any other name shows a generic script icon. The palette has no Trigger node. |
+| Blueprint instance (automation or script) | A card "Made from a blueprint" with the blueprint path and its inputs, the note "This is read-only here. Edit the blueprint inputs in Home Assistant." and an "Open in Home Assistant" link; there are no nodes, the palette says nodes cannot be added, and Save is disabled | Yes | Home Assistant builds the steps from the blueprint, so there is nothing to draw or edit in Flow. The YAML tab reads "Add nodes to see YAML output". |
 
 Side panel notes: the trigger platform dropdown offers 12 platforms (state, numeric_state, time, time_pattern, sun, event, mqtt, webhook, zone, template, homeassistant, device); calendar and purpose-specific triggers have no form. The duration editor knows hours, minutes, seconds and milliseconds only (no days). The `enabled` switch is boolean only (a template `enabled` cannot be edited or even opened on a trigger).
 
-## Prioritized fix list
+## Status of the first audit's fix list
 
-1. **A guard turns into an unconditional action**: `stop` inside a loop branch is saved after an empty `then`; a gate step inside `then`/`choose` is merged into the conditions so `else`/`default`/the next branch runs when the gate fails; a disabled `if`/`choose`/`parallel` loses its own `enabled: false`. These are the actuation-safety bugs.
-2. **Steps replaced by `unknown.unknown`**: `scene:`, `service_template:`, nested `sequence:` groups, `parallel:` as a mapping and `if:` as a bare template string. Home Assistant cannot run the saved step, and the card claims it was kept as is.
-3. **Bare template-string conditions and shorthand groups**: `and:`/`or:`/`not:` crash or corrupt on open; bare strings in `if`, `choose` and root lists are spread into character maps or collapsed. Both spellings are in the official docs.
-4. **Conditions saved as JSON text**: `state` on a numeric attribute, `trigger` with an integer id, `enabled` templates and a `condition:` list all become a `template` condition that is never true.
-5. **Waits and replies lose their content**: numeric `timeout` dropped (the wait can block forever), a single-mapping `wait_for_trigger` vanishes, `set_conversation_response: null` becomes an empty step.
-6. **`parallel` changes behavior**: inside `if`/`choose` it becomes sequential, nested parallel duplicates the steps after it.
-7. **Metadata**: `max_exceeded` levels outside silent/warning/critical (error, fatal, warn, info, debug, notset, upper case) reset the mode to single and drop `max`, `max_exceeded`, `initial_state` and `trace`; `initial_state: true` and `hide_entity` are dropped even on their own.
-8. **Delays**: `days` dropped, a templated mapping rewritten into one long non-deterministic template, `delay: 5` saved as the string `"5"`.
-9. **Scripts and blueprint instances cannot be opened** (23 script fixtures, 2 blueprint fixtures): `Graph must have at least one trigger node`.
-10. **Trigger schema is too strict**: `enabled` as a template, numeric `from`/`to` on attribute triggers, purpose-specific triggers targeting only an area/floor/label/device; `repeat.while`/`until` as one string.
-11. **`to: null` / `from: null` dropped**: the trigger starts firing on attribute-only updates. A nested `- triggers: [...]` list is saved as an invalid trigger.
-12. **Prose loss**: alias and note on `parallel`, `sequence`, `choose`, `scene`, `event`, `variables`, `set_conversation_response` steps and on members of condition groups.
-13. **Canvas honesty**: show `not_from`/`not_to`, `weekday`, `match: any`, service `data`, device names instead of registry ids, "repeat N times" instead of the counter loop, a Parallel label, and the `note`.
-14. **Strictness of the checker** (see below): decide whether the equivalent rewrites (REWRITTEN rows) are accepted or fixed in Flow.
+The first audit (v1.3.0) ranked 14 problems. Items 1 to 12 were round-trip problems (guards turned into plain actions, steps replaced by `unknown.unknown`, shorthand and bare-template conditions, conditions saved as JSON text, waits and replies losing content, `parallel` changing behavior, metadata dropped, delays, scripts and blueprint instances that could not be opened, a too-strict trigger schema, `to: null`, prose loss): the fixtures that showed each of them are OK in strict mode today, see the tables above. The other two:
+
+- **13. Canvas honesty** (show `not_from`/`not_to`, `weekday`, `match: any`, service `data`, device names instead of registry ids, "repeat N times" instead of the counter loop, a Parallel label, and the `note`): not re-audited for 1.4.0. The readability table above still lists what is open.
+- **14. Strictness of the checker**: settled by keeping the original shape of a step instead of accepting an equivalent rewrite, so the corpus check is strict (an inline `- condition:` step stays a step, `delay: 5` stays `delay: 5`).
 
 ### Notes on the semantic checker
 
-- Too strict for legitimate equivalences: `delay: 5` and `delay: "5"` (HA's `time_period_seconds` reads both as 5 s); an inline `- condition:` step followed by steps versus `if: [cond] then: [rest]`; a lone `if`/`choose` versus the same condition in the root `conditions:` (equal in single mode, not for restart/queued); a choose whose first branch ends in `stop` versus sequential `if`s.
 - Too loose: `id` and `description` are not compared (`id` is re-added by Home Assistant on save, a lost `description` would pass); notes are checked by text presence anywhere in the output, not by placement.
-- A fixture that fails only because of a strict-checker equivalence is labelled REWRITTEN above, so the fix can be chosen deliberately.
 
 ## Step structure (open, save, same shape)
 
-Every structural fixture now round-trips in strict mode (`choose` stays `choose`, an inline `- condition:` stays a gate that ends only its own list, a guard followed by steps keeps its shape, loops, `parallel` blocks and disabled blocks keep their own settings, and a step Flow has no node for, such as `scene:` or a nested `sequence:` group, is saved exactly as written). `KNOWN_GAPS` in the corpus test now lists only scripts and blueprint instances.
+Every structural fixture round-trips in strict mode (`choose` stays `choose`, an inline `- condition:` stays a gate that ends only its own list, a guard followed by steps keeps its shape, loops, `parallel` blocks and disabled blocks keep their own settings, and a step Flow has no node for, such as `scene:` or a nested `sequence:` group, is saved exactly as written). `KNOWN_GAPS` in the corpus test is empty.
 
 How it works: a flow graph is flat, and several different step trees draw the same graph. The parser therefore writes small hints into the nodes it creates (`stepDepth`, `conditionIndex`, `chooseBranch`, `gateStep`, `loopRole`, `parallelPath`, `blockEnabled`, `verbatimStep`; one list in `packages/shared/src/schemas/node-hints.ts`), and the generator (`strategies/sequence-builder.ts`) reads them while it rebuilds the nested steps. A hint is only believed while it agrees with the graph, so an edited or hand-drawn graph falls back to being read from its edges alone. Hints never reach the saved YAML and are not shown as editable properties. The parser lists, for every list of steps, where control leaves it (a failing inline condition leaves only its own list, a `stop` leaves nothing), which is what lets a block end where it ended in the original.
 
-Known limit: this is proven on the corpus and on live automations, not on every possible nesting. A developer fuzz run (random automations nested three levels deep, strict comparison) still finds automations that are saved with steps moved across a block boundary when stops, inline conditions and parallel blocks are combined in one tree; plain nested `if` / `choose` / loops are the large majority and mostly exact. New findings from real automations belong in the corpus as fixtures.
+A loop that is entered at several nodes (a `repeat` whose body starts with a parallel block: one entry per branch, and the test loops back to all of them) is read as one loop: the search for loop back-edges treats an edge to a node with the same predecessors as an open back-edge target as a back-edge too (`findBackEdges`), and a `repeat: until:` inside a parallel branch hands its body the branch's parallel path. Four corpus fixtures and one script cover it.
+
+Known limits: this is proven on the corpus and on the live automations and scripts of one installation (`yarn verify:ha`: 61 of 61, exact shape), not on every possible nesting.
+
+- A developer fuzz run (random automations nested three levels deep, strict comparison) once found automations saved with steps moved across a block boundary when stops, inline conditions and parallel blocks are combined in one tree. That run is not in the repository and was not repeated for 1.4.0, so the limit stays documented as it was.
+- Two loop shapes that no fixture covers are still rewritten when saved. A `repeat: until:` that is the very first step of another `repeat: until:` body (both loops start at the same node) is saved with the inner loop as plain steps: it no longer repeats. A loop that is the only step of a `parallel:` with a single branch is saved without the `parallel:` wrapper (same behavior, different shape).
+
+New findings from real automations belong in the corpus as fixtures.
