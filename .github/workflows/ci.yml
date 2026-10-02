@@ -1,79 +1,111 @@
 name: CI
 
+# The gate for every change: runs on pushes to main and on pull requests, and release.yml calls
+# it again (workflow_call) before it packages anything, so a tag can only ship what CI accepts.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A newer push to a branch or pull request replaces the run in progress. Runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
-    name: Test & Lint
+  quality:
+    name: Typecheck, lint, format
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Check out
+        uses: actions/checkout@v7
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "yarn"
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: Set up
+        uses: ./.github/actions/setup
 
-      - name: Type checking
+      - name: Typecheck
         run: yarn typecheck
 
-      - name: Linting
+      - name: Lint
         run: yarn lint:biome
 
-      - name: Format checking
+      - name: Format check
         run: yarn format:check
 
-      - name: Run tests
-        run: yarn test run
-
-      - name: Build packages
-        run: yarn build
-
-  publish-check:
-    name: Publish Check
+  test:
+    name: Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Check out
+        uses: actions/checkout@v7
         with:
-          node-version: "20.x"
-          cache: "yarn"
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: Set up
+        uses: ./.github/actions/setup
 
-      - name: Build Home Assistant integration
+      # The frontend and transpiler tests import @flow/shared and @flow/transpiler through their
+      # built dist/ folders, which do not exist on a fresh checkout.
+      - name: Build the libraries the tests import
+        run: yarn turbo run build --filter=@flow/transpiler
+
+      # The round-trip corpus has its own step below, so a failing fixture is reported there.
+      - name: Unit tests
+        run: yarn test --run --exclude '**/ha-roundtrip-corpus.test.ts'
+
+      # Skipped until the corpus test is on this branch. Delete the `if:` line (and this comment)
+      # once it is on main, so a missing file fails CI instead of silently skipping the gate.
+      - name: Round-trip fixtures
+        if: hashFiles('packages/transpiler/src/__tests__/ha-roundtrip-corpus.test.ts') != ''
+        run: yarn test:roundtrip
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up
+        uses: ./.github/actions/setup
+
+      # Builds every package and copies the frontend into custom_components/flow/www, which is
+      # what HACS and the container images ship.
+      - name: Build all packages and the Home Assistant bundle
         run: yarn build:ha
 
-      - name: Check integration files exist
+      - name: Check the Home Assistant bundle
         run: |
-          if [ ! -f "custom_components/flow/www/index.html" ]; then
-            echo "❌ Integration build failed - missing index.html"
+          www=custom_components/flow/www
+          if [ ! -f "$www/index.html" ]; then
+            echo "::error::$www/index.html is missing, so the frontend build did not reach the integration"
             exit 1
           fi
-          if [ ! -d "custom_components/flow/www/assets" ]; then
-            echo "❌ Integration build failed - missing assets directory"
+          if [ -z "$(ls -A "$www/assets" 2>/dev/null)" ]; then
+            echo "::error::$www/assets is missing or empty"
             exit 1
           fi
-          echo "✅ Integration build successful"
+          echo "Bundle is complete: $(find "$www" -type f | wc -l) files, $(du -sh "$www" | cut -f1)"
+
+      # release.yml packages exactly this folder into flow.zip and flow.tar.gz. On pull requests it
+      # is a ready-to-try build of the integration.
+      - name: Upload the integration
+        uses: actions/upload-artifact@v7
+        with:
+          name: flow
+          path: custom_components/flow/
+          if-no-files-found: error
+          retention-days: 30

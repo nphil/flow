@@ -1,181 +1,71 @@
 name: HACS Validation
 
+# Checks the integration the way HACS and Home Assistant will: the HACS action, hassfest, and one
+# version across every file a release has to keep in step. Also runs every night, because both
+# validators change on their own schedule and a green main can go red without a commit.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  release:
-    types: [published]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hacs-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  validate:
-    name: HACS Validation
+  hacs:
+    name: HACS
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: HACS validation
         uses: hacs/action@main
         with:
           category: integration
           ignore: brands
+          # This workflow only has read access, so it cannot comment on the pull request.
+          comment: 'false'
 
-      - name: Validate integration structure
-        run: |
-          # Check required files exist
-          if [ ! -f "custom_components/flow/manifest.json" ]; then
-            echo "❌ Missing manifest.json"
-            exit 1
-          fi
-
-          if [ ! -f "custom_components/flow/__init__.py" ]; then
-            echo "❌ Missing __init__.py"
-            exit 1
-          fi
-
-          if [ ! -f "hacs.json" ]; then
-            echo "❌ Missing hacs.json"
-            exit 1
-          fi
-
-          echo "✅ Integration structure is valid"
-
-      - name: Validate manifest.json
-        run: |
-          # Validate manifest.json structure
-          python3 -c "
-          import json
-          import sys
-
-          try:
-              with open('custom_components/flow/manifest.json', 'r') as f:
-                  manifest = json.load(f)
-              
-              required_fields = ['domain', 'name', 'version', 'documentation_url', 'issue_tracker']
-              missing_fields = [field for field in required_fields if field not in manifest]
-              
-              if missing_fields:
-                  print(f'❌ Missing required fields in manifest.json: {missing_fields}')
-                  sys.exit(1)
-              
-              print('✅ manifest.json is valid')
-          except json.JSONDecodeError as e:
-              print(f'❌ Invalid JSON in manifest.json: {e}')
-              sys.exit(1)
-          except Exception as e:
-              print(f'❌ Error validating manifest.json: {e}')
-              sys.exit(1)
-          "
-
-      - name: Validate hacs.json
-        run: |
-          # Validate hacs.json structure
-          python3 -c "
-          import json
-          import sys
-
-          try:
-              with open('hacs.json', 'r') as f:
-                  hacs_config = json.load(f)
-              
-              required_fields = ['name', 'render_readme']
-              missing_fields = [field for field in required_fields if field not in hacs_config]
-              
-              if missing_fields:
-                  print(f'❌ Missing required fields in hacs.json: {missing_fields}')
-                  sys.exit(1)
-              
-              print('✅ hacs.json is valid')
-          except json.JSONDecodeError as e:
-              print(f'❌ Invalid JSON in hacs.json: {e}')
-              sys.exit(1)
-          except Exception as e:
-              print(f'❌ Error validating hacs.json: {e}')
-              sys.exit(1)
-          "
-
-  validate-frontend:
-    name: Validate Frontend Build
+  hassfest:
+    name: hassfest
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Check out
+        uses: actions/checkout@v7
         with:
-          node-version: "20.x"
-          cache: "yarn"
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: yarn install --immutable
+      - name: hassfest
+        uses: home-assistant/actions/hassfest@master
 
-      - name: Build frontend
-        run: yarn build
-
-      - name: Validate frontend assets
-        run: |
-          if [ ! -f "custom_components/flow/www/index.html" ]; then
-            echo "❌ Frontend build failed - missing index.html"
-            exit 1
-          fi
-
-          if [ ! -d "custom_components/flow/www/assets" ]; then
-            echo "❌ Frontend build failed - missing assets directory"
-            exit 1
-          fi
-
-          # Check if assets are not empty
-          if [ -z "$(ls -A custom_components/flow/www/assets/)" ]; then
-            echo "❌ Frontend assets directory is empty"
-            exit 1
-          fi
-
-          echo "✅ Frontend build is valid"
-
-  update-hacs-version:
-    name: Update HACS Version
+  version-consistency:
+    name: Version consistency
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-
+    timeout-minutes: 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check out
+        uses: actions/checkout@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
-      - name: Update version in manifest.json
-        run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          # Remove 'v' prefix if present
-          VERSION=${VERSION#v}
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
 
-          # Update manifest.json version
-          python3 -c "
-          import json
-
-          with open('custom_components/flow/manifest.json', 'r') as f:
-              manifest = json.load(f)
-
-          manifest['version'] = '${VERSION}'
-
-          with open('custom_components/flow/manifest.json', 'w') as f:
-              json.dump(manifest, f, indent=2)
-
-          print(f'✅ Updated manifest.json version to ${VERSION}')
-          "
-
-      - name: Commit version update
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add custom_components/flow/manifest.json
-          git diff --staged --quiet || git commit -m "Update version to ${{ github.event.release.tag_name }}"
-          git push
+      # manifest.json (HACS), flow_web/config.yaml (add-on) and the add-on Dockerfile have to agree.
+      - name: Check the version files agree
+        run: node scripts/bump-version.mjs --check

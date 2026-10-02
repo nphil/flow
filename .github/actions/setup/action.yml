@@ -1,0 +1,21 @@
+name: Set up Flow
+description: Node (the version in .nvmrc), Corepack and a cached, locked Yarn install.
+
+runs:
+  using: composite
+  steps:
+    # Corepack has to be on before setup-node, otherwise `cache: yarn` finds the Yarn 1 that
+    # ships with the runner instead of the Yarn 4 this repository pins in package.json.
+    - name: Enable Corepack
+      shell: bash
+      run: corepack enable
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: yarn
+
+    - name: Install dependencies
+      shell: bash
+      run: yarn install --immutable
