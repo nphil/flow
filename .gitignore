@@ -44,3 +44,9 @@ yarn-error.log*
 
 # Home Assistant
 custom_components/flow/www/
+
+# Python
+__pycache__/
+.pytest_cache/
+# Created by the Home Assistant test harness
+tests/testing_config/

@@ -1,0 +1,4 @@
+# Test dependencies for tests/. CI installs pytest-homeassistant (versioned like Home Assistant)
+# next to these; locally: uv pip install "pytest-homeassistant" -r requirements_test.txt
+# The config flow depends on Home Assistant's frontend integration, which needs its web bundle.
+home-assistant-frontend

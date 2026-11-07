@@ -30,6 +30,7 @@ See the repository root and the `packages` folder for the full layout.
 - Build all packages: `yarn build`
 - Build and copy to Home Assistant component: `yarn build:ha`
 - Run tests: `yarn test` (use `--run` to avoid Vitest watch mode when necessary)
+- Run the Home Assistant integration tests (`tests/`): `uv venv -p 3.14 && uv pip install "pytest-homeassistant[bluetooth]" -r requirements_test.txt && uv run --no-project pytest`
 - Run the round-trip fixtures on their own: `yarn test:roundtrip`
 - Typecheck: `yarn typecheck`
 - Lint/format: `yarn check` and `yarn format`
