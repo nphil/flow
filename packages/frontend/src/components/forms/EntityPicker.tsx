@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/command';
 import { useHass } from '@/contexts/HassContext';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
+import { entityDisplayName } from '@/lib/entity-name';
 import { cn } from '@/lib/utils';
 import type { HassEntity } from '@/types/hass';
 import {
@@ -102,10 +103,6 @@ function DomainIcon({ entityId, className }: { entityId: string; className?: str
   return <Icon className={className} />;
 }
 
-function getEntityName(entity: HassEntity): string {
-  return (entity.attributes.friendly_name as string) || entity.entity_id;
-}
-
 const RECENT_ENTITIES_KEY = 'flow.recent-entities';
 const NO_AREA = 'No area';
 
@@ -150,7 +147,7 @@ function EntityPopover({
   trigger,
   triggerTitle,
 }: EntityPopoverProps) {
-  const { getAreaNameForEntity } = useHass();
+  const { getAreaNameForEntity, hass } = useHass();
   const { t } = useTranslation('common');
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
   const [domainFilter, setDomainFilter] = useState<string | null>(preferredDomains?.[0] ?? null);
@@ -161,11 +158,11 @@ function EntityPopover({
       entities.map((entity) => ({
         entity,
         entity_id: entity.entity_id,
-        friendlyName: getEntityName(entity),
+        friendlyName: entityDisplayName(hass, entity),
         areaLabel: getAreaNameForEntity(entity.entity_id) ?? '',
         domain: entity.entity_id.split('.')[0],
       })),
-    [entities, getAreaNameForEntity]
+    [entities, getAreaNameForEntity, hass]
   );
 
   const { query, setQuery, filteredItems } = useFuzzySearch<SearchableEntity>(searchable, {
@@ -371,7 +368,7 @@ export function EntityPicker({
   disabled,
   preferredDomains,
 }: EntityPickerProps) {
-  const { entities: contextEntities, getAreaNameForEntity } = useHass();
+  const { entities: contextEntities, getAreaNameForEntity, hass } = useHass();
   const allEntities = entitiesProp ?? contextEntities;
   const entities = useMemo(
     () => applyDomainFilter(allEntities, domainFilter),
@@ -412,7 +409,7 @@ export function EntityPicker({
                   className="h-3.5 w-3.5 shrink-0 text-flow-text-muted"
                 />
                 <span className="min-w-0 flex-1 truncate text-flow-text">
-                  {getEntityName(selected)}
+                  {entityDisplayName(hass, selected)}
                 </span>
                 <span className="min-w-0 shrink truncate text-flow-text-muted text-xs">
                   {[selected.entity_id, getAreaNameForEntity(selected.entity_id)]
@@ -450,7 +447,7 @@ export function MultiEntityPicker({
   placeholder = 'Select entities...',
   className,
 }: MultiEntityPickerProps) {
-  const { entities: contextEntities } = useHass();
+  const { entities: contextEntities, hass } = useHass();
   const allEntities = entitiesProp ?? contextEntities;
   const entities = useMemo(
     () => applyDomainFilter(allEntities, domainFilter),
@@ -476,7 +473,9 @@ export function MultiEntityPicker({
             {entity && (
               <DomainIcon entityId={id} className="h-3 w-3 shrink-0 text-flow-text-muted" />
             )}
-            <span className="max-w-[10rem] truncate">{entity ? getEntityName(entity) : id}</span>
+            <span className="max-w-[10rem] truncate">
+              {entity ? entityDisplayName(hass, entity) : id}
+            </span>
             <button
               type="button"
               onClick={() => handleRemove(id)}

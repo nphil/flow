@@ -1,4 +1,5 @@
 import type { FlowKind } from '@flow/shared';
+import { entityDisplayName } from '@/lib/entity-name';
 import { type FlowCatalogItem, mapEntityToCatalogItem, uniqueScriptKey } from '@/lib/flow-catalog';
 import type { FlowConfig, HassEntity, HomeAssistant } from '@/types/hass';
 
@@ -373,10 +374,7 @@ export class HomeAssistantAPI {
       // Alternative: Use entity states to get basic info
       return this.getFlowEntities(kind).map((entity) => ({
         id: entity.entity_id.replace(`${kind}.`, ''),
-        alias:
-          typeof entity.attributes.friendly_name === 'string'
-            ? entity.attributes.friendly_name
-            : entity.entity_id,
+        alias: entityDisplayName(this.hass, entity),
         description:
           typeof entity.attributes.description === 'string' ? entity.attributes.description : '',
       }));
@@ -704,13 +702,11 @@ export class HomeAssistantAPI {
         .filter((entity) => entity.entity_id.startsWith('zone.'))
         .map((entity) => {
           const zoneId = entity.entity_id.replace('zone.', '');
+          const displayName = entityDisplayName(this.hass, entity);
           return {
             entity_id: entity.entity_id,
             zone_id: zoneId,
-            name:
-              typeof entity.attributes.friendly_name === 'string'
-                ? entity.attributes.friendly_name
-                : zoneId,
+            name: displayName === entity.entity_id ? zoneId : displayName,
             latitude:
               typeof entity.attributes.latitude === 'number'
                 ? entity.attributes.latitude
@@ -755,6 +751,7 @@ export class HomeAssistantAPI {
         const item = mapEntityToCatalogItem(kind, entity, {
           areaId: entry?.area_id ?? undefined,
           uniqueId: entry?.unique_id,
+          hass: this.hass,
         });
         return item ? [item] : [];
       });

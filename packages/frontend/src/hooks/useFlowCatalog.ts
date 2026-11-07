@@ -159,10 +159,11 @@ export function useFlowCatalog({ kind, hass, hassConfig, entities }: UseFlowCata
       const item = mapEntityToCatalogItem(kind, entity, {
         areaId: entry?.area_id ?? undefined,
         uniqueId: entry?.unique_id,
+        hass,
       });
       return item ? [item] : [];
     });
-  }, [kind, entities, registryByEntityId]);
+  }, [kind, entities, registryByEntityId, hass]);
 
   return {
     areaIdToName,

@@ -2,6 +2,7 @@ import { Activity, Cpu, type LucideIcon, MapPinned, Tag, X } from 'lucide-react'
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useHass } from '@/contexts/HassContext';
+import { entityDisplayName } from '@/lib/entity-name';
 import { cn } from '@/lib/utils';
 import { AreaPicker } from './AreaPicker';
 import { DevicePicker } from './DevicePicker';
@@ -81,7 +82,7 @@ interface TargetEditorProps {
  * target-building pattern used elsewhere for HA service call targets.
  */
 export function TargetEditor({ target, onChange, className }: TargetEditorProps) {
-  const { entities, devices, areas, labels, entityRegistryEntries } = useHass();
+  const { entities, devices, areas, labels, entityRegistryEntries, hass } = useHass();
 
   const entityIds = normalizeToArray(target?.entity_id);
   const deviceIds = normalizeToArray(target?.device_id);
@@ -121,7 +122,7 @@ export function TargetEditor({ target, onChange, className }: TargetEditorProps)
       <TargetRow icon={Activity} label="Entities">
         {entityIds.map((id) => {
           const entity = entityById.get(id);
-          const label = entity ? (entity.attributes.friendly_name as string) || id : id;
+          const label = entity ? entityDisplayName(hass, entity) : id;
           return (
             <TargetPill
               key={id}

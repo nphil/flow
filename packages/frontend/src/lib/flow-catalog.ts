@@ -1,5 +1,6 @@
 import type { FlowKind } from '@flow/shared';
-import type { HassEntity } from '@/types/hass';
+import { entityDisplayName } from '@/lib/entity-name';
+import type { HassEntity, HomeAssistant } from '@/types/hass';
 
 /**
  * One automation or script as the lists and the API see it. Built from the live entity plus the
@@ -60,7 +61,7 @@ function resolveFlowId(kind: FlowKind, entity: HassEntity, uniqueId?: string | n
 export function mapEntityToCatalogItem(
   kind: FlowKind,
   entity: HassEntity,
-  extra: { areaId?: string; uniqueId?: string | null } = {}
+  extra: { areaId?: string; uniqueId?: string | null; hass?: HomeAssistant | null } = {}
 ): FlowCatalogItem | null {
   if (!entity.entity_id.startsWith(`${kind}.`)) {
     return null;
@@ -69,7 +70,7 @@ export function mapEntityToCatalogItem(
   return {
     entity_id: entity.entity_id,
     flow_id: resolveFlowId(kind, entity, extra.uniqueId),
-    friendly_name: stringAttribute(entity, 'friendly_name') ?? entity.entity_id,
+    friendly_name: entityDisplayName(extra.hass, entity),
     is_on: entity.state === 'on',
     last_triggered: stringAttribute(entity, 'last_triggered'),
     description: stringAttribute(entity, 'description') ?? '',
