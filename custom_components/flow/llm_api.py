@@ -29,12 +29,7 @@ from typing import Any, Final
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from homeassistant.components.automation import (
-    ATTR_LAST_TRIGGERED,
-    CONF_SKIP_CONDITION,
-    DOMAIN as AUTOMATION_DOMAIN,
-    SERVICE_TRIGGER,
-)
+from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.components.automation.config import async_validate_config_item
 from homeassistant.components.trace.util import async_get_trace, async_list_traces
 from homeassistant.config import AUTOMATION_CONFIG_PATH
@@ -52,12 +47,19 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv, entity_registry as er, llm
 from homeassistant.helpers.json import ExtendedJSONEncoder
 from homeassistant.util.file import write_utf8_file_atomic
-from homeassistant.util.json import JsonObjectType
 from homeassistant.util.yaml import dump as yaml_dump, load_yaml, parse_yaml
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+# These three names are importable from homeassistant.components.automation on
+# 2026.10 but only from its const submodule on 2026.11 (the integration was
+# split into const/entity/services). They are plain strings, so spell them out
+# here instead of depending on where either release keeps them.
+ATTR_LAST_TRIGGERED: Final = "last_triggered"
+CONF_SKIP_CONDITION: Final = "skip_condition"
+SERVICE_TRIGGER: Final = "trigger"
 
 # Same key-ordering EditAutomationConfigView._write_value uses so entries we
 # write read the same way entries written by the native/Flow UI editors do.
@@ -133,14 +135,14 @@ def _json_safe(data: Any) -> Any:
     return json.loads(json.dumps(data, cls=ExtendedJSONEncoder, allow_nan=False))
 
 
-def _ok(result: dict[str, Any]) -> JsonObjectType:
-    """Wrap a successful result in the {success, result} shape HA's llm tools use.
+def _ok(result: dict[str, Any]) -> llm.ToolResult:
+    """Wrap a successful result in a ToolResult carrying {success, result}.
 
     Matches ActionTool/CalendarGetEventsTool/TodoGetItemsTool/GetDateTimeTool
     in homeassistant/helpers/llm.py, which all return either
     {"success": True, "result": ...} or {"success": False, "error": ...}.
     """
-    return {"success": True, "result": _json_safe(result)}
+    return llm.ToolResult(data={"success": True, "result": _json_safe(result)})
 
 
 def _entity_id_for(hass: HomeAssistant, automation_id: str) -> str | None:
@@ -455,6 +457,11 @@ class FlowListAutomationsTool(llm.Tool):
     """List every automation with its id, alias, description and live state."""
 
     name = "flow_list_automations"
+    title = "List automations"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=True, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "List every Home Assistant automation with its id, alias, description, "
         "enabled state, last trigger time, and execution mode. Call this first "
@@ -467,7 +474,7 @@ class FlowListAutomationsTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         self.parameters(tool_input.tool_args)
         return _ok(await _async_list_automations(hass))
 
@@ -476,6 +483,11 @@ class FlowGetAutomationTool(llm.Tool):
     """Get one automation's full YAML config, entity_id and enabled state."""
 
     name = "flow_get_automation"
+    title = "Get automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=True, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "Get one automation's full configuration as Home Assistant automation "
         "YAML, plus its entity_id and whether it is currently enabled."
@@ -497,7 +509,7 @@ class FlowGetAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_get_automation(hass, args["automation_id"]))
 
@@ -506,6 +518,11 @@ class FlowCreateAutomationTool(llm.Tool):
     """Create a new automation from YAML, validated before saving."""
 
     name = "flow_create_automation"
+    title = "Create automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=False, destructive=False, idempotent=False, open_world=False
+    )
     description = (
         "Create a new Home Assistant automation from YAML. The YAML is "
         "validated with Home Assistant's own automation schema before "
@@ -532,7 +549,7 @@ class FlowCreateAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_create_automation(hass, llm_context, args["yaml"]))
 
@@ -541,6 +558,11 @@ class FlowUpdateAutomationTool(llm.Tool):
     """Replace an existing automation's YAML config, validated before saving."""
 
     name = "flow_update_automation"
+    title = "Update automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=False, destructive=True, idempotent=True, open_world=False
+    )
     description = (
         "Replace an existing automation's configuration with new YAML. The "
         "automation must already exist (see flow_list_automations) - use "
@@ -567,7 +589,7 @@ class FlowUpdateAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(
             await _async_update_automation(
@@ -580,6 +602,11 @@ class FlowDeleteAutomationTool(llm.Tool):
     """Permanently delete an automation."""
 
     name = "flow_delete_automation"
+    title = "Delete automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=False, destructive=True, idempotent=False, open_world=False
+    )
     description = (
         "Permanently delete an automation from automations.yaml and stop it "
         "from running. This cannot be undone."
@@ -591,7 +618,7 @@ class FlowDeleteAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_delete_automation(hass, args["automation_id"]))
 
@@ -600,6 +627,11 @@ class FlowSetAutomationEnabledTool(llm.Tool):
     """Turn an automation on or off without changing its configuration."""
 
     name = "flow_set_automation_enabled"
+    title = "Enable or disable automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=False, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "Turn an automation on or off without changing its configuration "
         "(the same as the enable/disable toggle in the UI). Disabled "
@@ -620,7 +652,7 @@ class FlowSetAutomationEnabledTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(
             await _async_set_enabled(
@@ -633,6 +665,11 @@ class FlowTriggerAutomationTool(llm.Tool):
     """Manually run an automation right now."""
 
     name = "flow_trigger_automation"
+    title = "Run automation"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=False, destructive=False, idempotent=False, open_world=False
+    )
     description = (
         "Manually run an automation right now, as if it had triggered "
         "normally. By default its conditions are skipped (matching the "
@@ -659,7 +696,7 @@ class FlowTriggerAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(
             await _async_trigger_automation(
@@ -672,6 +709,11 @@ class FlowListTracesTool(llm.Tool):
     """List recent execution runs recorded for an automation."""
 
     name = "flow_list_traces"
+    title = "List automation traces"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=True, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "List recent execution runs (traces) recorded for an automation: run "
         "id, when each started/finished, its outcome, and the last step "
@@ -685,7 +727,7 @@ class FlowListTracesTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_list_traces(hass, args["automation_id"]))
 
@@ -694,6 +736,11 @@ class FlowGetTraceTool(llm.Tool):
     """Get the full step-by-step trace for one automation run."""
 
     name = "flow_get_trace"
+    title = "Get automation trace"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=True, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "Get the full step-by-step execution trace for one automation run: "
         "the path taken through triggers/conditions/actions, timestamps, "
@@ -714,7 +761,7 @@ class FlowGetTraceTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_get_trace(hass, args["automation_id"], args["run_id"]))
 
@@ -723,6 +770,11 @@ class FlowValidateAutomationTool(llm.Tool):
     """Check whether automation YAML is valid, without saving anything."""
 
     name = "flow_validate_automation"
+    title = "Validate automation YAML"
+    integration = DOMAIN
+    annotations = llm.ToolAnnotations(
+        read_only=True, destructive=False, idempotent=True, open_world=False
+    )
     description = (
         "Check whether a piece of automation YAML is valid Home Assistant "
         "automation config, without saving anything. Returns ok=true if it "
@@ -736,7 +788,7 @@ class FlowValidateAutomationTool(llm.Tool):
         hass: HomeAssistant,
         tool_input: llm.ToolInput,
         llm_context: llm.LLMContext,
-    ) -> JsonObjectType:
+    ) -> llm.ToolResult:
         args = self.parameters(tool_input.tool_args)
         return _ok(await _async_validate_automation(hass, args["yaml"]))
 
