@@ -1,3 +1,9 @@
+## 1.4.1
+
+- Home Assistant 2026.11 compatibility. The assistant/MCP tools ("Flow Automations") failed to load on 2026.11 because Home Assistant moved the automation code around; they now load on both 2026.10 and 2026.11, return the new tool result type and say who provides them and whether they only read or also change things.
+- Entity names in the pickers and lists come from Home Assistant's own name composer when it has one, falling back to the old `friendly_name`.
+- Flow's Home Assistant integration now has tests that run against the stable and the beta Home Assistant every week.
+
 ## 1.4.0
 
 - Scripts: a new **Scripts** tab opens any Home Assistant script on the canvas, lets you edit it and saves it back with the same steps. Fields, icon, mode and variables are kept, and Run starts a script.
